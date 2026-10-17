@@ -1,4 +1,4 @@
-import { For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../i18n/strings"
 import type { Part } from "../rules/combat"
 import { flankers } from "../rules/cover"
@@ -12,8 +12,21 @@ import { Board } from "./board"
 import { Log } from "./log"
 import { type Forecast, forecast, type Model, slots } from "./model"
 import { SPEEDS } from "./motion"
+import { sprites, tone, UNIT_CELLS } from "./sprites"
 
-const icon = (kind: string) => `${import.meta.env.BASE_URL}icons/${kind}.svg`
+/** A unit's pixel sprite at portrait size. */
+function Portrait(props: { unit: Unit }) {
+  let canvas!: HTMLCanvasElement
+  createEffect(() => {
+    const u = props.unit
+    sprites.loaded.then(() => {
+      const g = canvas.getContext("2d")!
+      g.clearRect(0, 0, 32, 32)
+      sprites.draw(g, UNIT_CELLS[u.kind], tone(u), 0, 0, 32)
+    })
+  })
+  return <canvas ref={canvas} class="portrait" width={32} height={32} />
+}
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
 
@@ -51,7 +64,7 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
   return (
     <section class="card" classList={{ foe: !soldier() }}>
       <div class="head">
-        <img class="portrait" classList={{ foe: !soldier() }} src={icon(u().kind)} alt="" />
+        <Portrait unit={u()} />
         <div class="who">
           <div class="name">{soldier() ? u().name : t(`kind.${u().kind}`)}</div>
           <div class="muted small">{soldier() ? t(`kind.${u().kind}`) : t(`alert.${u().alert}`)}</div>
@@ -405,23 +418,21 @@ export function App(props: { model: Model }): JSX.Element {
   onCleanup(() => window.removeEventListener("keydown", m.key))
   return (
     <Show when={m.lang()} keyed>
-      <main>
-        <section id="stage">
-          <Top model={m} />
-          <div id="field">
-            <Board model={m} />
-            <div class="corner left">
-              <Show when={m.unit()} fallback={<p class="card muted">{t("ui.pick")}</p>}>
-                {(u) => <Card unit={u()} game={m.game()} />}
-              </Show>
-            </div>
-            <div class="corner right">
-              <Target model={m} />
-            </div>
-          </div>
+      <main classList={{ logged: m.logOpen() }}>
+        <Board model={m} />
+        <Top model={m} />
+        <div class="corner left">
+          <Show when={m.unit()} fallback={<p class="card muted">{t("ui.pick")}</p>}>
+            {(u) => <Card unit={u()} game={m.game()} />}
+          </Show>
+        </div>
+        <div class="corner right">
+          <Target model={m} />
+        </div>
+        <div id="dock">
           <Tip model={m} />
           <Bar model={m} />
-        </section>
+        </div>
         <Show when={m.logOpen()}>
           <Panel model={m} />
         </Show>

@@ -1,6 +1,7 @@
 import { PROFILES } from "../src/rules/data"
 import { key, reach, walkable } from "../src/rules/grid"
-import { mission } from "../src/rules/mission"
+import { map, mission } from "../src/rules/mission"
+import type { Biome } from "../src/rules/types"
 
 describe("mission", () => {
   const seeds = Array.from({ length: 100 }, (_, i) => i + 1)
@@ -64,5 +65,21 @@ describe("mission", () => {
   })
   test("the same seed builds the same mission", () => {
     expect(mission(7)).toEqual(mission(7))
+  })
+})
+
+describe("biomes", () => {
+  const seeds = Array.from({ length: 60 }, (_, i) => i + 1)
+  const count = (tiles: string[], t: string) => tiles.filter((x) => x === t).length
+  test("missions come in forest, village and town", () => {
+    const biomes = new Set(seeds.map((s) => mission(s).board.biome))
+    expect([...biomes].sort()).toEqual(["forest", "town", "village"])
+  })
+  test("a forest has more trees than a town, and a town has more walls", () => {
+    const by = (b: Biome) => seeds.map((s) => map({ rng: s }, b))
+    const avg = (b: Biome, t: string) => by(b).reduce((n, m) => n + count(m.tiles, t), 0) / seeds.length
+    expect(avg("forest", "high")).toBeGreaterThan(avg("town", "high"))
+    expect(avg("town", "wall")).toBeGreaterThan(avg("forest", "wall"))
+    expect(avg("village", "wall")).toBeGreaterThan(avg("forest", "wall"))
   })
 })

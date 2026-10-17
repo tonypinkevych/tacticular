@@ -2,7 +2,7 @@ import { CLASSES } from "./data"
 import { die, pick, random } from "./dice"
 import { newGame } from "./game"
 import { AROUND, distance, inside, key } from "./grid"
-import type { Board, EnemyKind, Game, Group, Point, Tile, Unit } from "./types"
+import type { Biome, Board, EnemyKind, Game, Group, Point, Tile, Unit } from "./types"
 import { makeUnit } from "./units"
 
 type Rng = { rng: number }
@@ -37,6 +37,24 @@ const NAMES = [
 export const SIZE = { width: 32, height: 20 }
 
 const START = 4
+
+/** How a biome fills the map: river chance, house count, clutter, tree share, fence lines, groves. */
+interface Template {
+  river: number
+  houses: [number, number]
+  clutter: number
+  high: number
+  lines: number
+  groves: boolean
+}
+
+export const BIOMES: Biome[] = ["forest", "village", "town"]
+
+const TEMPLATES: Record<Biome, Template> = {
+  forest: { river: 0.6, houses: [0, 1], clutter: 14, high: 0.7, lines: 0.05, groves: true },
+  village: { river: 0.5, houses: [3, 5], clutter: 24, high: 0.4, lines: 0.45, groves: false },
+  town: { river: 0.2, houses: [5, 8], clutter: 28, high: 0.25, lines: 0.2, groves: false },
+}
 
 const between = (r: Rng, lo: number, hi: number): number => lo + die(r, hi - lo + 1) - 1
 
@@ -114,19 +132,27 @@ function building(r: Rng, d: Draft): void {
   }
 }
 
-function clutter(r: Rng, d: Draft): void {
-  const count = Math.floor((d.width * d.height) / 22)
+function clutter(r: Rng, d: Draft, t: Template): void {
+  const count = Math.floor((d.width * d.height) / t.clutter)
   for (let i = 0; i < count; i++) {
     const at = { x: between(r, 1, d.width - 2), y: between(r, 0, d.height - 1) }
-    const kind = random(r)
-    const tile: Tile = kind < 0.45 ? "low" : "high"
-    const length = kind < 0.25 ? between(r, 2, 4) : kind < 0.8 ? 1 : 2
+    const tile: Tile = random(r) < t.high ? "high" : "low"
     const step = pick(r, [
       { x: 1, y: 0 },
       { x: 0, y: 1 },
     ])
-    for (let j = 0; j < length; j++) {
-      const p = { x: at.x + step.x * j, y: at.y + step.y * j }
+    const spots =
+      random(r) < t.lines
+        ? Array.from({ length: between(r, 2, 4) }, (_, j) => ({ x: at.x + step.x * j, y: at.y + step.y * j }))
+        : tile === "high" && t.groves
+          ? [
+              at,
+              ...shuffle(r, AROUND)
+                .slice(0, between(r, 1, 3))
+                .map((s) => ({ x: at.x + s.x, y: at.y + s.y })),
+            ]
+          : [at]
+    for (const p of spots) {
       const near = AROUND.map((s) => d.get({ x: p.x + s.x, y: p.y + s.y }))
       if (d.get(p) === "floor" && !near.includes("door") && !near.includes("bridge")) d.set(p, tile)
     }
@@ -154,14 +180,15 @@ function walkables(d: Draft): Point[] {
   return out
 }
 
-/** Builds a map where every passable tile can be reached from the squad's start. */
-export function map(r: Rng, width = SIZE.width, height = SIZE.height): Board {
+/** Builds a map of a biome where every passable tile can be reached from the squad's start. */
+export function map(r: Rng, biome: Biome = pick(r, BIOMES), width = SIZE.width, height = SIZE.height): Board {
+  const t = TEMPLATES[biome]
   for (let attempt = 0; ; attempt++) {
     const d = new Draft(width, height)
-    if (random(r) < 0.6) river(r, d)
-    const houses = between(r, 2, 4)
+    if (random(r) < t.river) river(r, d)
+    const houses = between(r, ...t.houses)
     for (let i = 0; i < houses; i++) building(r, d)
-    clutter(r, d)
+    clutter(r, d, t)
     for (let y = 0; y < height; y++)
       for (let x = 0; x < START; x++) if (d.get({ x, y }) === "high") d.set({ x, y }, "low")
     const start = { x: 1, y: Math.floor(height / 2) }
@@ -170,7 +197,7 @@ export function map(r: Rng, width = SIZE.width, height = SIZE.height): Board {
     const reached = flood(d, start)
     if (reached.size < all.length * 0.95 && attempt < 20) continue
     for (const p of all) if (!reached.has(key(p))) d.set(p, "high")
-    return d.board()
+    return { ...d.board(), biome }
   }
 }
 

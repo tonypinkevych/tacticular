@@ -37,7 +37,7 @@ const en = {
   "ui.save": "Signed log: {count} events, key {key}",
   "ui.help":
     "Click a tile to move or an enemy to aim. 1–0: actions, press twice to confirm. Enter: end turn. Tab / Shift+Tab: soldiers. Esc: cancel. Z: enemy zones. Space: skip animation.",
-  "ui.credits": "Icons: game-icons.net (CC BY 3.0)",
+  "ui.credits": "Icons: game-icons.net (CC BY 3.0). Sprites: Kenney 1-Bit Pack (CC0)",
   "ui.left": "{left} left",
   "ui.saved": "saved",
   "ui.speed": "Speed",
@@ -286,7 +286,7 @@ const ru: Record<Key, string> = {
   "ui.save": "Подписанный журнал: {count} событий, ключ {key}",
   "ui.help":
     "Клетка — ход, враг — прицел. 1–0: действия, нажмите дважды для подтверждения. Enter: конец хода. Tab / Shift+Tab: бойцы. Esc: отмена. Z: зоны врага. Пробел: пропустить анимацию.",
-  "ui.credits": "Иконки: game-icons.net (CC BY 3.0)",
+  "ui.credits": "Иконки: game-icons.net (CC BY 3.0). Спрайты: Kenney 1-Bit Pack (CC0)",
   "ui.left": "осталось {left}",
   "ui.saved": "спасбросок пройден",
   "ui.speed": "Скорость",

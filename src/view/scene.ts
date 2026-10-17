@@ -3,15 +3,15 @@ import { DETECTION, WEAPONS } from "../rules/data"
 import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt } from "../rules/grid"
 import { sees, visibleTiles } from "../rules/sight"
 import { visibleToSquad } from "../rules/stealth"
-import type { Game, Point, Tile, Unit } from "../rules/types"
-import { alive, has, sideOf } from "../rules/units"
+import type { Game, Point, Unit } from "../rules/types"
+import { alive, sideOf } from "../rules/units"
 import type { Float } from "./motion"
+import { glyph, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
 
 /** What the board shows besides the game: selection, reach, hover and overlays. */
 export interface Scene {
   game: Game
   size: number
-  icons: Partial<Record<string, HTMLImageElement>>
   selected: Unit | null
   near: Set<number>
   far: Set<number>
@@ -30,21 +30,6 @@ export interface Scene {
   life: number
 }
 
-const COLORS: Record<Tile, string> = {
-  floor: "#2c3b2f",
-  low: "#2c3b2f",
-  high: "#2c3b2f",
-  wall: "#4a423b",
-  door: "#8b5a2b",
-  open: "#5a4128",
-  water: "#1f4e70",
-  bridge: "#6e5634",
-}
-
-const SQUAD = "#3b82c4"
-const ENEMY = "#c0443a"
-const DOMINATED = "#8b4ec0"
-
 /** Tiles the squad sees now. */
 export function sight(game: Game): Set<number> {
   const out = new Set<number>()
@@ -54,63 +39,41 @@ export function sight(game: Game): Set<number> {
   return out
 }
 
-function tile(ctx: CanvasRenderingContext2D, s: number, p: Point, t: Tile): void {
+function tile(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): void {
+  const biome = game.board.biome ?? "forest"
   const x = p.x * s
   const y = p.y * s
-  ctx.fillStyle = COLORS[t]
+  const t = tileAt(game, p)
+  const palette = PALETTES[biome]
+  ctx.fillStyle = t === "water" ? palette.water : palette.ground
   ctx.fillRect(x, y, s, s)
-  if (t === "low") {
-    ctx.fillStyle = "#9c8350"
-    ctx.fillRect(x + s * 0.18, y + s * 0.3, s * 0.64, s * 0.4)
-  } else if (t === "high") {
-    ctx.fillStyle = "#7d828a"
-    ctx.beginPath()
-    ctx.arc(x + s / 2, y + s / 2, s * 0.42, 0, Math.PI * 2)
-    ctx.fill()
-  } else if (t === "water") {
-    ctx.strokeStyle = "#2f6c96"
-    ctx.beginPath()
-    ctx.moveTo(x + s * 0.2, y + s * 0.5)
-    ctx.quadraticCurveTo(x + s * 0.5, y + s * 0.3, x + s * 0.8, y + s * 0.5)
-    ctx.stroke()
-  } else if (t === "bridge") {
-    ctx.strokeStyle = "#4f3c22"
-    for (let i = 1; i < 4; i++) {
-      ctx.beginPath()
-      ctx.moveTo(x, y + (s * i) / 4)
-      ctx.lineTo(x + s, y + (s * i) / 4)
-      ctx.stroke()
-    }
-  }
-  ctx.strokeStyle = "rgba(0,0,0,0.18)"
-  ctx.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1)
+  const g = glyph(biome, t, p)
+  if (g === "dot") {
+    const d = Math.max(2, Math.round(s / 16) * 2)
+    ctx.fillStyle = palette.dot
+    ctx.fillRect(x + (s - d) / 2, y + (s - d) / 2, d, d)
+  } else if (g) sprites.draw(ctx, g.cell, g.color, x, y, s)
 }
 
-function disk(ctx: CanvasRenderingContext2D, s: number, sc: Scene, u: Unit, alpha = 1, at: Point = u.pos): void {
-  const cx = at.x * s + s / 2
-  const cy = at.y * s + s / 2
+/** A unit's pixel sprite in its side's color, with a shadow; concealed units get a dashed ring. */
+function figure(ctx: CanvasRenderingContext2D, s: number, u: Unit, alpha = 1, at: Point = u.pos): void {
+  const x = at.x * s
+  const y = at.y * s
   ctx.globalAlpha = alpha
-  ctx.fillStyle = has(u, "dominated") ? DOMINATED : u.side === "squad" ? SQUAD : ENEMY
+  ctx.fillStyle = "rgba(0,0,0,0.5)"
   ctx.beginPath()
-  ctx.arc(cx, cy, s * 0.42, 0, Math.PI * 2)
+  ctx.ellipse(x + s / 2, y + s * 0.88, s * 0.34, s * 0.1, 0, 0, Math.PI * 2)
   ctx.fill()
+  sprites.draw(ctx, UNIT_CELLS[u.kind], tone(u), x, y, s)
   if (u.concealed) {
     ctx.setLineDash([3, 3])
-    ctx.strokeStyle = "#e8f1ff"
+    ctx.strokeStyle = "rgba(232,241,255,0.8)"
     ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.arc(x + s / 2, y + s / 2, s * 0.46, 0, Math.PI * 2)
     ctx.stroke()
     ctx.setLineDash([])
     ctx.lineWidth = 1
-  }
-  const icon = sc.icons[u.kind]
-  if (icon?.complete && icon.naturalWidth > 0) {
-    ctx.drawImage(icon, cx - s * 0.3, cy - s * 0.3, s * 0.6, s * 0.6)
-  } else {
-    ctx.fillStyle = "#fff"
-    ctx.font = `bold ${Math.floor(s * 0.45)}px system-ui`
-    ctx.textAlign = "center"
-    ctx.textBaseline = "middle"
-    ctx.fillText(u.kind[0].toUpperCase(), cx, cy)
   }
   ctx.globalAlpha = 1
 }
@@ -119,16 +82,22 @@ function disk(ctx: CanvasRenderingContext2D, s: number, sc: Scene, u: Unit, alph
 function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u.pos): void {
   const x = at.x * s
   const y = at.y * s
-  const seg = Math.max(3, Math.min(6, Math.floor((s - 2) / u.maxHp) - 1))
-  const width = u.maxHp * (seg + 1) - 1
+  const seg = Math.min(6, Math.floor((s - 4) / u.maxHp) - 1)
+  const width = seg >= 2 ? u.maxHp * (seg + 1) - 1 : s - 4
   const left = x + (s - width) / 2
   ctx.fillStyle = "rgba(0,0,0,0.85)"
   ctx.fillRect(left - 1, y + s - 7, width + 2, 6)
   const color = u.hp / u.maxHp > 0.5 ? "#5fd35f" : u.hp / u.maxHp > 0.25 ? "#e3c13b" : "#e3503b"
-  for (let i = 0; i < u.maxHp; i++) {
-    ctx.fillStyle = i < u.hp ? color : "#4a2222"
-    ctx.fillRect(left + i * (seg + 1), y + s - 6, seg, 4)
-  }
+  if (seg < 2) {
+    ctx.fillStyle = "#4a2222"
+    ctx.fillRect(left, y + s - 6, width, 4)
+    ctx.fillStyle = color
+    ctx.fillRect(left, y + s - 6, (width * u.hp) / u.maxHp, 4)
+  } else
+    for (let i = 0; i < u.maxHp; i++) {
+      ctx.fillStyle = i < u.hp ? color : "#4a2222"
+      ctx.fillRect(left + i * (seg + 1), y + s - 6, seg, 4)
+    }
   if (u.side === "squad" && sideOf(u) === "squad") {
     for (let i = 0; i < u.ap; i++) {
       ctx.fillStyle = "#ffd84a"
@@ -318,18 +287,18 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const { game, size: s } = sc
   const { width, height } = game.board
   const seen = sight(game)
-  ctx.clearRect(0, 0, width * s, height * s)
+  const palette = PALETTES[game.board.biome ?? "forest"]
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const p = { x, y }
       if (!game.explored[y * width + x]) {
-        ctx.fillStyle = "#0b0d10"
+        ctx.fillStyle = palette.void
         ctx.fillRect(x * s, y * s, s, s)
         continue
       }
-      tile(ctx, s, p, tileAt(game, p))
+      tile(ctx, s, game, p)
       if (!seen.has(key(p))) {
-        ctx.fillStyle = "rgba(5,8,12,0.5)"
+        ctx.fillStyle = "rgba(8,6,12,0.6)"
         ctx.fillRect(x * s, y * s, s, s)
       }
     }
@@ -356,7 +325,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const g of game.ghosts) {
     const u = game.units.find((x) => x.id === g.unit)
     if (!u || enemies.includes(u)) continue
-    disk(ctx, s, sc, { ...u, pos: g.at, concealed: false }, 0.35)
+    figure(ctx, s, { ...u, pos: g.at, concealed: false }, 0.35)
     ctx.fillStyle = "#fff"
     ctx.font = `${Math.floor(s * 0.3)}px system-ui`
     ctx.textAlign = "left"
@@ -395,18 +364,18 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
     const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0
-    disk(ctx, s, sc, u, spent ? 0.45 : 1, at)
+    figure(ctx, s, u, spent ? 0.45 : 1, at)
     badges(ctx, s, u, at)
     if (u.side === "squad" && sideOf(u) === "squad" && flankers(game, u, enemies).length > 0) warn(ctx, s, at)
   }
   if (sc.ghost) {
-    disk(ctx, s, sc, sc.ghost.unit, 0.5, sc.ghost.at)
+    figure(ctx, s, sc.ghost.unit, 0.5, sc.ghost.at)
     cover(ctx, s, game, sc.ghost.at)
   }
   if (sc.mover && !game.units.some((u) => u.id === sc.mover!.id && (u.side === "squad" || enemies.includes(u)))) {
     const u = game.units.find((x) => x.id === sc.mover!.id)
     if (u && seen.has(key({ x: Math.round(sc.mover.at.x), y: Math.round(sc.mover.at.y) })))
-      disk(ctx, s, sc, u, 1, sc.mover.at)
+      figure(ctx, s, u, 1, sc.mover.at)
   }
   if (sc.selected) {
     const id = sc.selected.id

@@ -5,10 +5,14 @@ export interface Point {
 
 export type Tile = "floor" | "low" | "high" | "wall" | "door" | "open" | "water" | "bridge"
 
+/** The kind of land a mission takes place in; it shapes the map and its look. */
+export type Biome = "forest" | "village" | "town"
+
 export interface Board {
   width: number
   height: number
   tiles: Tile[]
+  biome?: Biome
 }
 
 export type Side = "squad" | "enemy"
