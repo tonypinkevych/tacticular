@@ -1,4 +1,4 @@
-import { coverAgainst, coverAt } from "../rules/cover"
+import { coverAgainst, coverAt, flankers } from "../rules/cover"
 import { DETECTION, WEAPONS } from "../rules/data"
 import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt } from "../rules/grid"
 import { sees, visibleTiles } from "../rules/sight"
@@ -21,6 +21,7 @@ export interface Scene {
   area: Point[]
   range: Set<number>
   aimed: Point | null
+  ghost: { unit: Unit; at: Point } | null
   zones: boolean
   mover: { id: string; at: Point } | null
   shot: { from: Point; to: Point; progress: number } | null
@@ -267,6 +268,25 @@ function cover(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): 
   }
 }
 
+/** A red triangle with "!" on a soldier that an enemy flanks. */
+function warn(ctx: CanvasRenderingContext2D, s: number, at: Point): void {
+  const x = at.x * s + 2
+  const y = at.y * s + s * 0.55
+  const r = Math.max(6, s * 0.2)
+  ctx.fillStyle = "#ff3b3b"
+  ctx.beginPath()
+  ctx.moveTo(x + r, y - r)
+  ctx.lineTo(x + 2 * r, y + r * 0.7)
+  ctx.lineTo(x, y + r * 0.7)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = "#fff"
+  ctx.font = `bold ${Math.floor(r * 1.3)}px system-ui`
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText("!", x + r, y + r * 0.05)
+}
+
 function shot(ctx: CanvasRenderingContext2D, s: number, sh: NonNullable<Scene["shot"]>): void {
   const ax = sh.from.x * s + s / 2
   const ay = sh.from.y * s + s / 2
@@ -364,8 +384,14 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const u of game.units) {
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
-    disk(ctx, s, sc, u, 1, at)
+    const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0
+    disk(ctx, s, sc, u, spent ? 0.45 : 1, at)
     badges(ctx, s, u, at)
+    if (u.side === "squad" && sideOf(u) === "squad" && flankers(game, u, enemies).length > 0) warn(ctx, s, at)
+  }
+  if (sc.ghost) {
+    disk(ctx, s, sc, sc.ghost.unit, 0.5, sc.ghost.at)
+    cover(ctx, s, game, sc.ghost.at)
   }
   if (sc.mover && !game.units.some((u) => u.id === sc.mover!.id && (u.side === "squad" || enemies.includes(u)))) {
     const u = game.units.find((x) => x.id === sc.mover!.id)

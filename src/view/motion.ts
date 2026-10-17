@@ -48,6 +48,34 @@ function walkPath(before: Game, frame: Frame): Point[] {
   return stop >= 0 ? path.slice(0, stop + 1) : [...path, after.pos]
 }
 
+const step = (a: Point, b: Point): number => Math.hypot(b.x - a.x, b.y - a.y)
+
+/** Length of a walk in tiles, with diagonal steps as long as they look. */
+function span(before: Game, frame: Frame, path: Point[]): number {
+  const id = actor(frame)
+  const start = before.units.find((x) => x.id === id)?.pos
+  if (!start) return 0
+  return path.reduce((sum, p, i) => sum + step(i === 0 ? start : path[i - 1], p), 0)
+}
+
+/** The point at a share of a walk's length, so the speed stays even on diagonals. */
+function along(points: Point[], share: number): Point {
+  const total = points.slice(1).reduce((sum, p, i) => sum + step(points[i], p), 0)
+  let left = share * total
+  for (let i = 1; i < points.length; i++) {
+    const d = step(points[i - 1], points[i])
+    if (left <= d) {
+      const f = d === 0 ? 1 : left / d
+      return {
+        x: points[i - 1].x + (points[i].x - points[i - 1].x) * f,
+        y: points[i - 1].y + (points[i].y - points[i - 1].y) * f,
+      }
+    }
+    left -= d
+  }
+  return points[points.length - 1]
+}
+
 function target(before: Game, frame: Frame): Point | null {
   const a = frame.action
   if (a.type === "attack" || (a.type === "ability" && a.target && a.ability !== "charge")) {
@@ -150,7 +178,7 @@ export class Playback {
     const visible = shown(before, frame)
     const shotAt = target(before, frame)
     const scale = this.speed === 0 || instant || !visible ? 0 : 1 / this.speed
-    const length = scale * (path.length * TILE_MS + (shotAt ? SHOT_MS : 0) + STEP_MS)
+    const length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? SHOT_MS : 0) + STEP_MS)
     this.clip = { before, frame, start: now, length, path }
   }
 
@@ -165,20 +193,13 @@ export class Playback {
     if (!c) return { game: this.shownGame, mover: null, shot: null }
     const id = actor(c.frame)
     const t = c.length > 0 ? (now - c.start) / c.length : 1
-    const walk = c.path.length * TILE_MS
+    const walk = span(c.before, c.frame, c.path) * TILE_MS
     const total = walk + (target(c.before, c.frame) ? SHOT_MS : 0) + STEP_MS
     const walkEnd = walk / total
     let mover: Still["mover"] = null
     if (id && c.path.length > 0) {
       const u = c.before.units.find((x) => x.id === id)!
-      const steps = [u.pos, ...c.path]
-      const k = Math.min(1, t / walkEnd) * (steps.length - 1)
-      const i = Math.min(steps.length - 2, Math.floor(k))
-      const f = k - i
-      mover = {
-        id,
-        at: { x: steps[i].x + (steps[i + 1].x - steps[i].x) * f, y: steps[i].y + (steps[i + 1].y - steps[i].y) * f },
-      }
+      mover = { id, at: along([u.pos, ...c.path], Math.min(1, t / walkEnd)) }
     }
     let shot: Still["shot"] = null
     const to = target(c.before, c.frame)

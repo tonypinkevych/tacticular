@@ -1,28 +1,17 @@
 import { For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../i18n/strings"
 import { odds } from "../rules/combat"
+import { flankers } from "../rules/cover"
 import { WEAPONS } from "../rules/data"
-import type { Entry, Game, Unit, WeaponId } from "../rules/types"
-import { sideOf } from "../rules/units"
+import { visibleToSquad } from "../rules/stealth"
+import type { Game, Unit, WeaponId } from "../rules/types"
+import { alive, foes, sideOf } from "../rules/units"
 import { Board } from "./board"
+import { Log, name } from "./log"
 import { type Model, slots } from "./model"
 import { SPEEDS } from "./motion"
 
 const icon = (kind: string) => `${import.meta.env.BASE_URL}icons/${kind}.svg`
-
-function name(game: Game, id: unknown): string {
-  const u = game.units.find((x) => x.id === id)
-  if (!u) return String(id ?? "")
-  return u.side === "squad" ? `${u.name} (${t(`kind.${u.kind}`)})` : t(`kind.${u.kind}`)
-}
-
-function line(game: Game, e: Entry): string {
-  const p: Record<string, string | number | boolean> = { ...e.params }
-  for (const k of ["unit", "target", "by"]) if (k in p) p[k] = name(game, p[k])
-  if (typeof p.weapon === "string") p.weapon = t(`weapon.${p.weapon}`)
-  if ("saved" in p) p.result = t(p.saved ? "ui.saved" : "ui.failed")
-  return t(e.key, p)
-}
 
 function Hp(props: { unit: Unit }) {
   return (
@@ -39,9 +28,15 @@ function Hp(props: { unit: Unit }) {
   )
 }
 
-/** The selected soldier: who, how healthy, how many actions left, what it carries. */
-function Card(props: { unit: Unit }) {
+/** A unit at a glance: who, how healthy, how many actions left, what it carries, what threatens it. */
+function Card(props: { unit: Unit; game: Game }) {
   const u = () => props.unit
+  const soldier = () => u().side === "squad"
+  const flanked = () => {
+    const g = props.game
+    const enemies = g.units.filter((x) => alive(x) && foes(x, u()) && (x.side === "squad" || visibleToSquad(g, x)))
+    return flankers(g, u(), enemies).length > 0
+  }
   const w = () => WEAPONS[u().weapon]
   const stat = (label: string, value: string | number) => (
     <div class="stat">
@@ -52,20 +47,24 @@ function Card(props: { unit: Unit }) {
   return (
     <section class="card unit">
       <div class="head">
-        <img class="portrait" src={icon(u().kind)} alt="" />
+        <img class="portrait" classList={{ foe: !soldier() }} src={icon(u().kind)} alt="" />
         <div class="who">
-          <div class="name">{u().name}</div>
-          <div class="muted">{t(`kind.${u().kind}`)}</div>
+          <div class="name">{soldier() ? u().name : t(`kind.${u().kind}`)}</div>
+          <div class="muted">{soldier() ? t(`kind.${u().kind}`) : t(`alert.${u().alert}`)}</div>
         </div>
-        <span class="chip" classList={{ hidden: u().concealed }}>
-          {u().concealed ? t("ui.concealed") : t("ui.revealed")}
-        </span>
+        <Show when={soldier()} fallback={<span class={`chip alert ${u().alert}`}>{t(`alert.${u().alert}`)}</span>}>
+          <span class="chip" classList={{ hidden: u().concealed }}>
+            {u().concealed ? t("ui.concealed") : t("ui.revealed")}
+          </span>
+        </Show>
       </div>
       <Hp unit={u()} />
-      <div class="ap">
-        <span class="muted">{t("ui.ap")}</span>
-        <Index each={[0, 1]}>{(_, i) => <span class="pip" classList={{ full: i < u().ap }} />}</Index>
-      </div>
+      <Show when={soldier()}>
+        <div class="ap">
+          <span class="muted">{t("ui.ap")}</span>
+          <Index each={[0, 1]}>{(_, i) => <span class="pip" classList={{ full: i < u().ap }} />}</Index>
+        </div>
+      </Show>
       <div class="weapon">
         <b>{t(`weapon.${u().weapon}`)}</b>
         <span class="muted">
@@ -89,8 +88,21 @@ function Card(props: { unit: Unit }) {
         {stat(t("ui.vision"), u().vision)}
         {stat(t("ui.will"), `+${u().will}`)}
       </div>
-      <Show when={u().statuses.length > 0 || u().stance !== "none"}>
+      <Show
+        when={
+          u().statuses.length > 0 || u().stance !== "none" || flanked() || u().intent || (soldier() && u().ap === 0)
+        }
+      >
         <div class="chips">
+          <Show when={flanked()}>
+            <span class="chip danger">{t("ui.flanked")}</span>
+          </Show>
+          <Show when={soldier() && u().ap === 0}>
+            <span class="chip spent">{t("ui.noAp")}</span>
+          </Show>
+          <Show when={u().intent}>
+            <span class="chip danger">{t("ui.telegraph")}</span>
+          </Show>
           <For each={u().statuses}>
             {(s) => (
               <span class={`chip status ${s.id}`}>
@@ -162,22 +174,7 @@ function Enemy(props: { model: Model }) {
     const h = m.hover()
     return h ? m.foeAt(h) : undefined
   }
-  return (
-    <Show when={foe()}>
-      {(e) => (
-        <section class="card enemy">
-          <div class="head">
-            <img class="portrait foe" src={icon(e().kind)} alt="" />
-            <div class="who">
-              <div class="name">{name(m.game(), e().id)}</div>
-              <div class="muted">{t(`alert.${e().alert}`)}</div>
-            </div>
-          </div>
-          <Hp unit={e()} />
-        </section>
-      )}
-    </Show>
-  )
+  return <Show when={foe()}>{(e) => <Card unit={e()} game={m.game()} />}</Show>
 }
 
 function Panel(props: { model: Model }) {
@@ -210,7 +207,7 @@ function Panel(props: { model: Model }) {
       </div>
       <div class="muted small">{t("ui.seed", { seed: g().seed })}</div>
       <Show when={m.unit()} fallback={<p class="muted">{t("ui.pick")}</p>}>
-        {(u) => <Card unit={u()} />}
+        {(u) => <Card unit={u()} game={m.game()} />}
       </Show>
       <Preview model={m} />
       <Enemy model={m} />
@@ -225,12 +222,7 @@ function Panel(props: { model: Model }) {
           {m.confirmNew() ? t("ui.confirm") : t("ui.newMission")}
         </button>
       </div>
-      <h2>{t("ui.log")}</h2>
-      <ol class="log">
-        <For each={m.shown().log.slice(-60).reverse()}>
-          {(e) => <li class={e.key.replace(".", "-")}>{line(m.shown(), e)}</li>}
-        </For>
-      </ol>
+      <Log game={m.shown()} />
       <p class="muted small">{t("ui.save", { count: events(), key: `${m.session.author.slice(0, 12)}…` })}</p>
       <p class="muted small">{t("ui.credits")}</p>
     </aside>
@@ -292,14 +284,19 @@ function Bar(props: { model: Model }) {
   )
 }
 
+/** The description of the hovered action, else of the armed one, else the message or the help. */
 function Tip(props: { model: Model }) {
   const m = props.model
+  const shown = () => {
+    const h = m.hint()
+    if (h) return h
+    const a = m.armed()
+    const u = m.unit()
+    return a && u ? slots(m.game(), u).find((s) => s.id === a.slot) : undefined
+  }
   return (
     <div id="tip">
-      <Show
-        when={m.hint()}
-        fallback={<div classList={{ message: !!m.message(), muted: !m.message() }}>{m.message() || t("ui.help")}</div>}
-      >
+      <Show when={shown()}>
         {(s) => (
           <>
             <div class="name">
@@ -308,6 +305,11 @@ function Tip(props: { model: Model }) {
             <div>{s().info}</div>
           </>
         )}
+      </Show>
+      <Show when={!m.hint()}>
+        <div classList={{ message: !!m.message(), muted: !m.message() }}>
+          {m.message() || (shown() ? "" : t("ui.help"))}
+        </div>
       </Show>
     </div>
   )

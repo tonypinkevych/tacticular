@@ -243,6 +243,24 @@ h2 {
   background: #1f4f3a;
   color: #9ff0c4;
 }
+.chip.danger {
+  background: #7a1f1f;
+  color: #ffd6d0;
+}
+.chip.spent {
+  background: #3a3f47;
+  color: var(--muted);
+}
+.chip.alert.engaged {
+  background: #7a1f1f;
+}
+.chip.alert.investigating {
+  background: #6b5a1f;
+}
+.logbox {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
 .chip.status {
   background: #5a2f6b;
 }

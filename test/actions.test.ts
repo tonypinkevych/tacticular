@@ -141,6 +141,20 @@ describe("abilities and items", () => {
   })
 })
 
+describe("charge landing", () => {
+  test("charge lands on the chosen tile next to the target", () => {
+    const g = setup(open(10, 3), [squad("v", "vanguard", { x: 0, y: 1 }), enemy("e", "orc", { x: 6, y: 1 })])
+    const a = apply(g, { type: "ability", unit: "v", ability: "charge", target: "e", at: { x: 6, y: 0 } })
+    expect(find(a, "v").pos).toEqual({ x: 6, y: 0 })
+  })
+  test("a landing tile not next to the target is illegal", () => {
+    const g = setup(open(10, 3), [squad("v", "vanguard", { x: 0, y: 1 }), enemy("e", "orc", { x: 6, y: 1 })])
+    expect(() => apply(g, { type: "ability", unit: "v", ability: "charge", target: "e", at: { x: 3, y: 1 } })).toThrow(
+      "place",
+    )
+  })
+})
+
 describe("mission end", () => {
   test("killing the last enemy wins", () => {
     const g = setup(open(4, 3), [squad("v", "vanguard", { x: 0, y: 0 }), enemy("e", "orc", { x: 1, y: 0 })])

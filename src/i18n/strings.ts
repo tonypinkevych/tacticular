@@ -47,6 +47,9 @@ const en = {
   "ui.key": "Key {key}",
   "ui.pressAgain": "Press {key} again or click the target to confirm. Esc cancels.",
   "ui.skip": "Space skips the animation.",
+  "ui.flanked": "Flanked",
+  "ui.noAp": "No AP left",
+  "ui.telegraph": "Next attack marked",
   "ui.failed": "failed",
 
   "kind.vanguard": "Vanguard",
@@ -243,6 +246,9 @@ const ru: Record<Key, string> = {
   "ui.key": "Клавиша {key}",
   "ui.pressAgain": "Нажмите {key} ещё раз или кликните цель для подтверждения. Esc — отмена.",
   "ui.skip": "Пробел пропускает анимацию.",
+  "ui.flanked": "Фланг открыт",
+  "ui.noAp": "Нет ОД",
+  "ui.telegraph": "Атака намечена",
   "ui.failed": "спасбросок провален",
 
   "kind.vanguard": "Авангард",

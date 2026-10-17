@@ -108,6 +108,14 @@ function move(game: Game, u: Unit, to: Point): void {
   walk(game, u, r.path(to))
 }
 
+/** Tiles next to a target that a unit can reach within one move, nearest first. */
+export function landings(game: Game, u: Unit, t: Unit): Point[] {
+  const r = reach(game, u, u.mobility)
+  return AROUND.map((d) => plus(t.pos, d))
+    .filter((p) => same(p, u.pos) || r.cost.has(key(p)))
+    .sort((a, b) => (r.cost.get(key(a)) ?? 0) - (r.cost.get(key(b)) ?? 0))
+}
+
 export function canTarget(game: Game, u: Unit, t: Unit): boolean {
   if (!alive(t) || !foes(u, t)) return false
   if (t.kind === "assassin" && t.concealed && distance(u.pos, t.pos) > 3) return false
@@ -136,11 +144,11 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
   switch (id) {
     case "charge": {
       check(!!t && canTarget(game, u, t), "target")
-      const r = reach(game, u, u.mobility)
-      const spot = AROUND.map((d) => plus(t!.pos, d))
-        .filter((p) => same(p, u.pos) || r.cost.has(key(p)))
-        .sort((a, b) => (r.cost.get(key(a)) ?? 0) - (r.cost.get(key(b)) ?? 0))[0]
+      const spots = landings(game, u, t!)
+      if (at) check(adjacent(at, t!.pos) && spots.some((p) => same(p, at)), "place")
+      const spot = at ?? spots[0]
       check(!!spot, "unreachable")
+      const r = reach(game, u, u.mobility)
       u.intent = null
       if (!same(spot, u.pos)) walk(game, u, r.path(spot))
       if (alive(u) && alive(t!)) {

@@ -1,5 +1,6 @@
 import { coverOf, inside, ORTHOGONAL, plus, tileAt } from "./grid"
-import type { Game, Point } from "./types"
+import { sees } from "./sight"
+import type { Game, Point, Unit } from "./types"
 
 /** Best cover a target tile has against an attack from a point: 0 means the target is flanked. */
 export function coverAgainst(game: Game, target: Point, from: Point): number {
@@ -21,4 +22,9 @@ export function inCover(game: Game, p: Point): boolean {
 /** Cover a tile gives; the board edge gives none. */
 export function coverAt(game: Game, p: Point): number {
   return inside(game.board, p) ? coverOf(tileAt(game, p)) : 0
+}
+
+/** Foes that see a unit and have no cover of it between them: they flank it. */
+export function flankers(game: Game, u: Unit, foes: Unit[]): Unit[] {
+  return foes.filter((f) => coverAgainst(game, u.pos, f.pos) === 0 && sees(game, f, u.pos))
 }

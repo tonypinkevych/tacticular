@@ -1,6 +1,6 @@
 import { batch, createSignal } from "solid-js"
 import { type Lang, language, remember, t, use } from "../i18n/strings"
-import { canTarget, Illegal } from "../rules/actions"
+import { canTarget, Illegal, landings } from "../rules/actions"
 import { odds } from "../rules/combat"
 import { PROFILES, RANGE, WEAPONS } from "../rules/data"
 import { AROUND, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
@@ -160,12 +160,28 @@ export function action(u: Unit, armed: Armed): Action | null {
   if (kind === "item") return armed.at ? { type: "item", unit: u.id, item: id as ItemId, at: armed.at } : null
   if (kind === "ability") {
     const a = id as AbilityId
+    if (a === "charge" && armed.target)
+      return { type: "ability", unit: u.id, ability: a, target: armed.target, ...(armed.at ? { at: armed.at } : {}) }
     if (UNIT_ABILITIES.includes(a))
       return armed.target ? { type: "ability", unit: u.id, ability: a, target: armed.target } : null
     if (TILE_ABILITIES.includes(a)) return armed.at ? { type: "ability", unit: u.id, ability: a, at: armed.at } : null
     return { type: "ability", unit: u.id, ability: a }
   }
   return { type: kind as "overwatch" | "hunker" | "reload", unit: u.id }
+}
+
+/** The armed action with its tile filled in from the cursor: tile actions follow it, Charge lands where it points. */
+export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): Armed {
+  if (armed.slot === "ability:charge") {
+    const target = game.units.find((x) => x.id === armed.target)
+    if (!target) return armed
+    const spots = landings(game, u, target)
+    const at = hover && spots.some((p) => same(p, hover)) ? hover : (armed.at ?? spots[0] ?? null)
+    return { ...armed, at }
+  }
+  const tile = armed.slot.startsWith("item:") || TILE_ABILITIES.includes(armed.slot.slice(8) as AbilityId)
+  if (!tile) return armed
+  return { ...armed, at: hover && range(game, u, armed.slot).has(key(hover)) ? hover : armed.at }
 }
 
 /** All UI state as signals, and the commands that change it. */
@@ -204,10 +220,10 @@ export function createModel(session: Session, store: Storage) {
   }
 
   /** Selects the next soldier; with all set, any living soldier, else only those with AP left. */
-  const selectNext = (all: boolean, back = false) => {
+  const selectNext = (all: boolean, back = false, fallback = true) => {
     const squad = game().units.filter((u) => alive(u) && sideOf(u) === "squad" && (all || u.ap > 0))
     if (squad.length === 0) {
-      if (!all) selectNext(true)
+      if (!all && fallback) selectNext(true)
       return
     }
     const at = squad.findIndex((u) => u.id === selected())
@@ -242,18 +258,16 @@ export function createModel(session: Session, store: Storage) {
     if (!u || slot.disabled) return
     const current = armed()
     if (current?.slot === slot.id) {
-      const a = action(u, current)
+      const a = action(u, aimFor(game(), u, current, hover()))
       if (a) act(a)
       else setMessage(slot.aim === "tile" ? t("ui.pickTile") : t("ui.pickTarget"))
       return
     }
     batch(() => {
       const target = slot.aim === "unit" ? defaultTarget(game(), u, slot.id) : null
-      const h = hover()
-      const at = slot.aim === "tile" && h && range(game(), u, slot.id).has(key(h)) ? h : null
-      setArmed({ slot: slot.id, target, at })
+      setArmed({ slot: slot.id, target, at: null })
       setMessage(
-        slot.aim === "none" || target || at
+        slot.aim === "none" || target
           ? t("ui.pressAgain", { key: slot.key })
           : slot.aim === "tile"
             ? t("ui.pickTile")
@@ -272,8 +286,14 @@ export function createModel(session: Session, store: Storage) {
     const slot = current && u ? slots(g, u).find((s) => s.id === current.slot) : undefined
     if (u && current && slot) {
       if (slot.aim === "unit" && here) {
-        if (current.target === here.id) act(action(u, current)!)
-        else setArmed({ ...current, target: here.id })
+        if (current.target === here.id) act(action(u, aimFor(g, u, current, hover()))!)
+        else setArmed({ ...current, target: here.id, at: null })
+        return
+      }
+      const target = current.target ? g.units.find((x) => x.id === current.target) : undefined
+      if (current.slot === "ability:charge" && target && landings(g, u, target).some((q) => same(q, p))) {
+        if (current.at && same(current.at, p)) act(action(u, current)!)
+        else setArmed({ ...current, at: p })
         return
       }
       if (slot.aim === "tile") {
@@ -320,7 +340,7 @@ export function createModel(session: Session, store: Storage) {
     }
     if (e.key === "Tab") {
       e.preventDefault()
-      selectNext(true, e.shiftKey)
+      selectNext(false, e.shiftKey, false)
       return
     }
     if (e.key === "Enter") {

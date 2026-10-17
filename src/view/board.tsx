@@ -5,7 +5,7 @@ import { area, inside, key, reach } from "../rules/grid"
 import { visibleToSquad } from "../rules/stealth"
 import type { Point } from "../rules/types"
 import { sideOf } from "../rules/units"
-import { type Model, range, slots } from "./model"
+import { aimFor, type Model, range, slots } from "./model"
 import { draw, type Scene } from "./scene"
 
 const BAR_ROOM = 190
@@ -57,17 +57,22 @@ export function Board(props: { model: Model }) {
     let spot: Point[] = []
     let zone = new Set<number>()
     let aimed: Point | null = null
+    let ghost: Scene["ghost"] = null
     const hover = m.hover()
-    const armed = m.armed()
+    const raw = m.armed()
     if (u && g.phase === "squad" && u.ap > 0) {
-      if (armed) {
+      if (raw) {
+        const armed = aimFor(g, u, raw, hover)
         zone = range(g, u, armed.slot)
         const slot = slots(g, u).find((s) => s.id === armed.slot)
         const target = armed.target ? g.units.find((x) => x.id === armed.target) : null
         aimed = target?.pos ?? armed.at
-        const at = armed.at ?? (slot?.aim === "tile" ? hover : null)
-        if (at && armed.slot.startsWith("item:")) spot = armed.slot === "item:stone" ? [at] : area(at, 1)
-        else if (at && slot?.aim === "tile") spot = [at]
+        if (armed.slot === "ability:charge" && armed.at) {
+          ghost = { unit: u, at: armed.at }
+          path = reach(g, u, u.mobility).path(armed.at)
+        } else if (armed.at && armed.slot.startsWith("item:"))
+          spot = armed.slot === "item:stone" ? [armed.at] : area(armed.at, 1)
+        else if (armed.at && slot?.aim === "tile") spot = [armed.at]
       } else {
         const r = reach(g, u, u.mobility * u.ap)
         for (const [k, c] of r.cost) {
@@ -95,6 +100,7 @@ export function Board(props: { model: Model }) {
       area: spot.filter((p) => inside(g.board, p)),
       range: zone,
       aimed,
+      ghost,
       zones: m.zones(),
       mover: still.mover,
       shot: still.shot,
