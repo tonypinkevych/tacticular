@@ -195,6 +195,8 @@ export function glyph(biome: Biome, tile: Tile, p: Point): { cell: Cell; color: 
       return { cell: [8, 5], color: c.wave }
     case "bridge":
       return { cell: [4, 6], color: c.bridge }
+    default:
+      return null
   }
 }
 

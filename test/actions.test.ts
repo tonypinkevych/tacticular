@@ -18,7 +18,7 @@ describe("action points", () => {
     const a = apply(g, { type: "move", unit: "w", to: { x: 2, y: 0 } })
     const b = apply(a, { type: "attack", unit: "w", target: "e" })
     expect(find(b, "w").ap).toBe(0)
-    expect(find(b, "w").ammo).toBe(4)
+    expect(find(b, "w").ammo).toBe(2)
     expect(() => apply(b, { type: "reload", unit: "w" })).toThrow(Illegal)
   })
   test("the longbow needs 2 AP and no move", () => {

@@ -17,7 +17,15 @@ export function tileAt(game: Game, p: Point): Tile {
   return game.board.tiles[p.y * game.board.width + p.x]
 }
 
-export const walkable = (tile: Tile): boolean => tile === "floor" || tile === "open" || tile === "bridge"
+export const walkable = (tile: Tile): boolean =>
+  tile === "floor" || tile === "open" || tile === "bridge" || tile === "ridge" || tile === "roof" || tile === "ladder"
+
+/** High ground: a ridge or a rooftop. */
+export const up = (tile: Tile): boolean => tile === "ridge" || tile === "roof"
+
+/** A step between two tiles that a roof allows: on and off a roof only by a ladder or another roof. */
+export const climb = (from: Tile, to: Tile): boolean =>
+  (to !== "roof" || from === "roof" || from === "ladder") && (from !== "roof" || to === "roof" || to === "ladder")
 
 /** A tile a walk can pass: walkable ground, or a closed door that opens on the way. */
 export const passable = (tile: Tile): boolean => walkable(tile) || tile === "door"
@@ -50,8 +58,9 @@ export const AROUND: Point[] = [...ORTHOGONAL, { x: 1, y: 1 }, { x: 1, y: -1 }, 
 
 export const plus = (a: Point, b: Point): Point => ({ x: a.x + b.x, y: a.y + b.y })
 
+/** The unit on a tile: a living one, or a downed soldier. */
 export function unitAt(game: Game, p: Point): Unit | undefined {
-  return game.units.find((u) => u.hp > 0 && same(u.pos, p))
+  return game.units.find((u) => (u.hp > 0 || u.down > 0) && same(u.pos, p))
 }
 
 export function area(center: Point, radius: number): Point[] {
@@ -69,7 +78,7 @@ export interface Reach {
 
 /** Tiles a unit can walk to within a budget; allies can be passed, nobody can be stood on.
  *
- * A straight step onto low cover vaults it and lands on the tile behind, for 2.
+ * A straight step onto low cover vaults it and lands on the tile behind, for 2. A ladder costs 1 more.
  */
 export function reach(game: Game, unit: Unit, budget: number, side = unit.side): Reach {
   const best = new Map<number, number>()
@@ -90,7 +99,7 @@ export function reach(game: Game, unit: Unit, budget: number, side = unit.side):
         const diagonal = step.x !== 0 && step.y !== 0
         const vault = !diagonal && tileAt(game, plus(p, step)) === "low"
         const next = vault ? plus(plus(p, step), step) : plus(p, step)
-        if (!passable(tileAt(game, next))) continue
+        if (!passable(tileAt(game, next)) || !climb(tileAt(game, p), tileAt(game, next))) continue
         if (
           diagonal &&
           (!passable(tileAt(game, { x: next.x, y: p.y })) || !passable(tileAt(game, { x: p.x, y: next.y })))
@@ -98,7 +107,8 @@ export function reach(game: Game, unit: Unit, budget: number, side = unit.side):
           continue
         const other = unitAt(game, next)
         if (other && other.side !== side) continue
-        const nextCost = cost + (diagonal ? (parity ? 2 : 1) : vault ? 2 : 1)
+        const nextCost =
+          cost + (diagonal ? (parity ? 2 : 1) : vault ? 2 : 1) + (tileAt(game, next) === "ladder" ? 1 : 0)
         if (nextCost > budget) continue
         const ns = state(next, diagonal ? 1 - parity : parity)
         if ((best.get(ns) ?? Infinity) <= nextCost) continue

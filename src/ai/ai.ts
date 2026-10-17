@@ -6,7 +6,7 @@ import { failChance } from "../rules/dice"
 import { area, distance, inside, key, reach, same, unitAt } from "../rules/grid"
 import { lineOfSight, sees } from "../rules/sight"
 import type { Action, Game, Point, Unit, WeaponId } from "../rules/types"
-import { alive, foes, sideOf } from "../rules/units"
+import { alive, foes, has, sideOf } from "../rules/units"
 
 interface Choice {
   action: Action
@@ -72,6 +72,10 @@ function tileValue(game: Game, u: Unit, p: Point, foesKnown: Unit[]): number {
   if (WEAPONS[u.weapon].melee && foesKnown.length > 0) {
     value -= Math.min(...foesKnown.map((f) => distance(p, f.pos))) * 0.3
   }
+  if (u.side === "enemy" && game.goal.kind === "defend") value -= distance(p, game.goal.at) * 0.3
+  if (u.kind === "whisperer" && foesKnown.length > 0) {
+    value -= Math.max(0, 6 - Math.min(...foesKnown.map((f) => distance(p, f.pos))))
+  }
   u.pos = from
   return value
 }
@@ -120,7 +124,7 @@ function patrol(game: Game, u: Unit): Action | null {
   return toward(game, u, goal)
 }
 
-function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark" | "rally"): boolean {
+function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark" | "rally" | "ward"): boolean {
   return PROFILES[u.kind].abilities.includes(id) && !u.cooldowns[id]
 }
 
@@ -174,6 +178,18 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
     if (ally) return { action: { type: "ability", unit: u.id, ability: "rally", target: ally.id }, value: 2.5 }
   }
   if (u.kind === "whisperer") {
+    const ally = game.units.find(
+      (x) =>
+        alive(x) &&
+        x !== u &&
+        !foes(u, x) &&
+        x.alert === "engaged" &&
+        !has(x, "ward") &&
+        distance(u.pos, x.pos) <= RANGE.ward &&
+        sees(game, u, x.pos),
+    )
+    if (ready(u, "ward") && ally)
+      return { action: { type: "ability", unit: u.id, ability: "ward", target: ally.id }, value: 3 }
     for (const id of ["dominate", "dread"] as const) {
       if (!ready(u, id)) continue
       const t = targets
@@ -196,8 +212,8 @@ function engaged(game: Game, u: Unit): Action | null {
   const sp = special(game, u, targets)
   if (sp && sp.value >= 100) return sp.action
   if (targets.length === 0) {
-    const goal = group?.target
-    if (goal && distance(u.pos, goal) > 1) return toward(game, u, goal)
+    const goal = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : group?.target
+    if (goal && distance(u.pos, goal) > (game.goal.kind === "defend" ? 0 : 1)) return toward(game, u, goal)
     if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }
     return null
   }

@@ -3,7 +3,18 @@ export interface Point {
   y: number
 }
 
-export type Tile = "floor" | "low" | "high" | "wall" | "door" | "open" | "water" | "bridge"
+export type Tile =
+  | "floor"
+  | "low"
+  | "high"
+  | "wall"
+  | "door"
+  | "open"
+  | "water"
+  | "bridge"
+  | "ridge"
+  | "roof"
+  | "ladder"
 
 /** The kind of land a mission takes place in; it shapes the map and its look. */
 export type Biome = "forest" | "village" | "town"
@@ -110,6 +121,7 @@ export interface Unit {
   pos: Point
   hp: number
   maxHp: number
+  down: number
   aim: number
   defense: number
   mobility: number
@@ -163,6 +175,15 @@ export interface Entry {
 
 export type Phase = "squad" | "enemy" | "won" | "lost"
 
+/** What wins the mission besides killing every alien: reach the evac zone, or hold the beacon. */
+export type Goal = { kind: "kill" } | { kind: "evac"; tiles: Point[] } | { kind: "defend"; at: Point; rounds: number }
+
+/** Where and at the end of which round the next alien reinforcements land. */
+export interface Drop {
+  at: Point
+  round: number
+}
+
 export interface Game {
   seed: number
   rng: number
@@ -177,6 +198,9 @@ export interface Game {
   noises: Noise[]
   reactions: string[]
   log: Entry[]
+  goal: Goal
+  drop: Drop | null
+  drops: number
 }
 
 export type Action =

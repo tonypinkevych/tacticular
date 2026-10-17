@@ -4,14 +4,29 @@ import type { Game, Point, Unit } from "./types"
 
 /** Best cover a target tile has against an attack from a point on that cover's side: 0 means the target is flanked. */
 export function coverAgainst(game: Game, target: Point, from: Point): number {
+  const p = coverTile(game, target, from)
+  return p ? coverAt(game, p) : 0
+}
+
+/** The tile that gives a target its best cover against an attack from a point, if any. */
+export function coverTile(game: Game, target: Point, from: Point): Point | null {
   const v = { x: from.x - target.x, y: from.y - target.y }
-  let best = 0
+  let best: Point | null = null
   for (const d of ORTHOGONAL) {
-    const along = v.x * d.x + v.y * d.y
-    if (along <= 0) continue
-    best = Math.max(best, coverAt(game, plus(target, d)))
+    const p = plus(target, d)
+    if (v.x * d.x + v.y * d.y <= 0 || coverAt(game, p) === 0) continue
+    if (!best || coverAt(game, p) > coverAt(game, best)) best = p
   }
   return best
+}
+
+/** Damages cover on a tile: high cover becomes low, low cover is gone; walls and doors stay. */
+export function breakCover(game: Game, p: Point): void {
+  if (!inside(game.board, p)) return
+  const i = p.y * game.board.width + p.x
+  const tile = game.board.tiles[i]
+  if (tile === "low") game.board.tiles[i] = "floor"
+  if (tile === "high") game.board.tiles[i] = "low"
 }
 
 export function inCover(game: Game, p: Point): boolean {

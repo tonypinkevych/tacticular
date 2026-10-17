@@ -47,6 +47,29 @@ function tile(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): v
   const palette = PALETTES[biome]
   ctx.fillStyle = t === "water" ? palette.water : palette.ground
   ctx.fillRect(x, y, s, s)
+  const px = Math.max(1, Math.round(s / 16))
+  if (t === "ridge") {
+    ctx.fillStyle = "rgba(255,255,255,0.06)"
+    ctx.fillRect(x, y, s, s)
+    ctx.fillStyle = palette.dot
+    for (const [cx, cy] of [
+      [0.3, 0.35],
+      [0.7, 0.75],
+    ])
+      for (let i = -2; i <= 2; i++) ctx.fillRect(x + cx * s + i * px, y + cy * s + Math.abs(i) * px, px, px)
+  } else if (t === "roof") {
+    ctx.fillStyle = palette.wall
+    ctx.globalAlpha = 0.35
+    ctx.fillRect(x, y, s, s)
+    ctx.globalAlpha = 1
+    ctx.fillStyle = palette.ground
+    for (let i = 1; i < 4; i++) ctx.fillRect(x, y + (i * s) / 4, s, px)
+  } else if (t === "ladder") {
+    ctx.fillStyle = palette.door
+    ctx.fillRect(x + s * 0.3, y, px * 2, s)
+    ctx.fillRect(x + s * 0.7 - px * 2, y, px * 2, s)
+    for (let i = 0; i < 4; i++) ctx.fillRect(x + s * 0.3, y + (i + 0.5) * (s / 4), s * 0.4, px)
+  }
   const g = glyph(biome, t, p)
   if (g === "dot") {
     const d = Math.max(2, Math.round(s / 16) * 2)
@@ -116,6 +139,64 @@ function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at
     ctx.lineWidth = 1
   }
   ctx.globalAlpha = 1
+}
+
+/** The evac zone in green, the beacon in cyan, and a red target where aliens land within a round. */
+function goal(ctx: CanvasRenderingContext2D, s: number, game: Game): void {
+  const g = game.goal
+  if (g.kind === "evac") {
+    const keys = new Set(g.tiles.map(key))
+    tint(ctx, s, [...keys], "rgba(111,211,111,0.22)")
+    outline(ctx, s, keys, "#6fd36f")
+  }
+  if (g.kind === "defend") {
+    const cx = g.at.x * s + s / 2
+    const cy = g.at.y * s + s / 2
+    ctx.strokeStyle = "#5fd4e8"
+    ctx.lineWidth = 2
+    ctx.strokeRect(g.at.x * s + 2, g.at.y * s + 2, s - 4, s - 4)
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - s * 0.3)
+    ctx.lineTo(cx + s * 0.2, cy)
+    ctx.lineTo(cx, cy + s * 0.3)
+    ctx.lineTo(cx - s * 0.2, cy)
+    ctx.closePath()
+    ctx.fillStyle = "rgba(95,212,232,0.5)"
+    ctx.fill()
+    ctx.stroke()
+    ctx.lineWidth = 1
+  }
+  const d = game.drop
+  if (d && d.round - game.round <= 1) {
+    ctx.strokeStyle = "#ff3b3b"
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(d.at.x * s + s / 2, d.at.y * s + s / 2, s * 0.8, 0, Math.PI * 2)
+    ctx.moveTo(d.at.x * s - s * 0.4, d.at.y * s + s / 2)
+    ctx.lineTo(d.at.x * s + s * 1.4, d.at.y * s + s / 2)
+    ctx.moveTo(d.at.x * s + s / 2, d.at.y * s - s * 0.4)
+    ctx.lineTo(d.at.x * s + s / 2, d.at.y * s + s * 1.4)
+    ctx.stroke()
+    ctx.lineWidth = 1
+  }
+}
+
+/** A downed soldier lies on its side with a red count of the rounds it has left. */
+function downed(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit): void {
+  const s = sc.size
+  const cx = u.pos.x * s + s / 2
+  const cy = u.pos.y * s + s / 2
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(-Math.PI / 2)
+  ctx.translate(-cx, -cy)
+  figure(ctx, sc, u, 0.7)
+  ctx.restore()
+  ctx.fillStyle = "#ff3b3b"
+  ctx.font = `bold ${Math.max(9, Math.floor(s * 0.35))}px system-ui`
+  ctx.textAlign = "right"
+  ctx.textBaseline = "top"
+  ctx.fillText(`✚${u.down}`, u.pos.x * s + s - 2, u.pos.y * s + 1)
 }
 
 /** HP as one segment per point, AP dots, stances and statuses. */
@@ -360,6 +441,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   const enemies = game.units.filter((u) => alive(u) && u.side === "enemy" && visibleToSquad(game, u))
   if (sc.zones) zones(ctx, s, game, enemies)
+  goal(ctx, s, game)
   outline(ctx, s, sc.range, "#ff8a3c")
   outline(ctx, s, sc.far, "#f2c94c")
   outline(ctx, s, sc.near, "#4aa3ff")
@@ -416,6 +498,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
   }
   for (const u of game.units) {
+    if (u.down > 0) downed(ctx, sc, u)
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
     const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0

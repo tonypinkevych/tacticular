@@ -541,7 +541,7 @@ main.alien #dock > * {
 .corner .card {
   pointer-events: auto;
 }
-.card:hover .stats {
+main.extended .stats {
   display: grid;
 }
 .odds .more {
@@ -549,7 +549,7 @@ main.alien #dock > * {
   margin-top: 4px;
   font-size: 13px;
 }
-.card:hover .odds .more {
+main.extended .odds .more {
   display: block;
 }
 .big .dmg {
@@ -593,20 +593,29 @@ main.alien #dock > * {
   position: absolute;
   top: 4px;
   right: 4px;
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--line-hi);
-  font-size: 10px;
-  font-weight: 700;
+  padding: 0 3px;
+  font-size: 9px;
   line-height: 12px;
-  text-align: center;
   color: var(--muted);
 }
-.card:hover .more-mark {
+main.extended .more-mark {
   border-color: var(--accent);
   color: var(--accent);
 }
 #dock > #bar {
   width: max-content;
   max-width: none;
+}
+#top .goal {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+#top .drop {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bad);
 }

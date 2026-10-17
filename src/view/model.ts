@@ -150,7 +150,9 @@ function defaultTarget(game: Game, u: Unit, slot: string): string | null {
   if (kind !== "ability") return null
   const a = id as AbilityId
   if (a === "heal") {
-    const near = friends.filter((x) => distance(u.pos, x.pos) <= 1 && x.hp < x.maxHp)
+    const near = game.units.filter(
+      (x) => (x.down > 0 || (alive(x) && x.hp < x.maxHp)) && sideOf(x) === "squad" && distance(u.pos, x.pos) <= 1,
+    )
     return near.sort((x, y) => x.hp / x.maxHp - y.hp / y.maxHp)[0]?.id ?? null
   }
   if (a === "ward") return friends.sort((x, y) => x.hp - y.hp)[0]?.id ?? null
@@ -275,6 +277,7 @@ export function createModel(session: Session, store: Storage) {
   const [look, setLook] = createSignal<Point | null>(null, { equals: false })
   const [help, setHelp] = createSignal(false)
   const [menu, setMenu] = createSignal(false)
+  const [extended, setExtended] = createSignal(false)
 
   const unit = (): Unit | null => {
     const u = game().units.find((x) => x.id === selected())
@@ -417,6 +420,11 @@ export function createModel(session: Session, store: Storage) {
       setHelp(!help())
       return
     }
+    if (e.key === "F1") {
+      e.preventDefault()
+      setExtended(!extended())
+      return
+    }
     if (e.key === "Tab") {
       e.preventDefault()
       selectNext(false, e.shiftKey, false)
@@ -517,6 +525,8 @@ export function createModel(session: Session, store: Storage) {
     setHelp,
     menu,
     setMenu,
+    extended,
+    setExtended,
     hint,
     setHint,
     message,

@@ -57,7 +57,7 @@ function Hp(props: { unit: Unit }) {
 }
 
 /** A unit at a glance: who, health, actions, weapon and what affects it; stats show on hover. */
-function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
+function Card(props: { unit: Unit; game: Game; model: Model; children?: JSX.Element }) {
   const u = () => props.unit
   const soldier = () => u().side === "squad"
   const flanked = () => {
@@ -74,7 +74,14 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
   )
   return (
     <section class="card" classList={{ foe: !soldier() }}>
-      <span class="more-mark">?</span>
+      <button
+        type="button"
+        class="more-mark"
+        title={t("ui.extended")}
+        onClick={() => props.model.setExtended(!props.model.extended())}
+      >
+        F1
+      </button>
       <div class="head">
         <Portrait unit={u()} />
         <div class="who">
@@ -255,7 +262,7 @@ function Target(props: { model: Model }) {
   return (
     <Show when={shown()}>
       {(x) => (
-        <Card unit={x()} game={g()}>
+        <Card unit={x()} game={g()} model={m}>
           <Show when={odds()}>{(f) => <Odds forecast={f()} />}</Show>
         </Card>
       )}
@@ -264,6 +271,12 @@ function Target(props: { model: Model }) {
 }
 
 /** Round and phase, the log toggle and a menu with everything that is not an action. */
+/** The mission goal in a few words, with the rounds left to hold a beacon. */
+function goal(g: Game): string {
+  const k = g.goal.kind
+  return k === "defend" ? t("ui.goal.defend", { left: g.goal.rounds - g.round + 1 }) : t(`ui.goal.${k}`)
+}
+
 function Top(props: { model: Model }) {
   const m = props.model
   const canUndo = () => {
@@ -276,6 +289,10 @@ function Top(props: { model: Model }) {
       <span class={`phase ${m.shown().phase}`}>
         {t("ui.round", { round: m.shown().round })} · {t(`ui.phase.${m.shown().phase}`)}
       </span>
+      <span class="goal">{goal(m.shown())}</span>
+      <Show when={m.shown().drop}>
+        {(d) => <span class="drop">{t("ui.drop", { left: d().round - m.shown().round + 1 })}</span>}
+      </Show>
       <span class="grow" />
       <button type="button" classList={{ active: m.help() }} onClick={() => m.setHelp(!m.help())}>
         ?
@@ -444,7 +461,7 @@ export function App(props: { model: Model }): JSX.Element {
   onCleanup(() => window.removeEventListener("keydown", m.key))
   return (
     <Show when={m.lang()} keyed>
-      <main classList={{ logged: m.logOpen(), alien: m.shown().phase === "enemy" }}>
+      <main classList={{ logged: m.logOpen(), alien: m.shown().phase === "enemy", extended: m.extended() }}>
         <Board model={m} />
         <Top model={m} />
         <Show when={m.shown().phase === "enemy"}>
@@ -452,7 +469,7 @@ export function App(props: { model: Model }): JSX.Element {
         </Show>
         <Help model={m} />
         <div class="corner left">
-          <Show when={m.unit()}>{(u) => <Card unit={u()} game={m.game()} />}</Show>
+          <Show when={m.unit()}>{(u) => <Card unit={u()} game={m.game()} model={m} />}</Show>
         </div>
         <div class="corner right">
           <Target model={m} />

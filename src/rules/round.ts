@@ -1,6 +1,7 @@
 import { hurt } from "./combat"
-import { distance } from "./grid"
-import { calm, horn, observe } from "./stealth"
+import { reinforce } from "./drop"
+import { distance, same } from "./grid"
+import { calm, horn, observe, visibleToSquad } from "./stealth"
 import type { Game, Side, Unit } from "./types"
 import { alive, sideOf } from "./units"
 
@@ -10,8 +11,9 @@ export function endPhase(game: Game): void {
     startPhase(game, "enemy")
     return
   }
+  hide(game)
   endRound(game)
-  startPhase(game, "squad")
+  if (game.phase === "enemy") startPhase(game, "squad")
 }
 
 export function startPhase(game: Game, side: Side): void {
@@ -34,6 +36,25 @@ export function startPhase(game: Game, side: Side): void {
   observe(game)
 }
 
+/** Defend: an alien on the beacon at round end loses the mission; holding it to the last round wins. */
+function hold(game: Game): void {
+  const goal = game.goal
+  if (goal.kind !== "defend") return
+  if (game.units.some((u) => alive(u) && u.side === "enemy" && same(u.pos, goal.at))) {
+    game.log.push({ key: "log.beacon", params: {} })
+    game.phase = "lost"
+  } else if (game.round >= goal.rounds) game.phase = "won"
+}
+
+/** Stalkers that no soldier sees take cover in the shadows again. */
+function hide(game: Game): void {
+  for (const u of game.units) {
+    if (!alive(u) || u.kind !== "assassin" || u.side !== "enemy") continue
+    u.concealed = false
+    u.concealed = !visibleToSquad(game, u)
+  }
+}
+
 /** Moves a patrol on to its next point when the unit already stands at the current one. */
 function advance(u: Unit): void {
   for (let i = 0; i < u.patrol.length; i++) {
@@ -45,6 +66,11 @@ function advance(u: Unit): void {
 function endRound(game: Game): void {
   horn(game)
   calm(game)
+  for (const u of game.units) {
+    if (u.down === 0) continue
+    u.down -= 1
+    if (u.down === 0) game.log.push({ key: "log.dies", params: { unit: u.id } })
+  }
   for (const u of game.units) {
     if (!alive(u)) continue
     if (u.statuses.some((s) => s.id === "burning")) {
@@ -60,6 +86,8 @@ function endRound(game: Game): void {
     }
   }
   game.zones = game.zones.map((z) => ({ ...z, rounds: z.rounds - 1 })).filter((z) => z.rounds > 0)
+  reinforce(game)
+  hold(game)
   game.round += 1
   game.log.push({ key: "log.round", params: { round: game.round } })
 }

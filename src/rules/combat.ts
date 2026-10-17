@@ -1,7 +1,7 @@
-import { coverAgainst } from "./cover"
+import { breakCover, coverAgainst, coverTile } from "./cover"
 import { WEAPONS } from "./data"
 import { chance, d20, EDGE, failChance, rollDice } from "./dice"
-import { adjacent, distance, same, tileAt, unitAt, walkable } from "./grid"
+import { adjacent, distance, same, tileAt, unitAt, up, walkable } from "./grid"
 import type { Game, Unit, Weapon, WeaponId } from "./types"
 import { addStatus, alive, foes, groupAim, has, sideOf, wallOf } from "./units"
 
@@ -50,12 +50,13 @@ export interface Odds {
 
 /** One named number that adds up to Aim or Defense, for the chance breakdown. */
 export interface Part {
-  key: "aim" | "warchief" | "defense" | "low" | "high" | "ward" | "wall"
+  key: "aim" | "warchief" | "height" | "defense" | "low" | "high" | "ward" | "wall"
   value: number
 }
 
 export interface Shot {
   reaction?: boolean
+  risky?: boolean
 }
 
 export function inSmoke(game: Game, u: Unit): boolean {
@@ -81,7 +82,8 @@ export function odds(
   const dis: Reason[] = []
   const exposed = has(target, "exposed")
   const facing = weapon.ignoresCover || exposed ? 0 : coverAgainst(game, target.pos, attacker.pos)
-  const cover = weapon.melee ? 0 : facing
+  const above = !weapon.melee && up(tileAt(game, attacker.pos)) && !up(tileAt(game, target.pos))
+  const cover = weapon.melee || (above && facing < 5) ? 0 : facing
   if (exposed) adv.push("exposed")
   else if (!weapon.ignoresCover && !weapon.melee && facing === 0) adv.push("flanked")
   if (has(target, "staggered")) adv.push("staggered")
@@ -89,7 +91,7 @@ export function odds(
   if (target.side === "enemy" && target.alert === "unaware") adv.push("unaware")
   if (surprised(game, target)) adv.push("surprised")
   if (attacker.kind === "assassin" && isolated(game, target)) adv.push("isolated")
-  if (shot.reaction && attacker.kind !== "ranger") dis.push("reaction")
+  if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
   if (surprised(game, attacker)) dis.push("surprised")
   if (inSmoke(game, target)) dis.push("smoke")
   if (target.stance === "hunker") dis.push("hunkered")
@@ -100,6 +102,7 @@ export function odds(
   const edge = adv.length > 0 && dis.length === 0 ? 1 : dis.length > 0 && adv.length === 0 ? -1 : 0
   const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
   if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
+  if (above) aimParts.push({ key: "height", value: 2 })
   const defenseParts: Part[] = [{ key: "defense", value: target.defense }]
   if (cover) defenseParts.push({ key: cover >= 5 ? "high" : "low", value: cover })
   if (has(target, "ward")) defenseParts.push({ key: "ward", value: 2 })
@@ -192,6 +195,10 @@ export function attack(
   const raw = rollDice(game, w.dice) + (sneak ? 2 : 0)
   const dmg = critical ? crit(raw) : raw
   game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
+  if (critical && !w.melee) {
+    const p = coverTile(game, target.pos, attacker.pos)
+    if (p) breakCover(game, p)
+  }
   const killed = hurt(game, target, dmg)
   if (w.push && !killed) push(game, attacker, target)
 }
@@ -208,13 +215,15 @@ export function push(game: Game, from: Unit, target: Unit): void {
   game.log.push({ key: "log.push", params: { target: target.id } })
 }
 
-/** Applies damage and the effects of a death; returns true when the target dies. */
+/** Applies damage and the effects of a fall; returns true when the target falls. A soldier goes down for 2 rounds. */
 export function hurt(game: Game, target: Unit, dmg: number): boolean {
   target.hp = Math.max(0, target.hp - dmg)
   if (target.hp > 0) return false
   target.stance = "none"
   target.intent = null
-  game.log.push({ key: "log.dies", params: { unit: target.id } })
+  target.statuses = []
+  if (target.side === "squad") target.down = 2
+  game.log.push({ key: target.side === "squad" ? "log.down" : "log.dies", params: { unit: target.id } })
   if (target.kind === "warchief" && target.group) {
     for (const u of game.units) {
       if (alive(u) && u.group === target.group) addStatus(u, { id: "shaken", rounds: 1 })

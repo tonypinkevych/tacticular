@@ -3,10 +3,10 @@ import type { AbilityId, ClassId, Dice, EnemyKind, ItemId, Kind, Weapon, WeaponI
 const d = (count: number, sides: number, bonus = 0): Dice => ({ count, sides, bonus })
 
 export const WEAPONS: Record<WeaponId, Weapon> = {
-  shotgun: { id: "shotgun", dice: d(1, 3, 3), min: 1, max: 4, melee: false, noise: 8, ammo: 4 },
+  shotgun: { id: "shotgun", dice: d(1, 3, 3), min: 1, max: 4, melee: false, noise: 8, ammo: 3 },
   axes: { id: "axes", dice: d(1, 2, 1), min: 1, max: 4, melee: false, noise: 4, ammo: null },
   longbow: { id: "longbow", dice: d(1, 3, 4), min: 6, max: 20, melee: false, noise: 8, ammo: null, twoAp: true },
-  repeater: { id: "repeater", dice: d(1, 2, 3), min: 1, max: 8, melee: false, noise: 8, ammo: 5 },
+  repeater: { id: "repeater", dice: d(1, 2, 3), min: 1, max: 8, melee: false, noise: 8, ammo: 3 },
   crossbow: { id: "crossbow", dice: d(1, 2, 2), min: 1, max: 8, melee: false, noise: 8, ammo: 4 },
   knives: { id: "knives", dice: d(1, 2, 1), min: 1, max: 6, melee: false, noise: 0, ammo: null },
   bolt: { id: "bolt", dice: d(1, 2, 2), min: 1, max: 10, melee: false, noise: 8, ammo: null },
@@ -212,7 +212,7 @@ export const PROFILES: Record<Kind, Profile> = {
     will: 4,
     weapon: "lash",
     sidearm: null,
-    abilities: ["dread", "dominate"],
+    abilities: ["dread", "dominate", "ward"],
     items: kit(0),
     axes: 0,
   },

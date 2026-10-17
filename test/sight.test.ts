@@ -14,6 +14,11 @@ describe("sight", () => {
     expect(clear(g, { x: 0, y: 1 }, { x: 4, y: 1 })).toBe(false)
     expect(lineOfSight(g, { x: 0, y: 1 }, { x: 4, y: 1 })).toBe(true)
   })
+  test("two units do not both step out to see around a corner", () => {
+    const g = setup([".....", ".####", ".#..."])
+    expect(lineOfSight(g, { x: 0, y: 2 }, { x: 3, y: 0 })).toBe(false)
+    expect(lineOfSight(g, { x: 3, y: 0 }, { x: 0, y: 2 })).toBe(false)
+  })
 })
 
 describe("cover", () => {

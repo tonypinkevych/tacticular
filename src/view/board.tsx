@@ -159,7 +159,7 @@ export function Board(props: { model: Model }) {
     return {
       game: still.game,
       size: size(),
-      selected: u,
+      selected: still.game.phase === "enemy" ? null : u,
       near,
       far,
       path,

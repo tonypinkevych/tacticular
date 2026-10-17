@@ -27,6 +27,7 @@ export function makeUnit(
     pos: { ...pos },
     hp: p.hp + spread.hp,
     maxHp: p.hp + spread.hp,
+    down: 0,
     aim: p.aim + spread.aim,
     defense: p.defense,
     mobility: p.mobility,

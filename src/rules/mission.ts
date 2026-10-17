@@ -1,8 +1,8 @@
 import { CLASSES } from "./data"
 import { die, pick, random } from "./dice"
 import { newGame } from "./game"
-import { AROUND, distance, inside, key } from "./grid"
-import type { Biome, Board, EnemyKind, Game, Group, Point, Tile, Unit } from "./types"
+import { AROUND, area, climb, distance, inside, key } from "./grid"
+import type { Biome, Board, EnemyKind, Game, Goal, Group, Point, Tile, Unit } from "./types"
 import { makeUnit } from "./units"
 
 type Rng = { rng: number }
@@ -38,10 +38,11 @@ export const SIZE = { width: 32, height: 20 }
 
 const START = 4
 
-/** How a biome fills the map: river chance, house count, clutter, tree share, fence lines, groves. */
+/** How a biome fills the map: river chance, house count, rooftop share, clutter, tree share, fence lines, groves. */
 interface Template {
   river: number
   houses: [number, number]
+  roofs: number
   clutter: number
   high: number
   lines: number
@@ -51,9 +52,9 @@ interface Template {
 export const BIOMES: Biome[] = ["forest", "village", "town"]
 
 const TEMPLATES: Record<Biome, Template> = {
-  forest: { river: 0.6, houses: [0, 1], clutter: 14, high: 0.7, lines: 0.05, groves: true },
-  village: { river: 0.5, houses: [3, 5], clutter: 24, high: 0.4, lines: 0.45, groves: false },
-  town: { river: 0.2, houses: [5, 8], clutter: 28, high: 0.25, lines: 0.2, groves: false },
+  forest: { river: 0.6, houses: [0, 1], roofs: 0, clutter: 14, high: 0.7, lines: 0.05, groves: true },
+  village: { river: 0.5, houses: [3, 5], roofs: 0.35, clutter: 24, high: 0.4, lines: 0.45, groves: false },
+  town: { river: 0.2, houses: [5, 8], roofs: 0.35, clutter: 28, high: 0.25, lines: 0.2, groves: false },
 }
 
 const between = (r: Rng, lo: number, hi: number): number => lo + die(r, hi - lo + 1) - 1
@@ -67,7 +68,8 @@ function shuffle<T>(r: Rng, items: T[]): T[] {
   return out
 }
 
-const passable = (t: Tile): boolean => t === "floor" || t === "open" || t === "bridge" || t === "door"
+const passable = (t: Tile): boolean =>
+  t === "floor" || t === "open" || t === "bridge" || t === "door" || t === "ridge" || t === "roof" || t === "ladder"
 
 class Draft {
   tiles: Tile[]
@@ -102,7 +104,8 @@ function river(r: Rng, d: Draft): void {
   }
 }
 
-function building(r: Rng, d: Draft): void {
+/** A house with doors, or a flat rooftop with a ladder on one side. */
+function building(r: Rng, d: Draft, roof: boolean): void {
   const w = between(r, 5, 8)
   const h = between(r, 4, 6)
   for (let tries = 0; tries < 30; tries++) {
@@ -113,6 +116,17 @@ function building(r: Rng, d: Draft): void {
       for (let x = x0 - 1; x <= x0 + w && free; x++) if (d.get({ x, y }) !== "floor") free = false
     }
     if (!free) continue
+    if (roof) {
+      for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) d.set({ x, y }, "roof")
+      const ladder = pick(r, [
+        { x: x0 - 1, y: between(r, y0, y0 + h - 1) },
+        { x: x0 + w, y: between(r, y0, y0 + h - 1) },
+        { x: between(r, x0, x0 + w - 1), y: y0 - 1 },
+        { x: between(r, x0, x0 + w - 1), y: y0 + h },
+      ])
+      d.set(ladder, "ladder")
+      return
+    }
     for (let y = y0; y < y0 + h; y++) {
       for (let x = x0; x < x0 + w; x++) {
         const edge = x === x0 || y === y0 || x === x0 + w - 1 || y === y0 + h - 1
@@ -130,6 +144,20 @@ function building(r: Rng, d: Draft): void {
     if (random(r) < 0.6) d.set({ x: between(r, x0 + 1, x0 + w - 2), y: between(r, y0 + 1, y0 + h - 2) }, "low")
     return
   }
+}
+
+/** A small raised patch of open ground. */
+function ridge(r: Rng, d: Draft): void {
+  let at = { x: between(r, START + 3, d.width - 3), y: between(r, 1, d.height - 2) }
+  for (let tries = 0; tries < 30 && d.get(at) !== "floor"; tries++)
+    at = { x: between(r, START + 3, d.width - 3), y: between(r, 1, d.height - 2) }
+  const spots = [
+    at,
+    ...shuffle(r, AROUND)
+      .slice(0, between(r, 3, 7))
+      .map((s) => ({ x: at.x + s.x, y: at.y + s.y })),
+  ]
+  for (const p of spots) if (d.get(p) === "floor") d.set(p, "ridge")
 }
 
 function clutter(r: Rng, d: Draft, t: Template): void {
@@ -166,7 +194,7 @@ function flood(d: Draft, from: Point): Set<number> {
     const p = queue.pop()!
     for (const s of AROUND.slice(0, 4)) {
       const n = { x: p.x + s.x, y: p.y + s.y }
-      if (!inside(d.board(), n) || seen.has(key(n)) || !passable(d.get(n))) continue
+      if (!inside(d.board(), n) || seen.has(key(n)) || !passable(d.get(n)) || !climb(d.get(p), d.get(n))) continue
       seen.add(key(n))
       queue.push(n)
     }
@@ -187,8 +215,10 @@ export function map(r: Rng, biome: Biome = pick(r, BIOMES), width = SIZE.width, 
     const d = new Draft(width, height)
     if (random(r) < t.river) river(r, d)
     const houses = between(r, ...t.houses)
-    for (let i = 0; i < houses; i++) building(r, d)
+    for (let i = 0; i < houses; i++) building(r, d, random(r) < t.roofs)
     clutter(r, d, t)
+    const ridges = between(r, 1, 2)
+    for (let i = 0; i < ridges; i++) ridge(r, d)
     for (let y = 0; y < height; y++)
       for (let x = 0; x < START; x++) if (d.get({ x, y }) === "high") d.set({ x, y }, "low")
     const start = { x: 1, y: Math.floor(height / 2) }
@@ -215,7 +245,7 @@ function squad(r: Rng, board: Board, taken: Set<number>): Unit[] {
   )
 }
 
-function free(board: Board, near: Point, taken: Set<number>): Point {
+export function free(board: Board, near: Point, taken: Set<number>): Point {
   for (let radius = 0; radius < 10; radius++) {
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
@@ -266,6 +296,26 @@ function enemies(r: Rng, board: Board, taken: Set<number>, reachable: Point[]): 
   return { units, groups }
 }
 
+/** One of Kill all, Evac (a zone at the far edge) or Defend (a beacon between the squad and the aliens). */
+function goal(r: Rng, board: Board, reachable: Point[]): Goal {
+  const kind = pick(r, ["kill", "evac", "defend"] as const)
+  const floor = (p: Point) => board.tiles[p.y * board.width + p.x] === "floor"
+  const open = reachable.filter(floor)
+  if (kind === "evac") {
+    const edge = open.filter((p) => p.x >= board.width - 2)
+    if (edge.length === 0) return { kind: "kill" }
+    const keys = new Set(open.map(key))
+    const tiles = area(pick(r, edge), 1).filter((p) => keys.has(key(p)) && p.x >= board.width - 3)
+    return { kind, tiles }
+  }
+  if (kind === "defend") {
+    const mid = { x: 9, y: Math.floor(board.height / 2) }
+    const at = [...open].sort((a, b) => distance(a, mid) - distance(b, mid))[0]
+    return at ? { kind, at, rounds: 6 } : { kind: "kill" }
+  }
+  return { kind }
+}
+
 /** A new random mission from a seed: map, squad of 4 and 3–4 enemy groups. */
 export function mission(seed: number): Game {
   const r = { rng: seed }
@@ -279,6 +329,7 @@ export function mission(seed: number): Game {
     .filter((p) => board.tiles[p.y * board.width + p.x] !== "door")
   const { units, groups } = enemies(r, board, taken, reachable)
   const game = newGame({ seed, board, units: [...team, ...units], groups })
+  game.goal = goal(r, board, reachable)
   game.rng = r.rng
   return game
 }

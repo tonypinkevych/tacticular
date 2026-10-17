@@ -23,6 +23,9 @@ export function newGame({ seed, board, units, groups = [] }: Setup): Game {
     noises: [],
     reactions: [],
     log: [],
+    goal: { kind: "kill" },
+    drop: null,
+    drops: 0,
   }
   observe(game)
   return game
@@ -37,6 +40,9 @@ const LEGEND: Record<string, Tile> = {
   "~": "water",
   "=": "bridge",
   ",": "floor",
+  "^": "ridge",
+  R: "roof",
+  L: "ladder",
 }
 
 /** Reads a board from text rows; any unknown symbol is floor. */

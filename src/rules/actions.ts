@@ -1,5 +1,5 @@
 import { attack, canReach, hurt, push } from "./combat"
-import { inCover } from "./cover"
+import { breakCover, inCover } from "./cover"
 import { ABILITIES, NOISE, PROFILES, RANGE, WEAPONS } from "./data"
 import { d20, EDGE, failChance, rollDice } from "./dice"
 import { AROUND, adjacent, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid"
@@ -59,9 +59,15 @@ export function apply(game: Game, action: Action): Game {
   return next
 }
 
-/** Steps tile by tile; each step can trigger overwatch, suppression fire and zone of control. */
-export function walk(game: Game, u: Unit, path: Point[]): void {
+/**
+ * Steps tile by tile; each step can trigger overwatch, suppression fire and zone of control.
+ * Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it vaults.
+ */
+export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
   for (const step of path) {
+    const vault = distance(u.pos, step) === 2 && (u.pos.x === step.x || u.pos.y === step.y)
+    const risky = dash || vault
+    if (vault && u.kind === "ogre") breakCover(game, { x: (u.pos.x + step.x) / 2, y: (u.pos.y + step.y) / 2 })
     const threats = game.units.filter(
       (x) =>
         alive(x) &&
@@ -82,13 +88,13 @@ export function walk(game: Game, u: Unit, path: Point[]): void {
       if (w.melee ? !adjacent(x.pos, u.pos) : !sees(game, x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
       if (u.kind === "assassin" && u.concealed) continue
       x.stance = "none"
-      attack(game, x, u, x.weapon, { reaction: true })
+      attack(game, x, u, x.weapon, { reaction: true, risky })
     }
     const pin = u.statuses.find((s) => s.id === "suppressed")
     const suppressor = pin?.source ? game.units.find((x) => x.id === pin.source) : undefined
     if (alive(u) && suppressor && alive(suppressor) && sees(game, suppressor, u.pos)) {
       removeStatus(u, "suppressed")
-      attack(game, suppressor, u, suppressor.weapon, { reaction: true })
+      attack(game, suppressor, u, suppressor.weapon, { reaction: true, risky })
     }
     for (const x of threats) {
       if (alive(u) && alive(x)) attack(game, x, u, x.weapon)
@@ -107,7 +113,7 @@ function move(game: Game, u: Unit, to: Point): void {
   if (source && alive(source)) check(distance(to, source.pos) >= distance(u.pos, source.pos), "frightened")
   u.ap -= cost <= u.mobility ? 1 : 2
   u.moved = true
-  walk(game, u, r.path(to))
+  walk(game, u, r.path(to), cost > u.mobility)
 }
 
 /** Tiles next to a target that a unit can reach within one move, nearest first. */
@@ -209,10 +215,11 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
       break
     }
     case "heal": {
-      check(!!t && !foes(u, t) && (t === u || adjacent(u.pos, t.pos)) && alive(t), "target")
+      check(!!t && !foes(u, t) && (t === u || adjacent(u.pos, t.pos)) && (alive(t) || t.down > 0), "target")
       const amount = Math.min(t!.maxHp - t!.hp, rollDice(game, { count: 1, sides: 3, bonus: 2 }))
       t!.hp += amount
-      game.log.push({ key: "log.heal", params: { unit: u.id, target: t!.id, amount } })
+      game.log.push({ key: t!.down > 0 ? "log.revive" : "log.heal", params: { unit: u.id, target: t!.id, amount } })
+      t!.down = 0
       break
     }
     case "ward": {
@@ -319,10 +326,7 @@ export function throwFlask(game: Game, u: Unit, at: Point): void {
   game.log.push({ key: "log.flask", params: { unit: u.id } })
   for (const p of area(at, 1)) {
     if (!inside(game.board, p)) continue
-    const i = p.y * game.board.width + p.x
-    const tile = game.board.tiles[i]
-    if (tile === "low") game.board.tiles[i] = "floor"
-    if (tile === "high") game.board.tiles[i] = "low"
+    breakCover(game, p)
     const hit = unitAt(game, p)
     if (!hit) continue
     game.log.push({ key: "log.burn", params: { target: hit.id, dmg: bomber ? 3 : 4 } })
@@ -362,6 +366,9 @@ function hunker(game: Game, u: Unit): void {
 
 /** Checks the end of the mission after each action. */
 export function settle(game: Game): void {
+  const standing = game.units.filter((u) => alive(u) && u.side === "squad")
+  const goal = game.goal
   if (!game.units.some((u) => alive(u) && u.side === "enemy")) game.phase = "won"
-  else if (!game.units.some((u) => alive(u) && u.side === "squad")) game.phase = "lost"
+  else if (standing.length === 0) game.phase = "lost"
+  else if (goal.kind === "evac" && standing.every((u) => goal.tiles.some((p) => same(p, u.pos)))) game.phase = "won"
 }
