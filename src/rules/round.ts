@@ -1,4 +1,5 @@
 import { hurt } from "./combat";
+import { calm, horn, observe } from "./stealth";
 import { alive, sideOf } from "./units";
 import type { Game, Side } from "./types";
 
@@ -28,9 +29,12 @@ export function startPhase(game: Game, side: Side): void {
     u.moved = false;
     u.stance = "none";
   }
+  observe(game);
 }
 
 function endRound(game: Game): void {
+  horn(game);
+  calm(game);
   for (const u of game.units) {
     if (!alive(u)) continue;
     if (u.statuses.some((s) => s.id === "burning")) {

@@ -1,3 +1,4 @@
+import { observe } from "./stealth";
 import type { Board, Game, Group, Tile, Unit } from "./types";
 
 export interface Setup {
@@ -8,11 +9,13 @@ export interface Setup {
 }
 
 export function newGame({ seed, board, units, groups = [] }: Setup): Game {
-  return {
+  const game: Game = {
     seed, rng: seed, round: 1, phase: "squad", board, units, zones: [], groups,
     explored: new Array(board.width * board.height).fill(false), ghosts: [], noises: [], reactions: [],
     log: [],
   };
+  observe(game);
+  return game;
 }
 
 const LEGEND: Record<string, Tile> = {

@@ -5,7 +5,7 @@ import { inCover } from "./cover";
 import { adjacent, AROUND, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid";
 import { endPhase } from "./round";
 import { lineOfSight, sees } from "./sight";
-import { attacked, noise, seen, stepped } from "./stealth";
+import { attacked, noise, observe, scan, seen, stepped } from "./stealth";
 import { addStatus, alive, foes, has, removeStatus, sideOf, unit } from "./units";
 import type { AbilityId, Action, Game, ItemId, Point, Unit, WeaponId } from "./types";
 
@@ -25,7 +25,7 @@ export function apply(game: Game, action: Action): Game {
   }
   const u = unit(next, action.unit);
   check(alive(u), "dead");
-  check(sideOf(u) === next.phase, "not your turn");
+  check(sideOf(u) === next.phase || next.reactions.includes(u.id), "not your turn");
   check(u.ap > 0, "no AP");
   switch (action.type) {
     case "move": move(next, u, action.to); break;
@@ -37,6 +37,8 @@ export function apply(game: Game, action: Action): Game {
     case "overwatch": overwatch(u); break;
     case "hunker": hunker(next, u); break;
   }
+  scan(next);
+  observe(next);
   settle(next);
   return next;
 }
@@ -83,6 +85,8 @@ function move(game: Game, u: Unit, to: Point): void {
   u.ap -= cost <= u.mobility ? 1 : 2;
   u.moved = true;
   walk(game, u, r.path(to));
+  const goal = u.patrol[u.patrolIndex % Math.max(1, u.patrol.length)];
+  if (goal && distance(u.pos, goal) <= 1) u.patrolIndex += 1;
 }
 
 export function canTarget(game: Game, u: Unit, t: Unit): boolean {
@@ -118,6 +122,7 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
         .filter((p) => same(p, u.pos) || r.cost.has(key(p)))
         .sort((a, b) => (r.cost.get(key(a)) ?? 0) - (r.cost.get(key(b)) ?? 0))[0];
       check(!!spot, "unreachable");
+      u.intent = null;
       if (!same(spot, u.pos)) walk(game, u, r.path(spot));
       if (alive(u) && alive(t!)) {
         attack(game, u, t!, u.weapon);
@@ -236,6 +241,7 @@ function item(game: Game, u: Unit, id: ItemId, at: Point): void {
     u.ap -= 1;
     return;
   }
+  u.intent = null;
   throwFlask(game, u, at);
   u.ap = 0;
 }

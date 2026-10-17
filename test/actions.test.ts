@@ -102,7 +102,7 @@ describe("abilities and items", () => {
     g = apply(g, { type: "endTurn" });
     for (let seed = 1; seed < 50; seed++) {
       const a = apply({ ...g, rng: seed }, { type: "ability", unit: "x", ability: "dominate", target: "v" });
-      if (a.log.at(-1)!.params.saved) continue;
+      if (a.log.find((e) => e.key === "log.dominate")!.params.saved) continue;
       expect(find(a, "v").statuses.map((s) => s.id)).toContain("dominated");
       const next = apply(apply(a, { type: "endTurn" }), { type: "endTurn" });
       expect(next.phase).toBe("enemy");
