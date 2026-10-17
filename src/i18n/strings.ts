@@ -1,4 +1,4 @@
-export type Lang = "en" | "ru";
+export type Lang = "en" | "ru"
 
 const en = {
   "ui.title": "Tacticular",
@@ -35,7 +35,8 @@ const en = {
   "ui.zones": "Enemy zones",
   "ui.seed": "Mission {seed}",
   "ui.save": "Signed log: {count} events, key {key}",
-  "ui.help": "Click a tile to move or an enemy to attack. Q–P: actions. Tab / Shift+Tab: soldiers. Esc: cancel. Z: enemy zones.",
+  "ui.help":
+    "Click a tile to move or an enemy to attack. Q–P: actions. Tab / Shift+Tab: soldiers. Esc: cancel. Z: enemy zones.",
   "ui.credits": "Icons: game-icons.net (CC BY 3.0)",
   "ui.left": "{left} left",
   "ui.saved": "saved",
@@ -189,9 +190,9 @@ const en = {
   "illegal.full": "Ammo is full.",
   "illegal.door": "No door there.",
   "illegal.cover": "Needs cover.",
-};
+}
 
-export type Key = keyof typeof en;
+export type Key = keyof typeof en
 
 const ru: Record<Key, string> = {
   "ui.title": "Tacticular",
@@ -382,44 +383,44 @@ const ru: Record<Key, string> = {
   "illegal.full": "Боезапас полон.",
   "illegal.door": "Здесь нет двери.",
   "illegal.cover": "Нужно укрытие.",
-};
+}
 
-export const DICTIONARIES: Record<Lang, Record<Key, string>> = { en, ru };
+export const DICTIONARIES: Record<Lang, Record<Key, string>> = { en, ru }
 
-const STORAGE = "tacticular.lang";
+const STORAGE = "tacticular.lang"
 
 /** The remembered language, else the browser's, else English. */
 export function detect(store: Pick<Storage, "getItem"> | undefined, languages: readonly string[]): Lang {
-  let saved: string | null = null;
+  let saved: string | null = null
   try {
-    saved = store?.getItem(STORAGE) ?? null;
+    saved = store?.getItem(STORAGE) ?? null
   } catch {
-    saved = null;
+    saved = null
   }
-  if (saved === "en" || saved === "ru") return saved;
-  return languages.some((l) => l.toLowerCase().startsWith("ru")) ? "ru" : "en";
+  if (saved === "en" || saved === "ru") return saved
+  return languages.some((l) => l.toLowerCase().startsWith("ru")) ? "ru" : "en"
 }
 
 export function remember(store: Pick<Storage, "setItem"> | undefined, lang: Lang): void {
   try {
-    store?.setItem(STORAGE, lang);
+    store?.setItem(STORAGE, lang)
   } catch {
-    return;
+    return
   }
 }
 
-let current: Lang = "en";
+let current: Lang = "en"
 
 export function use(lang: Lang): void {
-  current = lang;
+  current = lang
 }
 
 export function language(): Lang {
-  return current;
+  return current
 }
 
 /** A translated string with {name} params filled in. */
 export function t(key: string, params: Record<string, string | number | boolean> = {}): string {
-  const text = (DICTIONARIES[current] as Record<string, string>)[key] ?? (en as Record<string, string>)[key] ?? key;
-  return text.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`));
+  const text = (DICTIONARIES[current] as Record<string, string>)[key] ?? (en as Record<string, string>)[key] ?? key
+  return text.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`))
 }
