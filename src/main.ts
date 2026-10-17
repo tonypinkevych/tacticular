@@ -3,7 +3,9 @@ import { Session } from "./save/session";
 import { Screen } from "./view/screen";
 
 const store = window.localStorage;
-use(detect(store, navigator.languages ?? [navigator.language]));
-document.documentElement.lang = detect(store, navigator.languages ?? [navigator.language]);
+const lang = detect(store, navigator.languages ?? [navigator.language]);
+use(lang);
+document.documentElement.lang = lang;
 const session = Session.open(store, () => Math.floor(Math.random() * 2 ** 31));
-new Screen(session, document.getElementById("board") as HTMLCanvasElement, document.getElementById("panel")!, store);
+const $ = (id: string) => document.getElementById(id)!;
+new Screen(session, $("board") as HTMLCanvasElement, $("panel"), $("bar"), $("tip"), store);

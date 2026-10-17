@@ -7,16 +7,31 @@ import { alive, sideOf } from "../rules/units";
 import type { AbilityId, Action, Entry, Game, ItemId, Point, Unit, WeaponId } from "../rules/types";
 import type { Session } from "../save/session";
 import { language, remember, t, use, type Lang } from "../i18n/strings";
+import { Playback, SPEEDS, type Speed } from "./motion";
 import { draw, type Scene } from "./scene";
 
 type Mode =
   | { kind: "move" }
   | { kind: "attack"; weapon: WeaponId; target: string | null }
-  | { kind: "ability"; ability: AbilityId; target: string | null }
+  | { kind: "ability"; ability: AbilityId }
   | { kind: "item"; item: ItemId };
 
+interface Slot {
+  key: string;
+  label: string;
+  title: string;
+  info: string;
+  badge: string;
+  disabled: boolean;
+  active: boolean;
+  run: () => void;
+}
+
+const KEYS = "QWERTYUIOP";
 const UNIT_TARGETS: AbilityId[] = ["charge", "volley", "heal", "ward", "fear", "rouse"];
 const TILE_TARGETS: AbilityId[] = ["bulwark", "blink"];
+const SPEED_KEY = "tacticular.speed";
+const BAR_ROOM = 150;
 
 const h = (tag: string, attrs: Record<string, string> = {}, ...children: (Node | string)[]): HTMLElement => {
   const el = document.createElement(tag);
@@ -25,23 +40,38 @@ const h = (tag: string, attrs: Record<string, string> = {}, ...children: (Node |
   return el;
 };
 
-/** The play screen: the board canvas, the side panel and the input that drives the session. */
+const dice = (w: WeaponId): string => {
+  const d = WEAPONS[w].dice;
+  return `${d.count}d${d.sides}${d.bonus ? `+${d.bonus}` : ""}`;
+};
+
+/** The play screen: the board, the action bar, the side panel and the input that drives the session. */
 export class Screen {
   private selected: string | null = null;
   private mode: Mode = { kind: "move" };
   private hover: Point | null = null;
+  private hint: Slot | null = null;
   private message = "";
   private zones = false;
   private confirmNew = false;
-  private readonly icons: Record<string, HTMLImageElement> = {};
   private size = 28;
+  private readonly icons: Record<string, HTMLImageElement> = {};
+  private readonly playback: Playback;
+  private running = false;
+  private wasBusy = false;
+  private barSign = "";
+  private panelGame: Game | null = null;
 
   constructor(
     private readonly session: Session,
     private readonly canvas: HTMLCanvasElement,
     private readonly panel: HTMLElement,
+    private readonly bar: HTMLElement,
+    private readonly tip: HTMLElement,
     private readonly store: Storage,
   ) {
+    const saved = Number(this.read(SPEED_KEY) ?? 1);
+    this.playback = new Playback((SPEEDS as readonly number[]).includes(saved) ? (saved as Speed) : 1, session.game);
     for (const kind of Object.keys(PROFILES)) {
       const img = new Image();
       img.src = `${import.meta.env.BASE_URL}icons/${kind}.svg`;
@@ -54,8 +84,16 @@ export class Screen {
     canvas.addEventListener("contextmenu", (e) => { e.preventDefault(); this.cancel(); });
     window.addEventListener("keydown", (e) => this.onKey(e));
     window.addEventListener("resize", () => this.render());
-    this.selectNext();
+    this.selectNext(false);
     this.render();
+  }
+
+  private read(k: string): string | null {
+    try {
+      return this.store.getItem(k);
+    } catch {
+      return null;
+    }
   }
 
   private get game(): Game {
@@ -67,19 +105,21 @@ export class Screen {
     return u && alive(u) ? u : null;
   }
 
-  private name(id: string | number | boolean | undefined): string {
-    const u = this.game.units.find((x) => x.id === id);
+  private name(game: Game, id: string | number | boolean | undefined): string {
+    const u = game.units.find((x) => x.id === id);
     if (!u) return String(id ?? "");
     return u.side === "squad" ? `${u.name} (${t(`kind.${u.kind}`)})` : t(`kind.${u.kind}`);
   }
 
   private act(action: Action): void {
+    if (this.playback.busy) this.playback.skip(performance.now());
+    const before = this.game;
     try {
-      this.session.act(action);
+      this.playback.add(before, this.session.act(action));
       this.message = "";
       this.mode = { kind: "move" };
       const u = this.unit();
-      if (!u || u.ap === 0 || sideOf(u) !== "squad") this.selectNext();
+      if (!u || u.ap === 0 || sideOf(u) !== "squad") this.selectNext(false);
     } catch (e) {
       if (!(e instanceof Illegal)) throw e;
       this.message = t(`illegal.${e.message}`);
@@ -87,10 +127,16 @@ export class Screen {
     this.render();
   }
 
-  private selectNext(): void {
-    const squad = this.game.units.filter((u) => alive(u) && sideOf(u) === "squad" && u.ap > 0);
+  /** Selects the next soldier; with all set, any living soldier, else only those with AP left. */
+  private selectNext(all: boolean, back = false): void {
+    const squad = this.game.units.filter((u) => alive(u) && sideOf(u) === "squad" && (all || u.ap > 0));
+    if (squad.length === 0) {
+      if (!all) this.selectNext(true);
+      return;
+    }
     const at = squad.findIndex((u) => u.id === this.selected);
-    this.selected = squad[(at + 1) % Math.max(1, squad.length)]?.id ?? null;
+    const step = back ? squad.length - 1 : 1;
+    this.selected = squad[at < 0 ? 0 : (at + step) % squad.length].id;
     this.mode = { kind: "move" };
   }
 
@@ -114,39 +160,54 @@ export class Screen {
   }
 
   private onKey(e: KeyboardEvent): void {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Escape") this.cancel();
     if (e.key === "Tab") {
       e.preventDefault();
-      this.selectNext();
+      this.selectNext(true, e.shiftKey);
       this.render();
+      return;
     }
-    if (e.key === "z" || e.key === "я") {
+    const letter = e.code.startsWith("Key") ? e.code.slice(3) : "";
+    if (letter === "Z") {
       this.zones = !this.zones;
       this.render();
+      return;
+    }
+    const slot = this.slots().find((s) => s.key === letter);
+    if (slot && !slot.disabled) {
+      e.preventDefault();
+      slot.run();
     }
   }
 
-  private seenFoe(p: Point): Unit | undefined {
+  private foeAt(p: Point): Unit | undefined {
     const u = unitAt(this.game, p);
-    return u && u.side === "enemy" && visibleToSquad(this.game, u) ? u : u && sideOf(u) === "enemy" && u.side === "squad" ? u : undefined;
+    if (!u || sideOf(u) !== "enemy") return undefined;
+    return u.side === "squad" || visibleToSquad(this.game, u) ? u : undefined;
   }
 
   private onClick(e: MouseEvent): void {
+    if (this.playback.busy) {
+      this.playback.skip(performance.now());
+      this.render();
+      return;
+    }
     const p = this.point(e);
     if (!p || this.game.phase !== "squad") return;
     const here = unitAt(this.game, p);
     const u = this.unit();
     const m = this.mode;
-    if (m.kind === "ability" && UNIT_TARGETS.includes(m.ability) && here) {
-      this.act({ type: "ability", unit: u!.id, ability: m.ability, target: here.id });
+    if (u && m.kind === "ability" && UNIT_TARGETS.includes(m.ability) && here) {
+      this.act({ type: "ability", unit: u.id, ability: m.ability, target: here.id });
       return;
     }
-    if (m.kind === "ability" && TILE_TARGETS.includes(m.ability)) {
-      this.act({ type: "ability", unit: u!.id, ability: m.ability, at: p });
+    if (u && m.kind === "ability" && TILE_TARGETS.includes(m.ability)) {
+      this.act({ type: "ability", unit: u.id, ability: m.ability, at: p });
       return;
     }
-    if (m.kind === "item") {
-      this.act({ type: "item", unit: u!.id, item: m.item, at: p });
+    if (u && m.kind === "item") {
+      this.act({ type: "item", unit: u.id, item: m.item, at: p });
       return;
     }
     if (here && here.side === "squad" && sideOf(here) === "squad") {
@@ -157,7 +218,7 @@ export class Screen {
       return;
     }
     if (!u) return;
-    const foe = this.seenFoe(p);
+    const foe = this.foeAt(p);
     if (foe) {
       const weapon = m.kind === "attack" ? m.weapon : u.weapon;
       if (m.kind === "attack" && m.target === foe.id) {
@@ -172,48 +233,93 @@ export class Screen {
       this.act({ type: "door", unit: u.id, at: p });
       return;
     }
+    if (m.kind === "attack") {
+      this.cancel();
+      return;
+    }
     this.act({ type: "move", unit: u.id, to: p });
   }
 
-  private scene(): Scene {
+  private cursor(): string {
+    if (this.playback.busy) return "progress";
+    const m = this.mode;
+    if (m.kind === "attack" || (m.kind === "ability" && UNIT_TARGETS.includes(m.ability))) return "crosshair";
+    if (m.kind === "item" || m.kind === "ability") return "cell";
+    if (this.hover && this.foeAt(this.hover)) return "crosshair";
+    return "pointer";
+  }
+
+  private fit(): number {
+    const { width, height } = this.game.board;
+    const room = Math.min((window.innerWidth - 400) / width, (window.innerHeight - BAR_ROOM) / height);
+    this.size = Math.max(16, Math.min(44, Math.floor(room)));
+    return this.size;
+  }
+
+  private scene(now: number): Scene {
+    const still = this.playback.at(now);
+    const game = still.game;
     const u = this.unit();
     const near = new Set<number>();
     const far = new Set<number>();
     let path: Point[] = [];
     const targets = new Set<string>();
     let spot: Point[] = [];
-    if (u && this.game.phase === "squad" && u.ap > 0 && sideOf(u) === "squad") {
+    const idle = !this.playback.busy;
+    if (idle && u && this.game.phase === "squad" && u.ap > 0 && sideOf(u) === "squad") {
       if (this.mode.kind === "move") {
         const r = reach(this.game, u, u.mobility * u.ap);
-        for (const [k, c] of r.cost) if (c > 0) (c <= u.mobility ? near : far).add(k);
+        for (const [k, c] of r.cost) {
+          if (c === 0) continue;
+          far.add(k);
+          if (u.ap === 2 && c <= u.mobility) near.add(k);
+        }
         if (this.hover && r.cost.has(key(this.hover))) path = r.path(this.hover);
       }
       for (const e of this.game.units) if (e.side === "enemy" && visibleToSquad(this.game, e) && canTarget(this.game, u, e)) targets.add(e.id);
       const m = this.mode;
-      if (this.hover && (m.kind === "item" && m.item !== "stone")) spot = area(this.hover, 1);
-      if (this.hover && m.kind === "item" && m.item === "stone") spot = [this.hover];
+      if (this.hover && m.kind === "item") spot = m.item === "stone" ? [this.hover] : area(this.hover, 1);
+      if (this.hover && m.kind === "ability" && TILE_TARGETS.includes(m.ability)) spot = [this.hover];
     }
-    const s = this.fit();
     return {
-      game: this.game, size: s, icons: this.icons, selected: u, near, far, path, hover: this.hover, targets,
-      area: spot.filter((p) => inside(this.game.board, p)), zones: this.zones,
+      game, size: this.fit(), icons: this.icons, selected: idle ? u : null, near, far, path, hover: this.hover, targets,
+      area: spot.filter((p) => inside(game.board, p)), zones: this.zones,
+      mover: still.mover, shot: still.shot, texts: this.playback.texts, now, life: 1100 / Math.max(1, this.playback.speed),
     };
   }
 
-  private fit(): number {
-    const { width, height } = this.game.board;
-    const room = Math.min((window.innerWidth - 380) / width, (window.innerHeight - 24) / height);
-    this.size = Math.max(16, Math.min(40, Math.floor(room)));
-    return this.size;
-  }
-
-  render(): void {
-    const sc = this.scene();
-    const { width, height } = this.game.board;
-    this.canvas.width = width * sc.size;
-    this.canvas.height = height * sc.size;
-    draw(this.canvas.getContext("2d")!, sc);
-    this.renderPanel();
+  /** Draws the board, and the panel and bar unless only an animation frame changed; keeps drawing while anything moves. */
+  render(full = true): void {
+    const now = performance.now();
+    const sc = this.scene(now);
+    const { width, height } = sc.game.board;
+    const dpr = window.devicePixelRatio || 1;
+    const w = width * sc.size;
+    const hgt = height * sc.size;
+    if (this.canvas.width !== Math.round(w * dpr) || this.canvas.height !== Math.round(hgt * dpr)) {
+      this.canvas.width = Math.round(w * dpr);
+      this.canvas.height = Math.round(hgt * dpr);
+      this.canvas.style.width = `${w}px`;
+      this.canvas.style.height = `${hgt}px`;
+    }
+    const ctx = this.canvas.getContext("2d")!;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw(ctx, sc);
+    this.canvas.style.cursor = this.cursor();
+    const shown = this.playback.busy ? sc.game : this.game;
+    if (full || shown !== this.panelGame) {
+      this.panelGame = shown;
+      this.renderPanel(shown);
+      this.renderBar();
+    }
+    if (this.playback.live && !this.running) {
+      this.running = true;
+      requestAnimationFrame(() => {
+        this.running = false;
+        this.render(this.wasBusy && !this.playback.busy);
+        this.wasBusy = this.playback.busy;
+      });
+    }
   }
 
   private button(label: string, onClick: () => void, opts: { disabled?: boolean; active?: boolean; title?: string } = {}): HTMLElement {
@@ -224,35 +330,114 @@ export class Screen {
     return b;
   }
 
-  private renderPanel(): void {
-    const g = this.game;
+  private slots(): Slot[] {
+    const u = this.unit();
+    if (!u || this.game.phase !== "squad" || sideOf(u) !== "squad") return [];
+    const out: Omit<Slot, "key">[] = [];
+    const none = u.ap <= 0;
+    const p = PROFILES[u.kind];
+    for (const w of [u.weapon, p.sidearm].filter((x): x is WeaponId => !!x)) {
+      const weapon = WEAPONS[w];
+      const range = weapon.melee ? t("ui.melee") : `${t("ui.range")} ${weapon.min}–${weapon.max}`;
+      const ammo = weapon.ammo !== null && w === u.weapon ? ` · ${t("ui.ammo")} ${u.ammo}/${weapon.ammo}` : "";
+      out.push({
+        label: t(`weapon.${w}`), title: t(`weapon.${w}`), info: `${t("ui.damage")} ${dice(w)} · ${range}${ammo}`,
+        badge: w === "axes" ? `×${u.axes}` : weapon.ammo !== null && w === u.weapon ? `${u.ammo}` : "",
+        disabled: none || (w === "axes" && u.axes <= 0),
+        active: this.mode.kind === "attack" && this.mode.weapon === w,
+        run: () => { this.mode = { kind: "attack", weapon: w, target: null }; this.message = t("ui.pickTarget"); this.render(); },
+      });
+    }
+    const dominated = this.game.units.some((x) => alive(x) && x.side === "squad" && sideOf(x) === "enemy");
+    for (const a of p.abilities) {
+      if (a === "rouse" && !dominated) continue;
+      const cd = u.cooldowns[a] ?? 0;
+      out.push({
+        label: t(`ability.${a}`), title: t(`ability.${a}`), info: t(`info.${a}`), badge: cd ? `${cd}` : "",
+        disabled: none || cd > 0, active: this.mode.kind === "ability" && this.mode.ability === a,
+        run: () => this.pickAbility(u, a),
+      });
+    }
+    for (const it of ["flask", "smoke", "stone"] as ItemId[]) {
+      const n = u.items[it];
+      if (n <= 0) continue;
+      out.push({
+        label: t(`item.${it}`), title: t(`item.${it}`), info: t(`info.${it}`), badge: Number.isFinite(n) ? `×${n}` : "",
+        disabled: none, active: this.mode.kind === "item" && this.mode.item === it,
+        run: () => { this.mode = { kind: "item", item: it }; this.message = t("ui.pickTile"); this.render(); },
+      });
+    }
+    const plain = (id: "overwatch" | "hunker" | "reload") => ({
+      label: t(`action.${id}`), title: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, active: false,
+      run: () => this.act({ type: id, unit: u.id }),
+    });
+    out.push(plain("overwatch"), plain("hunker"));
+    if (WEAPONS[u.weapon].ammo !== null) out.push(plain("reload"));
+    return out.map((s, i) => ({ ...s, key: KEYS[i] ?? "" }));
+  }
+
+  private renderBar(): void {
+    const list = this.slots();
+    const sign = JSON.stringify([list.map(({ run: _, ...rest }) => rest), this.playback.speed, this.game.phase, language()]);
+    if (sign === this.barSign) return;
+    this.barSign = sign;
+    const slots = list.map((s) => {
+      const b = h("button", { type: "button", class: `slot${s.active ? " active" : ""}` },
+        h("span", { class: "key" }, s.key), h("span", { class: "label" }, s.label), s.badge ? h("span", { class: "badge" }, s.badge) : "",
+      ) as HTMLButtonElement;
+      b.disabled = s.disabled;
+      b.addEventListener("click", () => s.run());
+      b.addEventListener("mouseenter", () => { this.hint = s; this.renderTip(); });
+      b.addEventListener("mouseleave", () => { this.hint = null; this.renderTip(); });
+      return b;
+    });
+    const speeds = h("div", { class: "speeds" }, h("span", { class: "muted small" }, t("ui.speed")),
+      ...SPEEDS.map((sp) => this.button(sp === 0 ? t("ui.instant") : `${sp}×`, () => {
+        this.playback.speed = sp;
+        try {
+          this.store.setItem(SPEED_KEY, String(sp));
+        } catch {
+          return;
+        }
+        this.renderBar();
+      }, { active: this.playback.speed === sp })));
+    const end = this.button(t("ui.endTurn"), () => this.act({ type: "endTurn" }), { disabled: this.game.phase !== "squad" });
+    end.classList.add("end");
+    this.bar.replaceChildren(h("div", { class: "slots" }, ...slots), h("div", { class: "side" }, end, speeds));
+    this.renderTip();
+  }
+
+  private renderTip(): void {
+    const s = this.hint;
+    if (s) {
+      this.tip.replaceChildren(h("div", { class: "name" }, `${s.title} `, h("span", { class: "muted small" }, t("ui.key", { key: s.key }))), h("div", {}, s.info));
+      return;
+    }
+    this.tip.replaceChildren(h("div", { class: this.message ? "message" : "muted" }, this.message || t("ui.help")));
+  }
+
+  private renderPanel(g: Game): void {
     const u = this.unit();
     const lang = language();
     const langs = h("div", { class: "row" }, ...(["en", "ru"] as Lang[]).map((l) =>
-      this.button(l.toUpperCase(), () => { use(l); remember(this.store, l); this.render(); }, { active: l === lang })));
-    const phase = h("div", { class: `phase ${g.phase}` }, `${t("ui.round", { round: g.round })} · ${t(`ui.phase.${g.phase}`)}`);
+      this.button(l.toUpperCase(), () => { use(l); remember(this.store, l); this.panelGame = null; this.render(); }, { active: l === lang })));
     const parts: HTMLElement[] = [
       h("header", {}, h("h1", {}, t("ui.title")), langs),
-      phase,
+      h("div", { class: `phase ${g.phase}` }, `${t("ui.round", { round: g.round })} · ${t(`ui.phase.${g.phase}`)}`),
       h("div", { class: "muted" }, t("ui.seed", { seed: g.seed })),
     ];
     parts.push(u ? this.card(u) : h("p", { class: "muted" }, t("ui.pick")));
-    if (u && g.phase === "squad" && sideOf(u) === "squad") parts.push(this.actions(u));
     const preview = this.preview(u);
     if (preview) parts.push(preview);
     const info = this.info();
     if (info) parts.push(info);
-    if (this.message) parts.push(h("p", { class: "message" }, this.message));
-    parts.push(h("div", { class: "row" },
-      this.button(t("ui.endTurn"), () => this.act({ type: "endTurn" }), { disabled: g.phase !== "squad" }),
-      this.button(t("ui.undo"), () => { this.session.undo(); this.render(); }, { disabled: !this.session.canUndo() }),
+    parts.push(h("div", { class: "row wrap" },
+      this.button(t("ui.undo"), () => { this.session.undo(); this.playback.reset(this.game); this.render(); }, { disabled: !this.session.canUndo() || this.playback.busy }),
       this.button(t("ui.zones"), () => { this.zones = !this.zones; this.render(); }, { active: this.zones }),
       this.button(this.confirmNew ? t("ui.confirm") : t("ui.newMission"), () => this.newMission()),
     ));
-    parts.push(h("p", { class: "muted small" }, t("ui.help")));
-    parts.push(h("h2", {}, t("ui.log")), this.log());
-    const pub = this.session.author.slice(0, 12);
-    parts.push(h("p", { class: "muted small" }, t("ui.save", { count: this.session.events.length, key: `${pub}…` })));
+    parts.push(h("h2", {}, t("ui.log")), this.log(g));
+    parts.push(h("p", { class: "muted small" }, t("ui.save", { count: this.session.events.length, key: `${this.session.author.slice(0, 12)}…` })));
     parts.push(h("p", { class: "muted small" }, t("ui.credits")));
     this.panel.replaceChildren(...parts);
   }
@@ -265,8 +450,9 @@ export class Screen {
     }
     this.confirmNew = false;
     this.session.start(Math.floor(Math.random() * 2 ** 31));
+    this.playback.reset(this.game);
     this.selected = null;
-    this.selectNext();
+    this.selectNext(false);
     this.render();
   }
 
@@ -283,39 +469,9 @@ export class Screen {
       u.stance !== "none" ? t(`action.${u.stance}`) : "",
     ].filter(Boolean).join(" · ");
     return h("section", { class: "card" },
-      h("div", { class: "name" }, this.name(u.id)),
+      h("div", { class: "name" }, this.name(this.game, u.id)),
       h("div", { class: "stats" }, ...stats.map((s) => h("span", {}, s))),
       h("div", { class: "muted" }, status));
-  }
-
-  private actions(u: Unit): HTMLElement {
-    const p = PROFILES[u.kind];
-    const row: HTMLElement[] = [];
-    for (const w of [u.weapon, p.sidearm].filter((x): x is WeaponId => !!x)) {
-      const left = w === "axes" ? ` (${u.axes})` : "";
-      row.push(this.button(`${t(`weapon.${w}`)}${left}`, () => { this.mode = { kind: "attack", weapon: w, target: null }; this.message = t("ui.pickTarget"); this.render(); },
-        { active: this.mode.kind === "attack" && this.mode.weapon === w, disabled: w === "axes" && u.axes <= 0 }));
-    }
-    const dominated = this.game.units.some((x) => alive(x) && x.side === "squad" && sideOf(x) === "enemy");
-    for (const a of p.abilities) {
-      if (a === "rouse" && !dominated) continue;
-      const cd = u.cooldowns[a];
-      const label = cd ? `${t(`ability.${a}`)} (${cd})` : t(`ability.${a}`);
-      row.push(this.button(label, () => this.pickAbility(u, a), {
-        disabled: !!cd, active: this.mode.kind === "ability" && this.mode.ability === a, title: t(`info.${a}`),
-      }));
-    }
-    for (const it of ["flask", "smoke", "stone"] as ItemId[]) {
-      const n = u.items[it];
-      if (n <= 0) continue;
-      const count = Number.isFinite(n) ? ` ×${n}` : "";
-      row.push(this.button(`${t(`item.${it}`)}${count}`, () => { this.mode = { kind: "item", item: it }; this.message = t("ui.pickTile"); this.render(); },
-        { active: this.mode.kind === "item" && this.mode.item === it, title: t(`info.${it}`) }));
-    }
-    row.push(this.button(t("action.overwatch"), () => this.act({ type: "overwatch", unit: u.id }), { title: t("info.overwatch") }));
-    row.push(this.button(t("action.hunker"), () => this.act({ type: "hunker", unit: u.id }), { title: t("info.hunker") }));
-    if (WEAPONS[u.weapon].ammo !== null) row.push(this.button(t("action.reload"), () => this.act({ type: "reload", unit: u.id }), { title: t("info.reload") }));
-    return h("section", {}, h("h2", {}, t("ui.actions")), h("div", { class: "row wrap" }, ...row));
   }
 
   private pickAbility(u: Unit, a: AbilityId): void {
@@ -323,8 +479,8 @@ export class Screen {
       this.act({ type: "ability", unit: u.id, ability: a });
       return;
     }
-    this.mode = { kind: "ability", ability: a, target: null };
-    this.message = `${t(`info.${a}`)} ${UNIT_TARGETS.includes(a) ? t("ui.pickTarget") : t("ui.pickTile")}`;
+    this.mode = { kind: "ability", ability: a };
+    this.message = `${t(`ability.${a}`)}: ${UNIT_TARGETS.includes(a) ? t("ui.pickTarget") : t("ui.pickTile")}`;
     this.render();
   }
 
@@ -335,7 +491,7 @@ export class Screen {
     if (!target) return null;
     const o = odds(this.game, u, target, m.weapon);
     const lines = [
-      h("div", { class: "name" }, `${t(`weapon.${m.weapon}`)} → ${this.name(target.id)}`),
+      h("div", { class: "name" }, `${t(`weapon.${m.weapon}`)} → ${this.name(this.game, target.id)}`),
       h("div", { class: "big" }, `${t("ui.chance")}: ${Math.round(o.chance * 100)}%`),
       h("div", {}, `${t("ui.damage")}: ${o.min}–${o.max}`),
       h("div", { class: "muted" }, `d20 +${o.aim} vs ${o.defense}`),
@@ -350,23 +506,23 @@ export class Screen {
 
   private info(): HTMLElement | null {
     if (!this.hover) return null;
-    const e = this.seenFoe(this.hover);
+    const e = this.foeAt(this.hover);
     if (!e) return null;
     const bits = [`${t("ui.hp")} ${e.hp}/${e.maxHp}`, t(`alert.${e.alert}`), ...e.statuses.map((s) => t(`status.${s.id}`))];
     if (e.stance !== "none") bits.push(t(`action.${e.stance}`));
-    return h("section", { class: "card enemy" }, h("div", { class: "name" }, this.name(e.id)), h("div", { class: "muted" }, bits.join(" · ")));
+    return h("section", { class: "card enemy" }, h("div", { class: "name" }, this.name(this.game, e.id)), h("div", { class: "muted" }, bits.join(" · ")));
   }
 
-  private line(e: Entry): string {
+  private line(g: Game, e: Entry): string {
     const p: Record<string, string | number | boolean> = { ...e.params };
-    for (const k of ["unit", "target", "by"]) if (k in p) p[k] = this.name(p[k]);
+    for (const k of ["unit", "target", "by"]) if (k in p) p[k] = this.name(g, p[k]);
     if (typeof p.weapon === "string") p.weapon = t(`weapon.${p.weapon}`);
     if ("saved" in p) p.result = t(p.saved ? "ui.saved" : "ui.failed");
     return t(e.key, p);
   }
 
-  private log(): HTMLElement {
-    const entries = this.game.log.slice(-60).reverse();
-    return h("ol", { class: "log" }, ...entries.map((e) => h("li", { class: e.key.replace(".", "-") }, this.line(e))));
+  private log(g: Game): HTMLElement {
+    const entries = g.log.slice(-60).reverse();
+    return h("ol", { class: "log" }, ...entries.map((e) => h("li", { class: e.key.replace(".", "-") }, this.line(g, e))));
   }
 }

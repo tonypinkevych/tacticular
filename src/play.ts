@@ -4,19 +4,33 @@ import { distance } from "./rules/grid";
 import { alive, sideOf } from "./rules/units";
 import type { Action, Game, Unit } from "./rules/types";
 
-/** Plays one player action, then every reaction and, after End turn, the whole enemy phase. */
-export function play(game: Game, action: Action): Game {
-  let next = react(apply(game, action));
-  if (action.type === "endTurn" && next.phase === "enemy") next = enemyPhase(next);
-  return next;
+/** One step of play: an action and the game right after it. */
+export interface Frame {
+  action: Action;
+  game: Game;
 }
 
+/** Plays one player action, then every reaction and, after End turn, the whole enemy phase. */
+export function play(game: Game, action: Action): Game {
+  const out = frames(game, action);
+  return out[out.length - 1].game;
+}
+
+/** The same as play, but keeps every step so the view can show them one by one. */
+export function frames(game: Game, action: Action): Frame[] {
+  const out: Frame[] = [{ action, game: apply(game, action) }];
+  react(out);
+  if (action.type === "endTurn" && last(out).phase === "enemy") enemyPhase(out);
+  return out;
+}
+
+const last = (out: Frame[]): Game => out[out.length - 1].game;
+
 /** Each unit in the reveal queue takes one AI action, surprised. */
-function react(game: Game): Game {
-  let next = game;
-  while (next.reactions.length > 0 && (next.phase === "squad" || next.phase === "enemy")) {
-    const id = next.reactions[0];
-    const ready = structuredClone(next);
+function react(out: Frame[]): void {
+  while (last(out).reactions.length > 0 && (last(out).phase === "squad" || last(out).phase === "enemy")) {
+    const id = last(out).reactions[0];
+    const ready = structuredClone(last(out));
     const u = ready.units.find((x) => x.id === id)!;
     u.ap = alive(u) ? 1 : 0;
     const action = decide(ready, u);
@@ -30,9 +44,8 @@ function react(game: Game): Game {
     }
     after.units.find((x) => x.id === id)!.ap = 0;
     after.reactions = after.reactions.filter((x) => x !== id);
-    next = after;
+    out.push({ action: action ?? { type: "endTurn" }, game: after });
   }
-  return next;
 }
 
 function order(game: Game): Unit[] {
@@ -42,21 +55,20 @@ function order(game: Game): Unit[] {
 }
 
 /** Runs the AI for every enemy-side unit, then ends the round. */
-export function enemyPhase(game: Game): Game {
-  let next = game;
-  for (const { id } of order(game)) {
-    for (let i = 0; i < 4 && next.phase === "enemy"; i++) {
-      const u = next.units.find((x) => x.id === id)!;
+function enemyPhase(out: Frame[]): void {
+  for (const { id } of order(last(out))) {
+    for (let i = 0; i < 4 && last(out).phase === "enemy"; i++) {
+      const u = last(out).units.find((x) => x.id === id)!;
       if (sideOf(u) !== "enemy") break;
-      const action = decide(next, u);
+      const action = decide(last(out), u);
       if (!action) break;
       try {
-        next = apply(next, action);
+        out.push({ action, game: apply(last(out), action) });
       } catch (e) {
         if (!(e instanceof Illegal)) throw e;
         break;
       }
     }
   }
-  return next.phase === "enemy" ? apply(next, { type: "endTurn" }) : next;
+  if (last(out).phase === "enemy") out.push({ action: { type: "endTurn" }, game: apply(last(out), { type: "endTurn" }) });
 }

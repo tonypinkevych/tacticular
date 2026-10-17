@@ -1,7 +1,7 @@
 import { decide } from "../src/ai/ai";
 import { apply } from "../src/rules/actions";
 import { coverAgainst } from "../src/rules/cover";
-import { play } from "../src/play";
+import { frames, play } from "../src/play";
 import { simulate } from "../src/sim";
 import { makeUnit } from "../src/rules/units";
 import { newGame, parseBoard } from "../src/rules/game";
@@ -87,5 +87,15 @@ describe("headless missions", () => {
       if (end.phase === "won" || end.phase === "lost") ended++;
     }
     expect(ended).toBeGreaterThan(35);
+  });
+});
+
+describe("frames", () => {
+  test("frames keep each enemy step and end in the same game as play", () => {
+    const g0 = setup(open(20, 3), [squad("v", "vanguard", { x: 0, y: 0 }), enemy("e", "orc", { x: 19, y: 2 }, "unaware")]);
+    find(g0, "e").patrol = [{ x: 12, y: 2 }, { x: 19, y: 2 }];
+    const steps = frames(g0, { type: "endTurn" });
+    expect(steps.map((s) => s.action.type)).toEqual(["endTurn", "move", "endTurn"]);
+    expect(steps[steps.length - 1].game).toEqual(play(g0, { type: "endTurn" }));
   });
 });

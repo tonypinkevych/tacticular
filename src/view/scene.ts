@@ -5,6 +5,7 @@ import { sees, visibleTiles } from "../rules/sight";
 import { visibleToSquad } from "../rules/stealth";
 import { alive, has, sideOf } from "../rules/units";
 import type { Game, Point, Tile, Unit } from "../rules/types";
+import type { Float } from "./motion";
 
 /** What the board shows besides the game: selection, reach, hover and overlays. */
 export interface Scene {
@@ -19,6 +20,11 @@ export interface Scene {
   targets: Set<string>;
   area: Point[];
   zones: boolean;
+  mover: { id: string; at: Point } | null;
+  shot: { from: Point; to: Point; progress: number } | null;
+  texts: Float[];
+  now: number;
+  life: number;
 }
 
 const COLORS: Record<Tile, string> = {
@@ -71,9 +77,9 @@ function tile(ctx: CanvasRenderingContext2D, s: number, p: Point, t: Tile): void
   ctx.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
 }
 
-function disk(ctx: CanvasRenderingContext2D, s: number, sc: Scene, u: Unit, alpha = 1): void {
-  const cx = u.pos.x * s + s / 2;
-  const cy = u.pos.y * s + s / 2;
+function disk(ctx: CanvasRenderingContext2D, s: number, sc: Scene, u: Unit, alpha = 1, at: Point = u.pos): void {
+  const cx = at.x * s + s / 2;
+  const cy = at.y * s + s / 2;
   ctx.globalAlpha = alpha;
   ctx.fillStyle = has(u, "dominated") ? DOMINATED : u.side === "squad" ? SQUAD : ENEMY;
   ctx.beginPath();
@@ -100,14 +106,20 @@ function disk(ctx: CanvasRenderingContext2D, s: number, sc: Scene, u: Unit, alph
   ctx.globalAlpha = 1;
 }
 
-function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit): void {
-  const x = u.pos.x * s;
-  const y = u.pos.y * s;
-  const w = s - 4;
-  ctx.fillStyle = "#200";
-  ctx.fillRect(x + 2, y + s - 5, w, 3);
-  ctx.fillStyle = u.hp / u.maxHp > 0.5 ? "#5fd35f" : u.hp / u.maxHp > 0.25 ? "#e3c13b" : "#e3503b";
-  ctx.fillRect(x + 2, y + s - 5, (w * u.hp) / u.maxHp, 3);
+/** HP as one segment per point, AP dots, stances and statuses. */
+function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u.pos): void {
+  const x = at.x * s;
+  const y = at.y * s;
+  const seg = Math.max(3, Math.min(6, Math.floor((s - 2) / u.maxHp) - 1));
+  const width = u.maxHp * (seg + 1) - 1;
+  const left = x + (s - width) / 2;
+  ctx.fillStyle = "rgba(0,0,0,0.85)";
+  ctx.fillRect(left - 1, y + s - 7, width + 2, 6);
+  const color = u.hp / u.maxHp > 0.5 ? "#5fd35f" : u.hp / u.maxHp > 0.25 ? "#e3c13b" : "#e3503b";
+  for (let i = 0; i < u.maxHp; i++) {
+    ctx.fillStyle = i < u.hp ? color : "#4a2222";
+    ctx.fillRect(left + i * (seg + 1), y + s - 6, seg, 4);
+  }
   if (u.side === "squad" && sideOf(u) === "squad") {
     for (let i = 0; i < u.ap; i++) {
       ctx.fillStyle = "#ffd84a";
@@ -127,6 +139,23 @@ function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit): void {
     ctx.textBaseline = "top";
     ctx.fillText(marks, x + s - 2, y + 1);
   }
+}
+
+/** Draws the border of a set of tiles: edges where the set ends. */
+function outline(ctx: CanvasRenderingContext2D, s: number, keys: Set<number>, color: string): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (const k of keys) {
+    const x = (k % 1000) * s;
+    const y = Math.floor(k / 1000) * s;
+    if (!keys.has(k - 1000)) { ctx.moveTo(x, y); ctx.lineTo(x + s, y); }
+    if (!keys.has(k + 1000)) { ctx.moveTo(x, y + s); ctx.lineTo(x + s, y + s); }
+    if (!keys.has(k - 1)) { ctx.moveTo(x, y); ctx.lineTo(x, y + s); }
+    if (!keys.has(k + 1)) { ctx.moveTo(x + s, y); ctx.lineTo(x + s, y + s); }
+  }
+  ctx.stroke();
+  ctx.lineWidth = 1;
 }
 
 function tint(ctx: CanvasRenderingContext2D, s: number, keys: Iterable<number>, color: string): void {
@@ -173,19 +202,54 @@ function zones(ctx: CanvasRenderingContext2D, s: number, game: Game, enemies: Un
   }
 }
 
+function shield(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, full: boolean): void {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r * 0.85, cy - r * 0.6);
+  ctx.lineTo(cx + r * 0.75, cy + r * 0.25);
+  ctx.quadraticCurveTo(cx + r * 0.4, cy + r * 0.8, cx, cy + r);
+  ctx.quadraticCurveTo(cx - r * 0.4, cy + r * 0.8, cx - r * 0.75, cy + r * 0.25);
+  ctx.lineTo(cx - r * 0.85, cy - r * 0.6);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(10,20,30,0.85)";
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = "#4fc3ff";
+  if (full) ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  else ctx.fillRect(cx - r, cy, r * 2, r);
+  ctx.restore();
+  ctx.strokeStyle = "#bfe9ff";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+/** Shield icons on the tile edges that give cover: full for high cover, half for low. */
 function cover(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): void {
   for (const d of ORTHOGONAL) {
     const c = coverAt(game, plus(p, d));
     if (c === 0) continue;
-    ctx.fillStyle = c >= 5 ? "#7fd0ff" : "#b8e0ff";
-    const t = c >= 5 ? 5 : 3;
-    const x = p.x * s;
-    const y = p.y * s;
-    if (d.x === 1) ctx.fillRect(x + s - t, y + 2, t, s - 4);
-    if (d.x === -1) ctx.fillRect(x, y + 2, t, s - 4);
-    if (d.y === 1) ctx.fillRect(x + 2, y + s - t, s - 4, t);
-    if (d.y === -1) ctx.fillRect(x + 2, y, s - 4, t);
+    const cx = p.x * s + s / 2 + d.x * s * 0.42;
+    const cy = p.y * s + s / 2 + d.y * s * 0.42;
+    shield(ctx, cx, cy, Math.max(5, s * 0.2), c >= 5);
   }
+}
+
+function shot(ctx: CanvasRenderingContext2D, s: number, sh: NonNullable<Scene["shot"]>): void {
+  const ax = sh.from.x * s + s / 2;
+  const ay = sh.from.y * s + s / 2;
+  const bx = sh.to.x * s + s / 2;
+  const by = sh.to.y * s + s / 2;
+  const head = Math.min(1, sh.progress * 1.4);
+  const tail = Math.max(0, sh.progress * 1.4 - 0.4);
+  ctx.strokeStyle = "#fff4c2";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ax + (bx - ax) * tail, ay + (by - ay) * tail);
+  ctx.lineTo(ax + (bx - ax) * head, ay + (by - ay) * head);
+  ctx.stroke();
+  ctx.lineWidth = 1;
 }
 
 /** Draws the whole board for the player: only what the squad sees, knows or remembers. */
@@ -214,8 +278,8 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   const enemies = game.units.filter((u) => alive(u) && u.side === "enemy" && visibleToSquad(game, u));
   if (sc.zones) zones(ctx, s, game, enemies);
-  tint(ctx, s, sc.far, "rgba(255,210,60,0.16)");
-  tint(ctx, s, sc.near, "rgba(70,150,255,0.22)");
+  outline(ctx, s, sc.far, "#f2c94c");
+  outline(ctx, s, sc.near, "#4aa3ff");
   tint(ctx, s, sc.area.map(key), "rgba(255,120,40,0.35)");
   if (sc.path.length > 0 && sc.selected) {
     ctx.strokeStyle = "#ffffff";
@@ -260,10 +324,34 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   for (const u of game.units) {
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue;
-    disk(ctx, s, sc, u);
-    badges(ctx, s, u);
+    const at = sc.mover?.id === u.id ? sc.mover.at : u.pos;
+    disk(ctx, s, sc, u, 1, at);
+    badges(ctx, s, u, at);
   }
-  if (sc.selected) ring(ctx, s, sc.selected.pos, "#ffffff");
+  if (sc.mover && !game.units.some((u) => u.id === sc.mover!.id && (u.side === "squad" || enemies.includes(u)))) {
+    const u = game.units.find((x) => x.id === sc.mover!.id);
+    if (u && seen.has(key({ x: Math.round(sc.mover.at.x), y: Math.round(sc.mover.at.y) }))) disk(ctx, s, sc, u, 1, sc.mover.at);
+  }
+  if (sc.selected && !sc.mover) {
+    ring(ctx, s, sc.selected.pos, "#ffffff");
+    cover(ctx, s, game, sc.selected.pos);
+  }
+  if (sc.shot) shot(ctx, s, sc.shot);
+  for (const f of sc.texts) {
+    const age = (sc.now - f.born) / sc.life;
+    ctx.globalAlpha = Math.max(0, 1 - age);
+    ctx.fillStyle = f.color;
+    ctx.strokeStyle = "rgba(0,0,0,0.8)";
+    ctx.lineWidth = 3;
+    ctx.font = `bold ${Math.floor(s * 0.6)}px system-ui`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const y = f.at.y * s + s / 2 - age * s * 0.9;
+    ctx.strokeText(f.text, f.at.x * s + s / 2, y);
+    ctx.fillText(f.text, f.at.x * s + s / 2, y);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+  }
   for (const e of enemies) if (sc.targets.has(e.id)) ring(ctx, s, e.pos, "rgba(255,255,255,0.55)");
   const hover = sc.hover;
   const sel = sc.selected;

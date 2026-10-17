@@ -1,6 +1,6 @@
 import type { Event } from "nostr-tools/pure";
 import { mission } from "../rules/mission";
-import { play } from "../play";
+import { frames, play, type Frame } from "../play";
 import type { Action, Game } from "../rules/types";
 import { author, begin, read, record, secret } from "./journal";
 
@@ -62,13 +62,14 @@ export class Session {
     }
   }
 
-  /** Plays an action; on success it is signed, logged and saved. */
-  act(action: Action): void {
-    const next = play(this.game, action);
+  /** Plays an action; on success it is signed, logged and saved, and its steps are returned. */
+  act(action: Action): Frame[] {
+    const steps = frames(this.game, action);
     this.events.push(record(this.key, this.events[0], this.actions.length, action));
     this.actions.push(action);
-    this.games.push(next);
+    this.games.push(steps[steps.length - 1].game);
     this.save();
+    return steps;
   }
 
   /** A move can be undone when it revealed no tile and caused no roll or event. */
