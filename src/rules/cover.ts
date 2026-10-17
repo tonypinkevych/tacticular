@@ -2,14 +2,13 @@ import { coverOf, inside, ORTHOGONAL, plus, tileAt } from "./grid"
 import { sees } from "./sight"
 import type { Game, Point, Unit } from "./types"
 
-/** Best cover a target tile has against an attack from a point: 0 means the target is flanked. */
+/** Best cover a target tile has against an attack from a point on that cover's side: 0 means the target is flanked. */
 export function coverAgainst(game: Game, target: Point, from: Point): number {
   const v = { x: from.x - target.x, y: from.y - target.y }
   let best = 0
   for (const d of ORTHOGONAL) {
     const along = v.x * d.x + v.y * d.y
-    const across = Math.abs(v.x * d.y - v.y * d.x)
-    if (along <= 0 || along < across) continue
+    if (along <= 0) continue
     best = Math.max(best, coverAt(game, plus(target, d)))
   }
   return best

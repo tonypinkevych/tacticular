@@ -20,12 +20,12 @@ describe("cover", () => {
   const g = setup([".....", "..:..", "..T..", ".....", "....."])
   const t = { x: 2, y: 2 }
   test("cover counts against attacks from its side", () => {
+    expect(coverAgainst(g, t, { x: 0, y: 1 })).toBe(2)
     expect(coverAgainst(g, t, { x: 2, y: 0 })).toBe(2)
     expect(coverAgainst(g, t, { x: 0, y: 0 })).toBe(2)
   })
   test("attacks from the open side flank", () => {
     expect(coverAgainst(g, t, { x: 4, y: 2 })).toBe(0)
     expect(coverAgainst(g, t, { x: 2, y: 4 })).toBe(0)
-    expect(coverAgainst(g, t, { x: 0, y: 1 })).toBe(0)
   })
 })

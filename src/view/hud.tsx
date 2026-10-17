@@ -1,17 +1,19 @@
 import { For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../i18n/strings"
-import { odds } from "../rules/combat"
+import type { Part } from "../rules/combat"
 import { flankers } from "../rules/cover"
 import { WEAPONS } from "../rules/data"
 import { visibleToSquad } from "../rules/stealth"
-import type { Game, Unit, WeaponId } from "../rules/types"
-import { alive, foes, sideOf } from "../rules/units"
+import type { Game, Unit } from "../rules/types"
+import { alive, foes } from "../rules/units"
 import { Board } from "./board"
 import { Log, name } from "./log"
-import { type Model, slots } from "./model"
+import { type Forecast, forecast, type Model, slots } from "./model"
 import { SPEEDS } from "./motion"
 
 const icon = (kind: string) => `${import.meta.env.BASE_URL}icons/${kind}.svg`
+
+const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
 
 function Hp(props: { unit: Unit }) {
   return (
@@ -81,12 +83,12 @@ function Card(props: { unit: Unit; game: Game }) {
         </Show>
       </div>
       <div class="stats">
-        {stat(t("ui.aim"), `+${u().aim}`)}
+        {stat(t("ui.aim"), signed(u().aim))}
         {stat(t("ui.defense"), u().defense)}
         {stat(t("ui.armor"), u().armor)}
         {stat(t("ui.mobility"), u().mobility)}
         {stat(t("ui.vision"), u().vision)}
-        {stat(t("ui.will"), `+${u().will}`)}
+        {stat(t("ui.will"), signed(u().will))}
       </div>
       <Show
         when={
@@ -119,48 +121,84 @@ function Card(props: { unit: Unit; game: Game }) {
   )
 }
 
+function Parts(props: { parts: Part[] }) {
+  return (
+    <span class="muted">
+      {" ("}
+      {props.parts.map((p, i) => `${i ? ", " : ""}${t(`part.${p.key}`)} ${i ? signed(p.value) : p.value}`).join("")}
+      {")"}
+    </span>
+  )
+}
+
+function Edge(props: { edge: number; advantages: string[]; disadvantages: string[] }) {
+  const why = (list: string[]) => list.map((r) => t(`reason.${r}`)).join(", ")
+  return (
+    <div classList={{ good: props.edge > 0, bad: props.edge < 0, muted: props.edge === 0 }}>
+      {props.edge > 0
+        ? t("ui.edge.advantage", { why: why(props.advantages) })
+        : props.edge < 0
+          ? t("ui.edge.disadvantage", { why: why(props.disadvantages) })
+          : props.advantages.length || props.disadvantages.length
+            ? t("ui.edge.cancel", { good: why(props.advantages), bad: why(props.disadvantages) })
+            : t("ui.edge.none")}
+    </div>
+  )
+}
+
+/** How the chance of the armed action is built, step by step. */
 function Preview(props: { model: Model }) {
   const m = props.model
   const data = () => {
     const u = m.unit()
     const a = m.armed()
-    if (!u || !a?.target || !a.slot.startsWith("weapon:")) return null
-    const target = m.game().units.find((x) => x.id === a.target)
-    if (!target || sideOf(target) === "squad") return null
-    const weapon = a.slot.slice(7) as WeaponId
-    return { target, weapon, o: odds(m.game(), u, target, weapon) }
+    return u && a ? forecast(m.game(), u, a, m.hover()) : null
   }
   return (
     <Show when={data()}>
       {(d) => (
         <section class="card preview">
           <div class="name">
-            {t(`weapon.${d().weapon}`)} → {name(m.game(), d().target.id)}
+            {d().label} → {name(m.game(), d().target.id)}
           </div>
-          <div class="big">
-            {t("ui.chance")}: {Math.round(d().o.chance * 100)}%
-          </div>
-          <div>
-            {t("ui.damage")}: {d().o.min}–{d().o.max}
-          </div>
-          <div class="muted">
-            d20 +{d().o.aim} vs {d().o.defense}
-          </div>
-          <Show when={d().o.advantages.length}>
-            <div class="good">
-              {t("ui.advantage")}:{" "}
-              {d()
-                .o.advantages.map((r) => t(`reason.${r}`))
-                .join(", ")}
-            </div>
+          <Show when={d().kind === "attack" && (d() as Extract<Forecast, { kind: "attack" }>)}>
+            {(a) => (
+              <>
+                <div class="big">
+                  {t("ui.chance")}: {Math.round(a().odds.chance * 100)}%
+                </div>
+                <div>{t("ui.need", { need: a().odds.need })}</div>
+                <div>
+                  {t("ui.yourAim")}: {signed(a().odds.aim)}
+                  <Parts parts={a().odds.aimParts} />
+                </div>
+                <div>
+                  {t("ui.theirDefense")}: {a().odds.defense}
+                  <Parts parts={a().odds.defenseParts} />
+                </div>
+                <Edge edge={a().odds.edge} advantages={a().odds.advantages} disadvantages={a().odds.disadvantages} />
+                <div>
+                  {t("ui.damage")}: {a().odds.min}–{a().odds.max}
+                  <Show when={a().odds.armor}>
+                    <span class="muted"> ({t("ui.armorCut", { armor: a().odds.armor })})</span>
+                  </Show>
+                </div>
+                <div class="muted small">{t("ui.naturals")}</div>
+              </>
+            )}
           </Show>
-          <Show when={d().o.disadvantages.length}>
-            <div class="bad">
-              {t("ui.disadvantage")}:{" "}
-              {d()
-                .o.disadvantages.map((r) => t(`reason.${r}`))
-                .join(", ")}
-            </div>
+          <Show when={d().kind === "save" && (d() as Extract<Forecast, { kind: "save" }>)}>
+            {(s) => (
+              <>
+                <div class="big">
+                  {t("ui.works")}: {Math.round(s().chance * 100)}%
+                </div>
+                <div>{t("ui.saveRule", { will: signed(s().will), dc: s().dc })}</div>
+                <Show when={s().edge > 0}>
+                  <div class="bad">{t("ui.saveHunker")}</div>
+                </Show>
+              </>
+            )}
           </Show>
         </section>
       )}

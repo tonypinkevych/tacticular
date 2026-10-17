@@ -1,8 +1,9 @@
 import { batch, createSignal } from "solid-js"
 import { type Lang, language, remember, t, use } from "../i18n/strings"
 import { canTarget, Illegal, landings } from "../rules/actions"
-import { odds } from "../rules/combat"
+import { type Odds, odds } from "../rules/combat"
 import { PROFILES, RANGE, WEAPONS } from "../rules/data"
+import { failChance } from "../rules/dice"
 import { AROUND, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
 import { visibleTiles } from "../rules/sight"
 import { visibleToSquad } from "../rules/stealth"
@@ -184,6 +185,39 @@ export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): 
   return { ...armed, at: hover && range(game, u, armed.slot).has(key(hover)) ? hover : armed.at }
 }
 
+/** What an armed action would do to its target: hit odds for attacks and Charge, save odds for mind spells. */
+export type Forecast =
+  | { kind: "attack"; label: string; target: Unit; odds: Odds }
+  | { kind: "save"; label: string; target: Unit; will: number; dc: number; edge: number; chance: number }
+
+export function forecast(game: Game, u: Unit, armed: Armed, hover: Point | null): Forecast | null {
+  const aimed = aimFor(game, u, armed, hover)
+  const target = game.units.find((x) => x.id === aimed.target)
+  if (!target || !alive(target)) return null
+  const [kind, id] = aimed.slot.split(":")
+  if (kind === "weapon" && sideOf(target) !== sideOf(u)) {
+    return { kind: "attack", label: t(`weapon.${id}`), target, odds: odds(game, u, target, id as WeaponId) }
+  }
+  if (aimed.slot === "ability:charge" && aimed.at) {
+    const from = { ...u, pos: aimed.at }
+    return { kind: "attack", label: t("ability.charge"), target, odds: odds(game, from, target, u.weapon) }
+  }
+  if (kind === "ability" && (id === "fear" || id === "dread" || id === "dominate")) {
+    const dc = 10 + u.will
+    const edge = target.stance === "hunker" ? 1 : 0
+    return {
+      kind: "save",
+      label: t(`ability.${id}`),
+      target,
+      will: target.will,
+      dc,
+      edge,
+      chance: failChance(target.will, dc, edge),
+    }
+  }
+  return null
+}
+
 /** All UI state as signals, and the commands that change it. */
 export function createModel(session: Session, store: Storage) {
   const read = (k: string) => {
@@ -350,7 +384,7 @@ export function createModel(session: Session, store: Storage) {
     }
     if (e.code === "Space") {
       e.preventDefault()
-      playback.skip(performance.now())
+      setShown(playback.skip(performance.now()))
       return
     }
     if (e.code === "KeyZ") {

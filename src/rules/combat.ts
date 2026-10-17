@@ -27,8 +27,18 @@ export interface Odds {
   advantages: Reason[]
   disadvantages: Reason[]
   chance: number
+  need: number
+  aimParts: Part[]
+  defenseParts: Part[]
+  armor: number
   min: number
   max: number
+}
+
+/** One named number that adds up to Aim or Defense, for the chance breakdown. */
+export interface Part {
+  key: "aim" | "warchief" | "range" | "defense" | "low" | "high" | "ward"
+  value: number
 }
 
 export interface Shot {
@@ -71,8 +81,14 @@ export function odds(
   const over = weapon.melee ? 0 : Math.max(0, range - weapon.max, weapon.min - range)
   if (over > 0) dis.push("range")
   const edge = adv.length > 0 && dis.length === 0 ? 1 : dis.length > 0 && adv.length === 0 ? -1 : 0
-  const aim = attacker.aim + groupAim(game, attacker) - over
-  const defense = target.defense + cover + (has(target, "ward") ? 2 : 0)
+  const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
+  if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
+  if (over) aimParts.push({ key: "range", value: -over })
+  const defenseParts: Part[] = [{ key: "defense", value: target.defense }]
+  if (cover) defenseParts.push({ key: cover >= 5 ? "high" : "low", value: cover })
+  if (has(target, "ward")) defenseParts.push({ key: "ward", value: 2 })
+  const aim = aimParts.reduce((sum, p) => sum + p.value, 0)
+  const defense = defenseParts.reduce((sum, p) => sum + p.value, 0)
   const armor = weapon.ignoresArmor ? 0 : armorOf(game, target)
   const sneak = attacker.kind === "rogue" && (adv.includes("flanked") || adv.includes("unaware")) ? 6 : 0
   const lo = weapon.dice.count + weapon.dice.bonus + (sneak ? 1 : 0)
@@ -86,6 +102,10 @@ export function odds(
     advantages: adv,
     disadvantages: dis,
     chance: weapon.saveHalf ? 1 : chance(aim, defense, edge),
+    need: Math.min(20, Math.max(2, defense - aim)),
+    aimParts,
+    defenseParts,
+    armor,
     min: Math.max(1, lo - armor),
     max: Math.max(1, hi - armor),
   }
