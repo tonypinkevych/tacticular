@@ -228,6 +228,10 @@ function engaged(game: Game, u: Unit): Action | null {
   }
   if (now && now.value > 0.4) return now.action
   if (WEAPONS[u.weapon].ammo !== null && u.ammo <= 0) return { type: "reload", unit: u.id }
+  const nearest = targets.sort((a, b) => distance(u.pos, a.pos) - distance(u.pos, b.pos))[0]
+  const keep = u.kind === "whisperer" ? 6 : 0
+  const step = !attack && distance(u.pos, nearest.pos) > keep ? toward(game, u, nearest.pos) : null
+  if (step) return step
   if (inCover(game, u.pos)) return { type: "hunker", unit: u.id }
   return { type: "overwatch", unit: u.id }
 }

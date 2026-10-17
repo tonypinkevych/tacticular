@@ -79,10 +79,11 @@ describe("height", () => {
     expect(r.cost.get(key({ x: 2, y: 0 }))).toBe(3)
     expect(r.path({ x: 2, y: 1 })[0]).toEqual({ x: 1, y: 0 })
   })
-  test("a unit on a roof comes down only by a ladder", () => {
+  test("a unit on a roof jumps down to the ground for a normal step", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const r = reach(setup(["RR.", "..."], [v]), v, 10)
-    expect([...r.cost.keys()]).toEqual([key({ x: 0, y: 0 }), key({ x: 1, y: 0 })])
+    expect(r.cost.get(key({ x: 0, y: 1 }))).toBe(1)
+    expect(r.cost.get(key({ x: 2, y: 0 }))).toBe(2)
   })
   test("a ridge is walked on at normal cost", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })

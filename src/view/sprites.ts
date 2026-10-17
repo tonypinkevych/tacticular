@@ -219,6 +219,41 @@ export class Sprites {
     ctx.drawImage(from, cell[0] * TILE, cell[1] * TILE, TILE, TILE, x, y, size, size)
   }
 
+  /** Draws a one-pixel border in a flat color around a cell's shape. */
+  edge(ctx: CanvasRenderingContext2D, cell: Cell, color: string, x: number, y: number, size: number): void {
+    if (!this.sheet.complete || this.sheet.naturalWidth === 0) return
+    ctx.imageSmoothingEnabled = false
+    const from = this.flat(color)
+    const px = size / TILE
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ])
+      ctx.drawImage(from, cell[0] * TILE, cell[1] * TILE, TILE, TILE, x + dx * px, y + dy * px, size, size)
+  }
+
+  private flat(color: string): HTMLCanvasElement {
+    const id = `flat ${color}`
+    const ready = this.tinted.get(id)
+    if (ready) return ready
+    const c = document.createElement("canvas")
+    c.width = this.sheet.naturalWidth
+    c.height = this.sheet.naturalHeight
+    const g = c.getContext("2d")!
+    g.drawImage(this.sheet, 0, 0)
+    g.globalCompositeOperation = "source-in"
+    g.fillStyle = color
+    g.fillRect(0, 0, c.width, c.height)
+    this.tinted.set(id, c)
+    return c
+  }
+
   private tint(color: string): HTMLCanvasElement {
     const ready = this.tinted.get(color)
     if (ready) return ready

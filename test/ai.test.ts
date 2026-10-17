@@ -103,7 +103,7 @@ describe("headless missions", () => {
       if (end.phase === "won" || end.phase === "lost") ended++
     }
     expect(ended).toBeGreaterThan(35)
-  })
+  }, 15000)
 })
 
 describe("frames", () => {

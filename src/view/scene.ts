@@ -1,6 +1,6 @@
-import { coverAgainst, coverAt, flankers } from "../rules/cover"
+import { coverAgainst, flankers, shelter } from "../rules/cover"
 import { DETECTION, WEAPONS } from "../rules/data"
-import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt } from "../rules/grid"
+import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt, unitAt } from "../rules/grid"
 import { sees, visibleTiles } from "../rules/sight"
 import { visibleToSquad } from "../rules/stealth"
 import type { Game, Point, Unit } from "../rules/types"
@@ -82,10 +82,17 @@ const phase = (id: string): number => [...id].reduce((sum, c) => sum + c.charCod
 
 /**
  * A unit's sprite on a base disc in its side's color; aliens face left. It bobs at rest and while walking,
- * hops over low cover, kicks back when it fires and flashes and shakes when hit. Concealed units get a
- * dashed ring.
+ * hops over low cover, kicks back when it fires and flashes and shakes when hit. A highlight draws a border
+ * around the sprite; concealed units get a pale one.
  */
-function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at: Point = u.pos): void {
+function figure(
+  ctx: CanvasRenderingContext2D,
+  sc: Scene,
+  u: Unit,
+  alpha = 1,
+  at: Point = u.pos,
+  highlight: string | null = null,
+): void {
   const s = sc.size
   const px = s / 16
   const x = at.x * s
@@ -121,6 +128,11 @@ function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at
     ctx.translate(s, 0)
     ctx.scale(-1, 1)
   }
+  const border = highlight ?? (u.concealed ? "rgba(232,241,255,0.45)" : null)
+  if (border) {
+    figures.edge(ctx, UNIT_CELLS[u.kind], border, 0, 0, s)
+    gear.edge(ctx, UNIT_CELLS[u.kind], border, 0, 0, s)
+  }
   figures.draw(ctx, UNIT_CELLS[u.kind], struck ? "#ffffff" : tone(u), 0, 0, s)
   if (!struck) gear.draw(ctx, UNIT_CELLS[u.kind], null, 0, 0, s)
   if (firing) {
@@ -128,16 +140,6 @@ function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at
     ctx.fillRect(s - 2 * px, s * 0.5, 2 * px, 2 * px)
   }
   ctx.restore()
-  if (u.concealed) {
-    ctx.setLineDash([3, 3])
-    ctx.strokeStyle = "rgba(232,241,255,0.8)"
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.arc(x + s / 2, y + s / 2, s * 0.46, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.setLineDash([])
-    ctx.lineWidth = 1
-  }
   ctx.globalAlpha = 1
 }
 
@@ -293,13 +295,22 @@ function tint(ctx: CanvasRenderingContext2D, s: number, keys: Iterable<number>, 
   for (const k of keys) ctx.fillRect((k % 1000) * s, Math.floor(k / 1000) * s, s, s)
 }
 
-function ring(ctx: CanvasRenderingContext2D, s: number, p: Point, color: string): void {
-  ctx.strokeStyle = color
-  ctx.lineWidth = 3
-  ctx.beginPath()
-  ctx.arc(p.x * s + s / 2, p.y * s + s / 2, s * 0.48, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.lineWidth = 1
+/** Border colors of highlighted units: the aimed target, flank hints for the hovered tile, the selected unit, targets. */
+function highlights(sc: Scene, enemies: Unit[]): Map<string, string> {
+  const { game, hover, selected: sel } = sc
+  const out = new Map<string, string>()
+  for (const e of enemies) if (sc.targets.has(e.id)) out.set(e.id, "rgba(255,255,255,0.55)")
+  if (sel) out.set(sel.id, "#ffffff")
+  if (hover && sel && (sc.near.has(key(hover)) || sc.far.has(key(hover)))) {
+    for (const e of enemies) {
+      if (sees(game, e, hover) && coverAgainst(game, hover, e.pos) === 0) out.set(e.id, "#ff3b3b")
+      else if (sees(game, { ...sel, pos: hover }, e.pos) && coverAgainst(game, e.pos, hover) === 0)
+        out.set(e.id, "#3bff6a")
+    }
+  }
+  const aimed = sc.aimed && unitAt(game, sc.aimed)
+  if (aimed) out.set(aimed.id, "#ff3b3b")
+  return out
 }
 
 function arrow(ctx: CanvasRenderingContext2D, s: number, from: Point, to: Point, color: string, dashed = false): void {
@@ -371,7 +382,7 @@ function shield(
 /** Shield icons on the tile edges that give cover: full for high cover, half for low. */
 function cover(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): void {
   for (const d of ORTHOGONAL) {
-    const c = coverAt(game, plus(p, d))
+    const c = shelter(game, p, plus(p, d))
     if (c === 0) continue
     const cx = p.x * s + s / 2 + d.x * s * 0.42
     const cy = p.y * s + s / 2 + d.y * s * 0.42
@@ -497,12 +508,13 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
       if (dx || dy) arrow(ctx, s, e.pos, { x: e.pos.x + dx * 0.9, y: e.pos.y + dy * 0.9 }, "#ffd84a")
     }
   }
+  const marks = highlights(sc, enemies)
   for (const u of game.units) {
     if (u.down > 0) downed(ctx, sc, u)
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
     const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0
-    figure(ctx, sc, u, spent ? 0.45 : 1, at)
+    figure(ctx, sc, u, spent ? 0.45 : 1, at, marks.get(u.id) ?? null)
     badges(ctx, s, u, at)
     if (u.side === "squad" && sideOf(u) === "squad" && flankers(game, u, enemies).length > 0) warn(ctx, s, at)
   }
@@ -521,12 +533,13 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   if (sc.selected) {
     const id = sc.selected.id
     const at = sc.mover?.id === id ? sc.mover.at : (game.units.find((x) => x.id === id)?.pos ?? sc.selected.pos)
-    ring(ctx, s, at, "#ffffff")
     if (!sc.mover) cover(ctx, s, game, at)
   }
-  if (sc.aimed) {
-    ring(ctx, s, sc.aimed, "#ff3b3b")
-    ring(ctx, s, sc.aimed, "rgba(255,255,255,0.35)")
+  if (sc.aimed && !unitAt(game, sc.aimed)) {
+    ctx.strokeStyle = "#ff3b3b"
+    ctx.lineWidth = 2
+    ctx.strokeRect(sc.aimed.x * s + 1, sc.aimed.y * s + 1, s - 2, s - 2)
+    ctx.lineWidth = 1
   }
   if (sc.shot) shot(ctx, s, sc.shot)
   for (const f of sc.texts) {
@@ -544,16 +557,10 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     ctx.globalAlpha = 1
     ctx.lineWidth = 1
   }
-  for (const e of enemies) if (sc.targets.has(e.id)) ring(ctx, s, e.pos, "rgba(255,255,255,0.55)")
   const hover = sc.hover
   const sel = sc.selected
   if (hover && sel && (sc.near.has(key(hover)) || sc.far.has(key(hover)))) {
     cover(ctx, s, game, hover)
-    for (const e of enemies) {
-      if (sees(game, e, hover) && coverAgainst(game, hover, e.pos) === 0) ring(ctx, s, e.pos, "#ff3b3b")
-      else if (sees(game, { ...sel, pos: hover }, e.pos) && coverAgainst(game, e.pos, hover) === 0)
-        ring(ctx, s, e.pos, "#3bff6a")
-    }
     const radius = (e: Unit) => (e.alert === "unaware" ? DETECTION.unaware : DETECTION.investigating)
     if (sel.concealed && enemies.some((e) => sees(game, e, hover, radius(e)))) {
       sprites.draw(ctx, [36, 13], "#ff3b3b", hover.x * s + s / 4, hover.y * s + s / 4, s / 2)

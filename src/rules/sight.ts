@@ -1,6 +1,6 @@
-import { coverAt } from "./cover"
-import { area, blocksSight, distance, inside, key, ORTHOGONAL, plus, tileAt, up, walkable } from "./grid"
-import type { Game, Point, Unit } from "./types"
+import { shelter } from "./cover"
+import { area, blocksSight, climb, distance, inside, key, ORTHOGONAL, plus, tileAt, up, walkable } from "./grid"
+import type { Game, Point, Tile, Unit } from "./types"
 
 function line(a: Point, b: Point): Point[] {
   const out: Point[] = []
@@ -26,17 +26,19 @@ function line(a: Point, b: Point): Point[] {
   return out
 }
 
-/** True when no wall, high cover or closed door lies strictly between the two tiles. */
+/** True when no wall, high cover or closed door lies strictly between the two tiles, nor a roof between two ground tiles. */
 export function clear(game: Game, a: Point, b: Point): boolean {
-  const open = (from: Point, to: Point) => line(from, to).every((p) => !blocksSight(tileAt(game, p)))
+  const over = tileAt(game, a) === "roof" || tileAt(game, b) === "roof"
+  const blocks = (t: Tile) => blocksSight(t) || (t === "roof" && !over)
+  const open = (from: Point, to: Point) => line(from, to).every((p) => !blocks(tileAt(game, p)))
   return open(a, b) || open(b, a)
 }
 
 /** Tiles a unit can look from: its own, and the open side tiles when it stands next to cover. */
 export function peeks(game: Game, p: Point): Point[] {
   const sides = ORTHOGONAL.map((d) => plus(p, d))
-  if (!sides.some((s) => coverAt(game, s) > 0)) return [p]
-  return [p, ...sides.filter((s) => walkable(tileAt(game, s)))]
+  if (!sides.some((s) => shelter(game, p, s) > 0)) return [p]
+  return [p, ...sides.filter((s) => walkable(tileAt(game, s)) && climb(tileAt(game, p), tileAt(game, s)))]
 }
 
 /** True when one of the two units, never both, can step out from cover and see the other. */

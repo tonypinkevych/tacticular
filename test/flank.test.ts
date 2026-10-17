@@ -14,7 +14,8 @@ describe("flank geometry", () => {
     ["slightly off", { x: 8, y: 0 }, 2],
     ["45 degrees", { x: 12, y: 0 }, 2],
     ["past 45 degrees", { x: 12, y: 3 }, 2],
-    ["one row ahead, far to the side", { x: 0, y: 5 }, 2],
+    ["two rows ahead, far to the side", { x: 0, y: 4 }, 2],
+    ["level with the cover, far to the side", { x: 0, y: 5 }, 0],
     ["side on", { x: 12, y: 6 }, 0],
     ["behind", { x: 6, y: 12 }, 0],
   ])("low cover north, attacker %s", (_, from, cover) => {

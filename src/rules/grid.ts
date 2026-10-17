@@ -23,9 +23,8 @@ export const walkable = (tile: Tile): boolean =>
 /** High ground: a ridge or a rooftop. */
 export const up = (tile: Tile): boolean => tile === "ridge" || tile === "roof"
 
-/** A step between two tiles that a roof allows: on and off a roof only by a ladder or another roof. */
-export const climb = (from: Tile, to: Tile): boolean =>
-  (to !== "roof" || from === "roof" || from === "ladder") && (from !== "roof" || to === "roof" || to === "ladder")
+/** A step between two tiles that a roof allows: up onto a roof only by a ladder or another roof; down anywhere. */
+export const climb = (from: Tile, to: Tile): boolean => to !== "roof" || from === "roof" || from === "ladder"
 
 /** A tile a walk can pass: walkable ground, or a closed door that opens on the way. */
 export const passable = (tile: Tile): boolean => walkable(tile) || tile === "door"
@@ -34,7 +33,7 @@ export const blocksSight = (tile: Tile): boolean => tile === "wall" || tile === 
 
 export function coverOf(tile: Tile): number {
   if (tile === "low") return 2
-  if (tile === "high" || tile === "wall" || tile === "door") return 5
+  if (tile === "high" || tile === "wall" || tile === "door" || tile === "roof") return 5
   return 0
 }
 
