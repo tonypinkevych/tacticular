@@ -6,7 +6,7 @@ import { visibleToSquad } from "../rules/stealth"
 import type { Game, Point, Unit } from "../rules/types"
 import { alive, sideOf } from "../rules/units"
 import type { Float } from "./motion"
-import { glyph, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
+import { figures, glyph, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
 
 /** What the board shows besides the game: selection, reach, hover and overlays. */
 export interface Scene {
@@ -64,7 +64,7 @@ function figure(ctx: CanvasRenderingContext2D, s: number, u: Unit, alpha = 1, at
   ctx.beginPath()
   ctx.ellipse(x + s / 2, y + s * 0.88, s * 0.34, s * 0.1, 0, 0, Math.PI * 2)
   ctx.fill()
-  sprites.draw(ctx, UNIT_CELLS[u.kind], tone(u), x, y, s)
+  figures.draw(ctx, UNIT_CELLS[u.kind], tone(u), x, y, s)
   if (u.concealed) {
     ctx.setLineDash([3, 3])
     ctx.strokeStyle = "rgba(232,241,255,0.8)"
@@ -415,11 +415,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
     const radius = (e: Unit) => (e.alert === "unaware" ? DETECTION.unaware : DETECTION.investigating)
     if (sel.concealed && enemies.some((e) => sees(game, e, hover, radius(e)))) {
-      ctx.fillStyle = "#ff3b3b"
-      ctx.font = `bold ${Math.floor(s * 0.6)}px system-ui`
-      ctx.textAlign = "center"
-      ctx.textBaseline = "middle"
-      ctx.fillText("👁", hover.x * s + s / 2, hover.y * s + s / 2)
+      sprites.draw(ctx, [36, 13], "#ff3b3b", hover.x * s + s / 4, hover.y * s + s / 4, s / 2)
     }
   }
   if (hover && !same(hover, sc.selected?.pos ?? { x: -1, y: -1 })) {

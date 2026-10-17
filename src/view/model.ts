@@ -272,6 +272,7 @@ export function createModel(session: Session, store: Storage) {
   const [lang, setLang] = createSignal<Lang>(language())
   const [confirmNew, setConfirmNew] = createSignal(false)
   const [logOpen, setLogOpen] = createSignal(true)
+  const [look, setLook] = createSignal<Point | null>(null, { equals: false })
 
   const unit = (): Unit | null => {
     const u = game().units.find((x) => x.id === selected())
@@ -294,8 +295,10 @@ export function createModel(session: Session, store: Storage) {
     }
     const at = squad.findIndex((u) => u.id === selected())
     const step = back ? squad.length - 1 : 1
+    const next = squad[at < 0 ? 0 : (at + step) % squad.length]
     batch(() => {
-      setSelected(squad[at < 0 ? 0 : (at + step) % squad.length].id)
+      setSelected(next.id)
+      setLook(next.pos)
       setArmed(null)
       setMessage("")
     })
@@ -496,6 +499,7 @@ export function createModel(session: Session, store: Storage) {
     shown,
     setShown,
     selected,
+    look,
     armed,
     hover,
     setHover: point,

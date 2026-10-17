@@ -66,20 +66,51 @@ export const PALETTES: Record<Biome, Palette> = {
 /** A unit's color: blue for the squad, red for enemies, violet for a Dominated soldier. */
 export const tone = (u: Unit): string => (has(u, "dominated") ? "#c08bff" : u.side === "squad" ? "#8ec5ff" : "#ff7a6b")
 
+/** Cells of the unit sheet, one figure per kind. */
 export const UNIT_CELLS: Record<Kind, Cell> = {
-  vanguard: [28, 0],
-  ranger: [26, 0],
-  warden: [29, 0],
-  cleric: [30, 1],
-  rogue: [28, 1],
-  mage: [26, 9],
-  orc: [31, 3],
-  bomber: [26, 2],
-  ogre: [30, 6],
-  shieldwall: [27, 0],
-  assassin: [27, 1],
-  warchief: [28, 3],
-  whisperer: [26, 6],
+  vanguard: [0, 0],
+  ranger: [1, 0],
+  warden: [2, 0],
+  cleric: [3, 0],
+  rogue: [4, 0],
+  mage: [5, 0],
+  orc: [6, 0],
+  bomber: [7, 0],
+  ogre: [8, 0],
+  shieldwall: [9, 0],
+  assassin: [10, 0],
+  warchief: [11, 0],
+  whisperer: [12, 0],
+}
+
+/** Cells of the 1-bit sheet for action bar slots, by slot id. */
+export const SLOT_CELLS: Record<string, Cell> = {
+  "weapon:warblade": [32, 8],
+  "weapon:longbow": [42, 9],
+  "weapon:repeater": [40, 9],
+  "weapon:crossbow": [41, 9],
+  "weapon:dagger": [24, 11],
+  "weapon:bolt": [38, 9],
+  "weapon:axes": [37, 9],
+  "weapon:knives": [25, 11],
+  "ability:charge": [29, 21],
+  "ability:volley": [26, 11],
+  "ability:bulwark": [40, 3],
+  "ability:heal": [43, 10],
+  "ability:ward": [38, 3],
+  "ability:vanish": [24, 14],
+  "ability:fear": [38, 14],
+  "ability:blink": [28, 12],
+  "ability:rouse": [36, 13],
+  "ability:shove": [29, 20],
+  "ability:spot": [37, 11],
+  "ability:rally": [24, 13],
+  "item:flask": [28, 11],
+  "item:smoke": [43, 8],
+  "item:stone": [38, 16],
+  overwatch: [35, 12],
+  hunker: [37, 4],
+  reload: [41, 20],
 }
 
 const TUFTS: Cell[] = [
@@ -201,3 +232,5 @@ export class Sprites {
 }
 
 export const sprites = new Sprites(`${import.meta.env.BASE_URL}sprites/1bit.png`)
+
+export const figures = new Sprites(`${import.meta.env.BASE_URL}sprites/units.png`)

@@ -12,21 +12,25 @@ import { Board } from "./board"
 import { Log } from "./log"
 import { type Forecast, forecast, type Model, slots } from "./model"
 import { SPEEDS } from "./motion"
-import { sprites, tone, UNIT_CELLS } from "./sprites"
+import { type Cell, figures, SLOT_CELLS, type Sprites, sprites, tone, UNIT_CELLS } from "./sprites"
 
-/** A unit's pixel sprite at portrait size. */
-function Portrait(props: { unit: Unit }) {
+/** One cell of a pixel sheet drawn at twice its size. */
+function Pixel(props: { sheet: Sprites; cell: Cell; color: string; class: string }) {
   let canvas!: HTMLCanvasElement
   createEffect(() => {
-    const u = props.unit
-    sprites.loaded.then(() => {
+    const { sheet, cell, color } = props
+    sheet.loaded.then(() => {
       const g = canvas.getContext("2d")!
       g.clearRect(0, 0, 32, 32)
-      sprites.draw(g, UNIT_CELLS[u.kind], tone(u), 0, 0, 32)
+      sheet.draw(g, cell, color, 0, 0, 32)
     })
   })
-  return <canvas ref={canvas} class="portrait" width={32} height={32} />
+  return <canvas ref={canvas} class={props.class} width={32} height={32} />
 }
+
+const Portrait = (props: { unit: Unit }) => (
+  <Pixel sheet={figures} cell={UNIT_CELLS[props.unit.kind]} color={tone(props.unit)} class="portrait" />
+)
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
 
@@ -349,11 +353,7 @@ function Bar(props: { model: Model }) {
                 <Show when={s().badge}>
                   <span class="badge">{s().badge}</span>
                 </Show>
-                <img
-                  class="glyph"
-                  src={`${import.meta.env.BASE_URL}icons/actions/${s().id.replace(":", "-")}.svg`}
-                  alt={s().label}
-                />
+                <Pixel sheet={sprites} cell={SLOT_CELLS[s().id] ?? [36, 13]} color="#d6e4ea" class="glyph" />
               </span>
             </button>
           )}
@@ -418,9 +418,12 @@ export function App(props: { model: Model }): JSX.Element {
   onCleanup(() => window.removeEventListener("keydown", m.key))
   return (
     <Show when={m.lang()} keyed>
-      <main classList={{ logged: m.logOpen() }}>
+      <main classList={{ logged: m.logOpen(), alien: m.shown().phase === "enemy" }}>
         <Board model={m} />
         <Top model={m} />
+        <Show when={m.shown().phase === "enemy"}>
+          <div id="banner">{t("ui.activity")}</div>
+        </Show>
         <div class="corner left">
           <Show when={m.unit()} fallback={<p class="card muted">{t("ui.pick")}</p>}>
             {(u) => <Card unit={u()} game={m.game()} />}

@@ -16,8 +16,6 @@ const short = (game: Game, id: unknown): string => {
 
 const BRIEF = ["log.miss", "log.hit", "log.crit", "log.lash", "log.fear", "log.dread", "log.dominate"]
 
-const MARK: Record<string, string> = { "log.hit": "✓", "log.crit": "✦", "log.miss": "✗", "log.dies": "☠" }
-
 function line(game: Game, e: Entry, brief: boolean): string {
   const p: Record<string, string | number | boolean> = { ...e.params }
   for (const k of ["unit", "target", "by"]) if (k in p) p[k] = brief ? short(game, p[k]) : name(game, p[k])
@@ -74,7 +72,7 @@ export function Log(props: { game: Game }) {
               <For each={r.lines}>
                 {(l) => (
                   <li class={`${l.key.replace(".", "-")} ${l.side}`}>
-                    <span class="mark">{MARK[l.key] ?? "·"}</span>
+                    <span class="mark" />
                     <span class="text">{l.text}</span>
                     <span class="full">{l.full}</span>
                     <Show when={l.count > 1}>

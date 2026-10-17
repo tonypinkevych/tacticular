@@ -6,11 +6,12 @@ import type { Point } from "../rules/types"
 import { sideOf } from "../rules/units"
 import { aimFor, type Model, range, slots } from "./model"
 import { draw, type Scene } from "./scene"
-import { PALETTES, sprites, TILE } from "./sprites"
+import { figures, PALETTES, sprites, TILE } from "./sprites"
 
 const ZOOMS = [2, 3, 4]
 const MARGIN = 320
 const PAN_SPEED = 900
+const WHEEL_STEP = 50
 const PAN_KEYS: Record<string, Point> = {
   KeyW: { x: 0, y: -1 },
   ArrowUp: { x: 0, y: -1 },
@@ -27,6 +28,9 @@ export function Board(props: { model: Model }) {
   const m = props.model
   let canvas!: HTMLCanvasElement
   let zoom = 3
+  let scale = 3
+  const anchor = { x: 0, y: 0 }
+  let goal: Point | null = null
   let dirty = true
   let last = 0
   let raf = 0
@@ -34,8 +38,9 @@ export function Board(props: { model: Model }) {
   const held = new Set<string>()
   let drag: { x: number; y: number; cx: number; cy: number; moved: boolean } | null = null
   let dragged = false
-  const size = () => TILE * zoom
-  sprites.loaded.then(() => {
+  let wheel = 0
+  const size = () => Math.round(TILE * scale)
+  Promise.all([sprites.loaded, figures.loaded]).then(() => {
     dirty = true
   })
 
@@ -52,28 +57,49 @@ export function Board(props: { model: Model }) {
     dirty = true
   }
 
-  /** Centers the camera on a tile. */
-  const focus = (p: Point) => {
-    cam.x = (p.x + 0.5) * size() - canvas.clientWidth / 2
-    cam.y = (p.y + 0.5) * size() - canvas.clientHeight / 2
-    clamp()
-  }
+  /** The camera position that centers a tile. */
+  const center = (p: Point): Point => ({
+    x: (p.x + 0.5) * size() - canvas.clientWidth / 2,
+    y: (p.y + 0.5) * size() - canvas.clientHeight / 2,
+  })
 
-  /** Centers on a tile only when it is near the screen edge or off screen. */
+  /** Glides to a tile only when it is near the screen edge or off screen. */
   const reveal = (p: Point) => {
     const x = (p.x + 0.5) * size() - cam.x
     const y = (p.y + 0.5) * size() - cam.y
     const w = canvas.clientWidth
     const h = canvas.clientHeight
-    if (x < w * 0.2 || x > w * 0.8 || y < h * 0.2 || y > h * 0.75) focus(p)
+    if (x < w * 0.2 || x > w * 0.8 || y < h * 0.2 || y > h * 0.75) goal = p
   }
 
   createEffect(
-    on(m.selected, () => {
-      const u = m.unit()
-      if (u && canvas) reveal(u.pos)
+    on(m.look, (p) => {
+      if (p && canvas) reveal(p)
     }),
   )
+
+  /** Moves the camera a step toward its goal and the zoom toward its level. */
+  const ease = (dt: number) => {
+    if (scale !== zoom) {
+      const wx = (anchor.x + cam.x) / size()
+      const wy = (anchor.y + cam.y) / size()
+      scale += (zoom - scale) * (1 - Math.exp(-dt * 16))
+      if (Math.abs(zoom - scale) < 0.02) scale = zoom
+      cam.x = wx * size() - anchor.x
+      cam.y = wy * size() - anchor.y
+      clamp()
+    }
+    if (goal && dt > 0) {
+      const to = center(goal)
+      const k = 1 - Math.exp(-dt * 8)
+      const bx = cam.x
+      const by = cam.y
+      cam.x += (to.x - cam.x) * k
+      cam.y += (to.y - cam.y) * k
+      clamp()
+      if (Math.abs(cam.x - bx) + Math.abs(cam.y - by) < 0.3) goal = null
+    }
+  }
 
   createEffect(() => {
     m.game()
@@ -89,6 +115,7 @@ export function Board(props: { model: Model }) {
   const scene = (now: number): Scene => {
     const still = m.playback.at(now)
     if (still.game !== m.shown()) m.setShown(still.game)
+    if (still.focus) reveal(still.focus)
     const g = m.game()
     const u = m.unit()
     const near = new Set<number>()
@@ -165,7 +192,9 @@ export function Board(props: { model: Model }) {
   const frame = (now: number) => {
     const dt = Math.min(0.05, (now - (last || now)) / 1000)
     last = now
+    ease(dt)
     if (held.size > 0) {
+      goal = null
       for (const k of held) {
         cam.x += PAN_KEYS[k].x * PAN_SPEED * dt
         cam.y += PAN_KEYS[k].y * PAN_SPEED * dt
@@ -212,7 +241,8 @@ export function Board(props: { model: Model }) {
     const { width, height } = m.game().board
     const fits = width * TILE * zoom <= canvas.clientWidth && height * TILE * zoom <= canvas.clientHeight
     const u = m.unit()
-    focus(u && !fits ? u.pos : { x: (width - 1) / 2, y: (height - 1) / 2 })
+    Object.assign(cam, center(u && !fits ? u.pos : { x: (width - 1) / 2, y: (height - 1) / 2 }))
+    clamp()
     raf = requestAnimationFrame(frame)
     window.addEventListener("resize", resize)
     window.addEventListener("keydown", down)
@@ -250,6 +280,7 @@ export function Board(props: { model: Model }) {
           const dy = e.clientY - drag.y
           if (drag.moved || Math.hypot(dx, dy) > 5) {
             drag.moved = true
+            goal = null
             cam.x = drag.cx - dx
             cam.y = drag.cy - dy
             clamp()
@@ -269,17 +300,15 @@ export function Board(props: { model: Model }) {
       }}
       onWheel={(e) => {
         e.preventDefault()
-        const i = ZOOMS.indexOf(zoom) + (e.deltaY < 0 ? 1 : -1)
+        wheel += e.deltaY
+        if (Math.abs(wheel) < WHEEL_STEP) return
+        const i = ZOOMS.indexOf(zoom) + (wheel < 0 ? 1 : -1)
+        wheel = 0
         if (i < 0 || i >= ZOOMS.length) return
         const r = canvas.getBoundingClientRect()
-        const mx = e.clientX - r.left
-        const my = e.clientY - r.top
-        const wx = (mx + cam.x) / size()
-        const wy = (my + cam.y) / size()
+        anchor.x = e.clientX - r.left
+        anchor.y = e.clientY - r.top
         zoom = ZOOMS[i]
-        cam.x = wx * size() - mx
-        cam.y = wy * size() - my
-        clamp()
       }}
       onClick={(e) => {
         if (dragged) {

@@ -1,7 +1,9 @@
+import { t } from "../i18n/strings"
 import type { Frame } from "../play"
 import { key, reach, same } from "../rules/grid"
 import { visibleToSquad } from "../rules/stealth"
 import type { Entry, Game, Point } from "../rules/types"
+import { sideOf } from "../rules/units"
 
 export const SPEEDS = [1, 2, 4, 0] as const
 
@@ -20,6 +22,8 @@ export interface Still {
   game: Game
   mover: { id: string; at: Point } | null
   shot: { from: Point; to: Point; progress: number } | null
+  /** Where a visible enemy acts, for the camera to follow. */
+  focus: Point | null
 }
 
 interface Clip {
@@ -28,6 +32,7 @@ interface Clip {
   start: number
   length: number
   path: Point[]
+  visible: boolean
 }
 
 const TILE_MS = 110
@@ -116,11 +121,11 @@ export function floats(before: Game, after: Game, now: number): Float[] {
     if (e.key === "log.hit" || e.key === "log.lash") add(e, `-${p.dmg} · ${odds.trim()}`, "#ff6a5a")
     if (e.key === "log.cleave" || e.key === "log.burn") add(e, `-${p.dmg}`, "#ff6a5a")
     if (e.key === "log.crit") add(e, `-${p.dmg}! · ${odds.trim()}`, "#ffb02e")
-    if (e.key === "log.miss") add(e, `✕ · ${odds.trim()}`, "#d9dde3")
+    if (e.key === "log.miss") add(e, `${t("ui.miss")} · ${odds.trim()}`, "#d9dde3")
     if (e.key === "log.heal") add(e, `+${p.amount}`, "#5fd35f")
     if (e.key === "log.burning") add(e, `-${p.dmg}`, "#ff8a3c", p.unit)
     if (e.key === "log.detected") add(e, "!", "#ffd84a", p.unit)
-    if (spell) add(e, `${p.saved ? "✓" : "☠"} · ${odds.trim()}`, p.saved ? "#d9dde3" : "#c38bff")
+    if (spell) add(e, `${t(p.saved ? "ui.saved" : "ui.failed")} · ${odds.trim()}`, p.saved ? "#d9dde3" : "#c38bff")
   }
   return out
 }
@@ -180,7 +185,7 @@ export class Playback {
     const shotAt = target(before, frame)
     const scale = this.speed === 0 || instant || !visible ? 0 : 1 / this.speed
     const length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? SHOT_MS : 0) + STEP_MS)
-    this.clip = { before, frame, start: now, length, path }
+    this.clip = { before, frame, start: now, length, path, visible }
   }
 
   /** The picture at a moment; advances through finished steps. */
@@ -191,7 +196,7 @@ export class Playback {
       if (this.clip && this.clip.length > 0) break
     }
     const c = this.clip
-    if (!c) return { game: this.shownGame, mover: null, shot: null }
+    if (!c) return { game: this.shownGame, mover: null, shot: null, focus: null }
     const id = actor(c.frame)
     const t = c.length > 0 ? (now - c.start) / c.length : 1
     const walk = span(c.before, c.frame, c.path) * TILE_MS
@@ -208,6 +213,8 @@ export class Playback {
       const from = mover?.at ?? c.before.units.find((x) => x.id === id)!.pos
       shot = { from, to, progress: Math.min(1, (t - walkEnd) / (SHOT_MS / total)) }
     }
-    return { game: c.before, mover, shot }
+    const u = id ? c.before.units.find((x) => x.id === id) : undefined
+    const focus = u && c.visible && sideOf(u) === "enemy" ? (mover?.at ?? u.pos) : null
+    return { game: c.before, mover, shot, focus }
   }
 }

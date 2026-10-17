@@ -56,5 +56,5 @@ same game.
 
 ## Credits
 
-Unit icons are from [game-icons.net](https://game-icons.net), licensed
-[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). See [public/icons/CREDITS.txt](public/icons/CREDITS.txt).
+Map tiles and action icons are from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack) (CC0).
+Unit sprites are drawn for this game. See [public/sprites/CREDITS.txt](public/sprites/CREDITS.txt).
