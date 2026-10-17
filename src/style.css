@@ -2,11 +2,14 @@
   color-scheme: dark;
   --bg: #12151a;
   --panel: #1a1f26;
+  --card: #222933;
+  --line: #34404d;
   --text: #e6e9ee;
   --muted: #8b95a3;
   --accent: #3b82c4;
   --good: #5fd35f;
   --bad: #ff7a6b;
+  --gold: #ffd84a;
 }
 * {
   box-sizing: border-box;
@@ -18,6 +21,26 @@ body {
   font:
     14px / 1.4 system-ui,
     sans-serif;
+}
+button {
+  background: #26303b;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button.active {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 main {
   display: flex;
@@ -40,8 +63,8 @@ canvas {
 }
 #tip {
   width: 100%;
-  max-width: 760px;
-  min-height: 44px;
+  max-width: 900px;
+  min-height: 46px;
   background: var(--panel);
   border-radius: 6px;
   padding: 6px 10px;
@@ -61,32 +84,38 @@ canvas {
 }
 .slot {
   position: relative;
-  width: 74px;
-  height: 58px;
+  width: 92px;
+  height: 64px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 4px;
+  padding: 4px 5px;
   text-align: left;
 }
 .slot .key {
   position: absolute;
   top: 3px;
-  left: 5px;
-  font-size: 11px;
+  left: 6px;
+  font-size: 12px;
   font-weight: 700;
-  color: #ffd84a;
+  color: var(--gold);
 }
 .slot .badge {
   position: absolute;
   top: 3px;
-  right: 5px;
+  right: 6px;
   font-size: 11px;
   color: var(--muted);
 }
 .slot .label {
   font-size: 11px;
   line-height: 1.15;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .side {
   display: flex;
@@ -107,8 +136,8 @@ canvas {
   padding: 2px 6px;
   font-size: 12px;
 }
-aside {
-  width: 340px;
+#panel {
+  width: 360px;
   flex: none;
   background: var(--panel);
   border-radius: 6px;
@@ -140,69 +169,22 @@ h2 {
 .wrap {
   flex-wrap: wrap;
 }
-button {
-  background: #26303b;
-  color: var(--text);
-  border: 1px solid #34404d;
-  border-radius: 4px;
-  padding: 5px 8px;
-  font: inherit;
-  cursor: pointer;
-}
-button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-button.active {
-  background: var(--accent);
-  border-color: var(--accent);
-}
 .phase {
   font-weight: 600;
   margin: 8px 0 2px;
 }
-.phase.enemy {
+.phase.enemy,
+.phase.lost {
   color: var(--bad);
 }
 .phase.won {
   color: var(--good);
-}
-.phase.lost {
-  color: var(--bad);
 }
 .muted {
   color: var(--muted);
 }
 .small {
   font-size: 12px;
-}
-.card {
-  background: #222933;
-  border-radius: 6px;
-  padding: 8px;
-  margin: 8px 0;
-}
-.card.preview {
-  border: 1px solid var(--accent);
-}
-.card.enemy {
-  border: 1px solid #6b2b25;
-}
-.name {
-  font-weight: 600;
-}
-.big {
-  font-size: 18px;
-  font-weight: 700;
-}
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin: 4px 0;
 }
 .good {
   color: var(--good);
@@ -211,7 +193,141 @@ button.active {
   color: var(--bad);
 }
 .message {
-  color: #ffd84a;
+  color: var(--gold);
+}
+.name {
+  font-weight: 600;
+}
+.big {
+  font-size: 18px;
+  font-weight: 700;
+}
+.card {
+  background: var(--card);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 8px 0;
+}
+.card.preview {
+  border: 1px solid var(--accent);
+}
+.card.enemy {
+  border: 1px solid #6b2b25;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.who {
+  flex: 1;
+}
+.portrait {
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.portrait.foe {
+  background: #c0443a;
+}
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #34404d;
+}
+.chip.hidden {
+  background: #1f4f3a;
+  color: #9ff0c4;
+}
+.chip.status {
+  background: #5a2f6b;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.segments {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+.segments span,
+.ammo span {
+  flex: 1;
+  height: 10px;
+  border-radius: 2px;
+  background: #4a2222;
+}
+.segments span.full {
+  background: var(--good);
+}
+.num {
+  font-weight: 700;
+  min-width: 42px;
+  text-align: right;
+}
+.ap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+}
+.pip.full {
+  background: var(--gold);
+}
+.weapon {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.ammo {
+  display: flex;
+  gap: 2px;
+  width: 80px;
+}
+.ammo span {
+  height: 8px;
+  background: #3a3a3a;
+}
+.ammo span.full {
+  background: #c9a46a;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  background: #1a2029;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+.stat b {
+  font-size: 15px;
 }
 .log {
   list-style: none;
@@ -235,7 +351,7 @@ button.active {
   main {
     flex-direction: column;
   }
-  aside {
+  #panel {
     width: 100%;
     max-height: none;
   }

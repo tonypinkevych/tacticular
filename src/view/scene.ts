@@ -19,6 +19,8 @@ export interface Scene {
   hover: Point | null
   targets: Set<string>
   area: Point[]
+  range: Set<number>
+  aimed: Point | null
   zones: boolean
   mover: { id: string; at: Point } | null
   shot: { from: Point; to: Point; progress: number } | null
@@ -308,6 +310,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   const enemies = game.units.filter((u) => alive(u) && u.side === "enemy" && visibleToSquad(game, u))
   if (sc.zones) zones(ctx, s, game, enemies)
+  outline(ctx, s, sc.range, "#ff8a3c")
   outline(ctx, s, sc.far, "#f2c94c")
   outline(ctx, s, sc.near, "#4aa3ff")
   tint(ctx, s, sc.area.map(key), "rgba(255,120,40,0.35)")
@@ -372,6 +375,10 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   if (sc.selected && !sc.mover) {
     ring(ctx, s, sc.selected.pos, "#ffffff")
     cover(ctx, s, game, sc.selected.pos)
+  }
+  if (sc.aimed) {
+    ring(ctx, s, sc.aimed, "#ff3b3b")
+    ring(ctx, s, sc.aimed, "rgba(255,255,255,0.35)")
   }
   if (sc.shot) shot(ctx, s, sc.shot)
   for (const f of sc.texts) {

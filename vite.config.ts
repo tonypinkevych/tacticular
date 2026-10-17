@@ -1,6 +1,8 @@
+import solid from "vite-plugin-solid"
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   base: "./",
-  test: { globals: true, include: ["test/**/*.test.ts"] },
+  plugins: [solid()],
+  test: { globals: true, environment: "node", include: ["test/**/*.test.ts"] },
 })

@@ -124,7 +124,10 @@ describe("frames", () => {
 
 describe("patrols", () => {
   test("a unit standing on its first patrol point walks to the next one", () => {
-    const g0 = setup(open(20, 3), [squad("v", "vanguard", { x: 0, y: 0 }), enemy("e", "orc", { x: 19, y: 2 }, "unaware")])
+    const g0 = setup(open(20, 3), [
+      squad("v", "vanguard", { x: 0, y: 0 }),
+      enemy("e", "orc", { x: 19, y: 2 }, "unaware"),
+    ])
     find(g0, "e").patrol = [
       { x: 19, y: 2 },
       { x: 10, y: 2 },

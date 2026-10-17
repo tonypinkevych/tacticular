@@ -10,7 +10,9 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["vitest/globals", "vite/client"]
+    "types": ["vitest/globals", "vite/client"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js"
   },
   "include": ["src", "test"]
 }

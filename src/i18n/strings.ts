@@ -36,7 +36,7 @@ const en = {
   "ui.seed": "Mission {seed}",
   "ui.save": "Signed log: {count} events, key {key}",
   "ui.help":
-    "Click a tile to move or an enemy to attack. Q–P: actions. Tab / Shift+Tab: soldiers. Esc: cancel. Z: enemy zones.",
+    "Click a tile to move or an enemy to aim. 1–0: actions, press twice to confirm. Enter: end turn. Tab / Shift+Tab: soldiers. Esc: cancel. Z: enemy zones. Space: skip animation.",
   "ui.credits": "Icons: game-icons.net (CC BY 3.0)",
   "ui.left": "{left} left",
   "ui.saved": "saved",
@@ -45,6 +45,8 @@ const en = {
   "ui.range": "Range",
   "ui.melee": "melee",
   "ui.key": "Key {key}",
+  "ui.pressAgain": "Press {key} again or click the target to confirm. Esc cancels.",
+  "ui.skip": "Space skips the animation.",
   "ui.failed": "failed",
 
   "kind.vanguard": "Vanguard",
@@ -229,7 +231,8 @@ const ru: Record<Key, string> = {
   "ui.zones": "Зоны врага",
   "ui.seed": "Миссия {seed}",
   "ui.save": "Подписанный журнал: {count} событий, ключ {key}",
-  "ui.help": "Клетка — ход, враг — атака. Q–P: действия. Tab / Shift+Tab: бойцы. Esc: отмена. Z: зоны врага.",
+  "ui.help":
+    "Клетка — ход, враг — прицел. 1–0: действия, нажмите дважды для подтверждения. Enter: конец хода. Tab / Shift+Tab: бойцы. Esc: отмена. Z: зоны врага. Пробел: пропустить анимацию.",
   "ui.credits": "Иконки: game-icons.net (CC BY 3.0)",
   "ui.left": "осталось {left}",
   "ui.saved": "спасбросок пройден",
@@ -238,6 +241,8 @@ const ru: Record<Key, string> = {
   "ui.range": "Дальность",
   "ui.melee": "ближний бой",
   "ui.key": "Клавиша {key}",
+  "ui.pressAgain": "Нажмите {key} ещё раз или кликните цель для подтверждения. Esc — отмена.",
+  "ui.skip": "Пробел пропускает анимацию.",
   "ui.failed": "спасбросок провален",
 
   "kind.vanguard": "Авангард",
