@@ -23,8 +23,8 @@ export function rollDice(game: Game, dice: Dice, times = 1): number {
   return sum
 }
 
-/** What advantage adds to a roll, and disadvantage takes away. */
-export const EDGE = 4
+/** What each step of edge adds to a roll; edge is advantages minus disadvantages, at most 2 either way. */
+export const EDGE = 3
 
 export function d20(game: Game): number {
   return die(game, 20)

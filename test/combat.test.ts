@@ -66,6 +66,6 @@ describe("results", () => {
     attack(g, r, e)
     const p = g.log.find((x) => x.key !== "log.dies")!.params
     expect(p.need).toBe(need)
-    expect(p.total).toBe(Number(p.roll) + odds(g, r, e).aim + 4 * odds(g, r, e).edge)
+    expect(p.total).toBe(Number(p.roll) + odds(g, r, e).aim + 3 * odds(g, r, e).edge)
   })
 })

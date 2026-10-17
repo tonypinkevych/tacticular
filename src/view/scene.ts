@@ -2,7 +2,7 @@ import { coverAgainst, flankers, shelter } from "../rules/cover"
 import { DETECTION, WEAPONS } from "../rules/data"
 import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt, unitAt } from "../rules/grid"
 import { sees, visibleTiles } from "../rules/sight"
-import { visibleToSquad } from "../rules/stealth"
+import { seen as spotted, visibleToSquad } from "../rules/stealth"
 import type { Game, Point, Unit } from "../rules/types"
 import { alive, sideOf } from "../rules/units"
 import type { Float } from "./motion"
@@ -409,6 +409,25 @@ function warn(ctx: CanvasRenderingContext2D, s: number, at: Point): void {
   ctx.fillText("!", x + r, y + r * 0.05)
 }
 
+/** A small eye at the top of a tile: who sees whom. */
+function eye(ctx: CanvasRenderingContext2D, s: number, at: Point, color: string): void {
+  const cx = at.x * s + s / 2
+  const cy = at.y * s + Math.max(5, s * 0.12)
+  const w = Math.max(5, s * 0.17)
+  ctx.fillStyle = "rgba(0,0,0,0.75)"
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, w + 1.5, w * 0.6 + 1.5, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, w, w * 0.6, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = "#000"
+  ctx.beginPath()
+  ctx.arc(cx, cy, w * 0.32, 0, Math.PI * 2)
+  ctx.fill()
+}
+
 function shot(ctx: CanvasRenderingContext2D, s: number, sh: NonNullable<Scene["shot"]>): void {
   const ax = sh.from.x * s + s / 2
   const ay = sh.from.y * s + s / 2
@@ -509,13 +528,17 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
   }
   const marks = highlights(sc, enemies)
+  const viewer = sc.selected && game.units.find((x) => x.id === sc.selected?.id && alive(x))
   for (const u of game.units) {
     if (u.down > 0) downed(ctx, sc, u)
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
     const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0
-    figure(ctx, sc, u, spent ? 0.45 : 1, at, marks.get(u.id) ?? null)
+    const looked = viewer && enemies.includes(u) ? sees(game, viewer, u.pos) : null
+    figure(ctx, sc, u, spent || looked === false ? 0.5 : 1, at, marks.get(u.id) ?? null)
     badges(ctx, s, u, at)
+    if (looked) eye(ctx, s, at, "#4aa3ff")
+    if (u.side === "squad" && sideOf(u) === "squad" && !u.concealed && spotted(game, u)) eye(ctx, s, at, "#ff3b3b")
     if (u.side === "squad" && sideOf(u) === "squad" && flankers(game, u, enemies).length > 0) warn(ctx, s, at)
   }
   if (sc.ghost) {

@@ -13,6 +13,7 @@ import type { Session } from "../save/session"
 import { Playback, SPEEDS, type Speed } from "./motion"
 
 export const KEYS = "1234567890"
+const LETTERS: Record<string, string> = { overwatch: "Y", reload: "R" }
 
 /** What an action needs before it can be confirmed. */
 export type Aim = "unit" | "tile" | "none"
@@ -95,7 +96,16 @@ export function slots(game: Game, u: Unit): Slot[] {
     if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
     out.push({ id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" })
   }
-  return out.map((s, i) => ({ ...s, key: KEYS[i] ?? "" }))
+  let i = 0
+  return out.map((s) => ({ ...s, key: LETTERS[s.id] ?? KEYS[i++] ?? "" }))
+}
+
+/** True in the squad phase when no soldier the player controls has AP left. */
+export function spent(game: Game): boolean {
+  return (
+    game.phase === "squad" &&
+    !game.units.some((u) => alive(u) && u.side === "squad" && sideOf(u) === "squad" && u.ap > 0)
+  )
 }
 
 /** Tiles an armed action can reach, for the range outline on the board. */
@@ -313,6 +323,7 @@ export function createModel(session: Session, store: Storage) {
     const before = session.game
     try {
       playback.add(before, session.act(a))
+      if (a.type !== "endTurn" && spent(session.game)) playback.add(session.game, session.act({ type: "endTurn" }))
       batch(() => {
         setGame(session.game)
         setArmed(null)
@@ -444,7 +455,7 @@ export function createModel(session: Session, store: Storage) {
       setZones(!zones())
       return
     }
-    const digit = e.code.startsWith("Digit") ? e.code.slice(5) : ""
+    const digit = e.code.startsWith("Digit") ? e.code.slice(5) : e.code.startsWith("Key") ? e.code.slice(3) : ""
     const u = unit()
     const slot = u && digit ? slots(game(), u).find((s) => s.key === digit) : undefined
     if (slot) {

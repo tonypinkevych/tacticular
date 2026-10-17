@@ -3,7 +3,7 @@ import { t } from "../i18n/strings"
 import type { Part } from "../rules/combat"
 import { flankers } from "../rules/cover"
 import { WEAPONS } from "../rules/data"
-import { chance } from "../rules/dice"
+import { chance, EDGE } from "../rules/dice"
 import { unitAt } from "../rules/grid"
 import { visibleToSquad } from "../rules/stealth"
 import type { Game, Unit } from "../rules/types"
@@ -169,13 +169,23 @@ function Strip(props: { need: number }) {
 
 function Edge(props: { edge: number; advantages: string[]; disadvantages: string[]; before: number; after: number }) {
   const why = (list: string[]) => list.map((r) => t(`reason.${r}`)).join(", ")
-  const pct = () => ({ before: Math.round(props.before * 100), after: Math.round(props.after * 100) })
+  const both = () =>
+    [
+      ...props.advantages.map((r) => `+${t(`reason.${r}`)}`),
+      ...props.disadvantages.map((r) => `−${t(`reason.${r}`)}`),
+    ].join(", ")
+  const pct = () => ({
+    before: Math.round(props.before * 100),
+    after: Math.round(props.after * 100),
+    value: Math.abs(props.edge) * EDGE,
+    why: both(),
+  })
   return (
     <div classList={{ good: props.edge > 0, bad: props.edge < 0, muted: props.edge === 0 }}>
       {props.edge > 0
-        ? t("ui.edge.advantage", { why: why(props.advantages), ...pct() })
+        ? t("ui.edge.advantage", pct())
         : props.edge < 0
-          ? t("ui.edge.disadvantage", { why: why(props.disadvantages), ...pct() })
+          ? t("ui.edge.disadvantage", pct())
           : props.advantages.length || props.disadvantages.length
             ? t("ui.edge.cancel", { good: why(props.advantages), bad: why(props.disadvantages) })
             : t("ui.edge.none")}

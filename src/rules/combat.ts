@@ -99,7 +99,7 @@ export function odds(
   const range = distance(attacker.pos, target.pos)
   if (!weapon.melee && range > weapon.max) dis.push("range")
   if (!weapon.melee && range < weapon.min) dis.push("close")
-  const edge = adv.length > 0 && dis.length === 0 ? 1 : dis.length > 0 && adv.length === 0 ? -1 : 0
+  const edge = Math.max(-2, Math.min(2, adv.length - dis.length))
   const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
   if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
   if (above) aimParts.push({ key: "height", value: 2 })

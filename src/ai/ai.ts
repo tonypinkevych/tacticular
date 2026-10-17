@@ -35,7 +35,7 @@ function weapons(u: Unit): WeaponId[] {
   return side ? [u.weapon, side] : [u.weapon]
 }
 
-/** Best attack from the unit's current tile, by expected damage, kills and target value. */
+/** Best attack from the unit's current tile, by expected damage, kills, wounds already dealt and target value. */
 function bestAttack(game: Game, u: Unit, targets: Unit[]): Choice | null {
   let best: Choice | null = null
   for (const t of targets) {
@@ -48,7 +48,10 @@ function bestAttack(game: Game, u: Unit, targets: Unit[]): Choice | null {
       if (w === "axes" && u.axes <= 0) continue
       const o = odds(game, u, t, w)
       const dmg = (o.min + o.max) / 2 || average(w)
-      const value = o.chance * dmg * (dmg >= t.hp ? 2 : 1) + (t.kind === "mage" || t.kind === "cleric" ? 0.5 : 0)
+      const value =
+        o.chance * dmg * (dmg >= t.hp ? 2 : 1) +
+        (t.maxHp - t.hp) * 0.3 +
+        (t.kind === "mage" || t.kind === "cleric" ? 0.5 : 0)
       if (!best || value > best.value) best = { action: { type: "attack", unit: u.id, target: t.id, weapon: w }, value }
     }
   }
@@ -212,8 +215,14 @@ function engaged(game: Game, u: Unit): Action | null {
   const sp = special(game, u, targets)
   if (sp && sp.value >= 100) return sp.action
   if (targets.length === 0) {
-    const goal = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : group?.target
-    if (goal && distance(u.pos, goal) > (game.goal.kind === "defend" ? 0 : 1)) return toward(game, u, goal)
+    const beacon = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : null
+    const goal = beacon ?? group?.target
+    if (goal && distance(u.pos, goal) > (beacon ? 0 : 1)) return toward(game, u, goal)
+    const prey = game.units
+      .filter((x) => alive(x) && foes(u, x))
+      .sort((a, b) => distance(u.pos, a.pos) - distance(u.pos, b.pos))[0]
+    const hunt = !beacon && prey ? toward(game, u, prey.pos) : null
+    if (hunt) return hunt
     if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }
     return null
   }

@@ -34,7 +34,7 @@ const NAMES = [
   "Ruiz",
 ]
 
-export const SIZE = { width: 32, height: 20 }
+export const SIZE = { width: 26, height: 16 }
 
 const START = 4
 

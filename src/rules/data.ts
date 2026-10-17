@@ -5,7 +5,7 @@ const d = (count: number, sides: number, bonus = 0): Dice => ({ count, sides, bo
 export const WEAPONS: Record<WeaponId, Weapon> = {
   shotgun: { id: "shotgun", dice: d(1, 3, 3), min: 1, max: 4, melee: false, noise: 8, ammo: 3 },
   axes: { id: "axes", dice: d(1, 2, 1), min: 1, max: 4, melee: false, noise: 4, ammo: null },
-  longbow: { id: "longbow", dice: d(1, 3, 4), min: 6, max: 20, melee: false, noise: 8, ammo: null, twoAp: true },
+  longbow: { id: "longbow", dice: d(1, 3, 4), min: 6, max: 20, melee: false, noise: 8, ammo: 3, twoAp: true },
   repeater: { id: "repeater", dice: d(1, 2, 3), min: 1, max: 8, melee: false, noise: 8, ammo: 3 },
   crossbow: { id: "crossbow", dice: d(1, 2, 2), min: 1, max: 8, melee: false, noise: 8, ammo: 4 },
   knives: { id: "knives", dice: d(1, 2, 1), min: 1, max: 6, melee: false, noise: 0, ammo: null },
@@ -251,4 +251,4 @@ export const RANGE = { stone: 6, flask: 7, ward: 6, blink: 5, fear: 10, dread: 8
 
 export const DETECTION = { unaware: 4, investigating: 6, assassin: 3, rogue: 2 }
 
-export const HORN = { range: 10, warchief: 16 }
+export const HORN = { range: 10, warchief: 12 }

@@ -6,12 +6,12 @@ import { horn } from "../src/rules/stealth"
 import { enemy, open, setup, squad } from "./fixture"
 
 describe("simplified d20", () => {
-  test("advantage is +4 and disadvantage is −4 on one die", () => {
-    expect(chance(4, 12, 1)).toBeCloseTo(0.85)
-    expect(chance(4, 12, -1)).toBeCloseTo(0.45)
+  test("each step of edge is ±3 on one die", () => {
+    expect(chance(4, 12, 1)).toBeCloseTo(0.8)
+    expect(chance(4, 12, -1)).toBeCloseTo(0.5)
   })
-  test("a save with an edge gets +4", () => {
-    expect(failChance(1, 14, 1)).toBeCloseTo(0.4)
+  test("a save with an edge gets +3", () => {
+    expect(failChance(1, 14, 1)).toBeCloseTo(0.45)
   })
   test("one die per roll", () => {
     const g = setup(open(), [], 7)
@@ -23,8 +23,8 @@ describe("simplified d20", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
     const e = enemy("e", "shieldwall", { x: 0, y: 8 }, "unaware")
     const o = odds(setup(open(3, 10), [r, e]), r, e)
-    expect(o.edge).toBe(1)
-    expect(o.need).toBe(o.defense - o.aim - 4)
+    expect(o.edge).toBe(2)
+    expect(o.need).toBe(Math.max(2, o.defense - o.aim - 6))
   })
 })
 
