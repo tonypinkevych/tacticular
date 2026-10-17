@@ -1,0 +1,16 @@
+Icons from https://game-icons.net, licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Background square removed.
+
+vanguard.svg    Broadsword       by Lorc
+ranger.svg      High shot        by Lorc
+warden.svg      Crossbow         by Carl Olsen
+cleric.svg      Holy symbol      by Lorc
+rogue.svg       Cloak and dagger by Lorc
+mage.svg        Pointy hat       by Lorc
+orc.svg         Orc head         by Delapouite
+bomber.svg      Goblin head      by Delapouite
+ogre.svg        Ogre             by Delapouite
+shieldwall.svg  Visored helm     by Lorc
+assassin.svg    Hooded assassin  by DarkZaitzev
+warchief.svg    Horned helm      by Lorc
+whisperer.svg   Cultist          by Lorc
