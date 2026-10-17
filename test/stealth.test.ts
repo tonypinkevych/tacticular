@@ -78,7 +78,7 @@ describe("horn", () => {
     setup(open(24, 3), [
       squad("r", "ranger", { x: 0, y: 1 }),
       enemy("a", "orc", { x: 8, y: 1 }, "engaged", "g1"),
-      enemy("b", "orc", { x: 20, y: 1 }, "unaware", "g2"),
+      enemy("b", "orc", { x: 16, y: 1 }, "unaware", "g2"),
     ])
   test("an Engaged group alive at round end calls groups in range", () => {
     let g = base()

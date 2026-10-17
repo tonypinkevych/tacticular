@@ -14,13 +14,13 @@ describe("one weapon per class", () => {
 
 describe("range and position", () => {
   test("a ranged attack on an adjacent enemy has disadvantage", () => {
-    const w = squad("w", "warden", { x: 2, y: 1 })
+    const w = squad("w", "ranger", { x: 2, y: 1 })
     const e = enemy("e", "orc", { x: 3, y: 1 })
     expect(odds(setup(open(6, 3), [w, e]), w, e).disadvantages).toContain("close")
   })
   test("Pincer: a melee attack has advantage with an ally on the far side", () => {
-    const v = squad("v", "vanguard", { x: 1, y: 1 })
-    const g = squad("g", "rogue", { x: 3, y: 1 })
+    const v = squad("v", "rogue", { x: 1, y: 1 })
+    const g = squad("g", "vanguard", { x: 3, y: 1 })
     const e = enemy("e", "orc", { x: 2, y: 1 })
     expect(odds(setup(open(6, 3), [v, g, e]), v, e).advantages).toContain("pincer")
   })
@@ -74,14 +74,14 @@ describe("cooperation statuses", () => {
   test("Sneak Attack works on a staggered target, not on a plain one", () => {
     const plain = enemy("e", "orc", { x: 2, y: 1 }, "engaged")
     const g1 = setup(open(6, 3), [squad("g", "rogue", { x: 1, y: 1 }), plain])
-    expect(odds(g1, find(g1, "g"), find(g1, "e")).max).toBe(6 + 2)
+    expect(odds(g1, find(g1, "g"), find(g1, "e")).max).toBe(4)
     const hit = enemy("e", "orc", { x: 2, y: 1 }, "engaged")
     hit.statuses.push({ id: "staggered", rounds: 1 })
     const g2 = setup(open(6, 3), [squad("g", "rogue", { x: 1, y: 1 }), hit])
-    expect(odds(g2, find(g2, "g"), find(g2, "e")).max).toBe(6 + 2 + 6)
+    expect(odds(g2, find(g2, "g"), find(g2, "e")).max).toBe(4 + 2)
   })
   test("a melee attack gets no flank advantage", () => {
-    const v = squad("v", "vanguard", { x: 1, y: 1 })
+    const v = squad("v", "rogue", { x: 1, y: 1 })
     const e = enemy("e", "orc", { x: 2, y: 1 })
     expect(odds(setup(open(6, 3), [v, e]), v, e).advantages).not.toContain("flanked")
   })

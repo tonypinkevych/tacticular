@@ -45,7 +45,7 @@ describe("reactions", () => {
     expect(find(g3, "w").stance).toBe("none")
   })
   test("leaving a melee unit's reach provokes a free attack", () => {
-    const g0 = setup(open(12, 3), [squad("v", "vanguard", { x: 5, y: 1 }), enemy("e", "orc", { x: 6, y: 1 })])
+    const g0 = setup(open(12, 3), [squad("v", "rogue", { x: 5, y: 1 }), enemy("e", "orc", { x: 6, y: 1 })])
     const g1 = apply(g0, { type: "endTurn" })
     const g2 = apply(g1, { type: "move", unit: "e", to: { x: 10, y: 1 } })
     expect(hits(g2)).toHaveLength(1)
@@ -98,8 +98,8 @@ describe("abilities and items", () => {
       squad("r", "ranger", { x: 3, y: 2 }),
     ])
     const a = apply(g, { type: "item", unit: "v", item: "flask", at: { x: 2, y: 1 } })
-    expect(find(a, "e").hp).toBe(5)
-    expect(find(a, "r").hp).toBe(5)
+    expect(find(a, "e").hp).toBe(3)
+    expect(find(a, "r").hp).toBe(3)
     expect(tileAt(a, { x: 2, y: 1 })).toBe("floor")
     expect(tileAt(a, { x: 3, y: 1 })).toBe("low")
     expect(find(a, "v").items.flask).toBe(0)

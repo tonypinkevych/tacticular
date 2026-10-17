@@ -1,11 +1,11 @@
 import { coverAgainst } from "./cover"
 import { WEAPONS } from "./data"
-import { chance, d20, die, failChance, rollDice } from "./dice"
-import { AROUND, adjacent, distance, plus, same, tileAt, unitAt, walkable } from "./grid"
+import { chance, d20, EDGE, failChance, rollDice } from "./dice"
+import { adjacent, distance, same, tileAt, unitAt, walkable } from "./grid"
 import type { Game, Unit, Weapon, WeaponId } from "./types"
-import { addStatus, alive, armorOf, foes, groupAim, has, sideOf } from "./units"
+import { addStatus, alive, foes, groupAim, has, sideOf, wallOf } from "./units"
 
-/** Advantages that let the Rogue's Sneak Attack add 1d6. */
+/** Advantages that let the Scout's Sneak Attack add 2 damage. */
 const SNEAK: Reason[] = ["flanked", "unaware", "exposed", "staggered", "pincer"]
 
 /** True when an ally of the attacker stands on the far side of the target. */
@@ -44,14 +44,13 @@ export interface Odds {
   need: number
   aimParts: Part[]
   defenseParts: Part[]
-  armor: number
   min: number
   max: number
 }
 
 /** One named number that adds up to Aim or Defense, for the chance breakdown. */
 export interface Part {
-  key: "aim" | "warchief" | "defense" | "low" | "high" | "ward"
+  key: "aim" | "warchief" | "defense" | "low" | "high" | "ward" | "wall"
   value: number
 }
 
@@ -96,20 +95,19 @@ export function odds(
   if (target.stance === "hunker") dis.push("hunkered")
   for (const s of ["suppressed", "frightened", "shaken"] as const) if (has(attacker, s)) dis.push(s)
   const range = distance(attacker.pos, target.pos)
-  const over = weapon.melee ? 0 : Math.max(0, range - weapon.max, weapon.min - range)
-  if (over > 0) dis.push("range")
-  if (!weapon.melee && range <= 1) dis.push("close")
+  if (!weapon.melee && range > weapon.max) dis.push("range")
+  if (!weapon.melee && range < weapon.min) dis.push("close")
   const edge = adv.length > 0 && dis.length === 0 ? 1 : dis.length > 0 && adv.length === 0 ? -1 : 0
   const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
   if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
   const defenseParts: Part[] = [{ key: "defense", value: target.defense }]
   if (cover) defenseParts.push({ key: cover >= 5 ? "high" : "low", value: cover })
   if (has(target, "ward")) defenseParts.push({ key: "ward", value: 2 })
+  if (wallOf(game, target)) defenseParts.push({ key: "wall", value: 1 })
   const aim = aimParts.reduce((sum, p) => sum + p.value, 0)
   const defense = defenseParts.reduce((sum, p) => sum + p.value, 0)
-  const armor = weapon.ignoresArmor ? 0 : armorOf(game, target)
-  const sneak = attacker.kind === "rogue" && adv.some((r) => SNEAK.includes(r)) ? 6 : 0
-  const lo = weapon.dice.count + weapon.dice.bonus + (sneak ? 1 : 0)
+  const sneak = attacker.kind === "rogue" && adv.some((r) => SNEAK.includes(r)) ? 2 : 0
+  const lo = weapon.dice.count + weapon.dice.bonus + sneak
   const hi = weapon.dice.count * weapon.dice.sides + weapon.dice.bonus + sneak
   return {
     weapon,
@@ -120,14 +118,16 @@ export function odds(
     advantages: adv,
     disadvantages: dis,
     chance: weapon.saveHalf ? 1 : chance(aim, defense, edge),
-    need: Math.min(20, Math.max(2, defense - aim)),
+    need: Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
     aimParts,
     defenseParts,
-    armor,
-    min: Math.max(1, lo - armor),
-    max: Math.max(1, hi - armor),
+    min: lo,
+    max: hi,
   }
 }
+
+/** Damage of a critical hit: half again, rounded up. */
+export const crit = (raw: number): number => Math.ceil(raw * 1.5)
 
 export function canReach(attacker: Unit, target: Unit, weapon: Weapon): boolean {
   return weapon.melee ? adjacent(attacker.pos, target.pos) : true
@@ -146,9 +146,10 @@ export function attack(
   if (w.ammo !== null && weaponId === attacker.weapon) attacker.ammo -= 1
   if (weaponId === "axes") attacker.axes -= 1
   if (w.saveHalf) {
-    const save = d20(game, target.stance === "hunker" ? 1 : 0)
+    const edge = target.stance === "hunker" ? 1 : 0
+    const roll = d20(game)
     const dc = 10 + attacker.will
-    const saved = save.kept + target.will >= dc
+    const saved = roll + target.will + EDGE * edge >= dc
     const raw = rollDice(game, w.dice)
     const dmg = Math.max(1, saved ? Math.floor(raw / 2) : raw)
     game.log.push({
@@ -156,46 +157,43 @@ export function attack(
       params: {
         unit: attacker.id,
         target: target.id,
-        rolls: save.rolls.join("/"),
-        total: save.kept + target.will,
+        roll,
+        total: roll + target.will + EDGE * edge,
         dc,
         saved,
         dmg,
-        chance: Math.round(failChance(target.will, dc, target.stance === "hunker" ? 1 : 0) * 100),
+        chance: Math.round(failChance(target.will, dc, edge) * 100),
       },
     })
     hurt(game, target, dmg)
     return
   }
-  const roll = d20(game, o.edge)
-  const crit = roll.kept === 20
-  const hit = crit || (roll.kept !== 1 && roll.kept + o.aim >= o.defense)
+  const roll = d20(game)
+  const critical = roll === 20
+  const hit = critical || (roll !== 1 && roll + o.aim + EDGE * o.edge >= o.defense)
   const params: Record<string, string | number | boolean> = {
     unit: attacker.id,
     target: target.id,
     weapon: weaponId,
-    rolls: roll.rolls.join("/"),
-    total: roll.kept + o.aim,
+    roll,
+    total: roll + o.aim + EDGE * o.edge,
     defense: o.defense,
     hit,
-    crit,
+    crit: critical,
     reaction: !!shot.reaction,
     chance: Math.round(o.chance * 100),
     need: o.need,
-    kept: roll.kept,
   }
   if (!hit) {
     game.log.push({ key: "log.miss", params })
     return
   }
   const sneak = attacker.kind === "rogue" && o.advantages.some((r) => SNEAK.includes(r))
-  const raw = rollDice(game, w.dice, crit ? 2 : 1) + (sneak ? die(game, 6) : 0)
-  const armor = w.ignoresArmor ? 0 : armorOf(game, target)
-  const dmg = Math.max(1, raw - armor)
-  game.log.push({ key: crit ? "log.crit" : "log.hit", params: { ...params, dmg } })
+  const raw = rollDice(game, w.dice) + (sneak ? 2 : 0)
+  const dmg = critical ? crit(raw) : raw
+  game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
   const killed = hurt(game, target, dmg)
   if (w.push && !killed) push(game, attacker, target)
-  if (killed && attacker.kind === "vanguard" && weaponId === "warblade") cleave(game, attacker)
 }
 
 /** Pushes a target 1 tile away when the tile is free, and staggers it either way. */
@@ -208,14 +206,6 @@ export function push(game: Game, from: Unit, target: Unit): void {
   if (!walkable(tileAt(game, to)) || unitAt(game, to)) return
   target.pos = to
   game.log.push({ key: "log.push", params: { target: target.id } })
-}
-
-function cleave(game: Game, attacker: Unit): void {
-  const next = AROUND.map((d) => unitAt(game, plus(attacker.pos, d))).find((u) => u && foes(u, attacker))
-  if (!next) return
-  const dmg = Math.max(1, die(game, 6) - armorOf(game, next))
-  game.log.push({ key: "log.cleave", params: { unit: attacker.id, target: next.id, dmg } })
-  hurt(game, next, dmg)
 }
 
 /** Applies damage and the effects of a death; returns true when the target dies. */

@@ -2,7 +2,7 @@ import { t } from "../i18n/strings"
 import type { Frame } from "../play"
 import { key, reach, same } from "../rules/grid"
 import { visibleToSquad } from "../rules/stealth"
-import type { Entry, Game, Point } from "../rules/types"
+import type { Entry, Game, Point, Unit } from "../rules/types"
 import { sideOf } from "../rules/units"
 
 export const SPEEDS = [1, 2, 4, 0] as const
@@ -15,6 +15,10 @@ export interface Float {
   color: string
   at: Point
   born: number
+  /** The unit at this tile took damage and flashes. */
+  hit?: boolean
+  /** A unit that died here and fades out. */
+  unit?: Unit
 }
 
 /** What the board shows at one moment of playback. */
@@ -110,22 +114,23 @@ function shown(before: Game, frame: Frame): boolean {
 export function floats(before: Game, after: Game, now: number): Float[] {
   const out: Float[] = []
   const pos = (id: unknown): Point | null => after.units.find((u) => u.id === id)?.pos ?? null
-  const add = (e: Entry, text: string, color: string, who = e.params.target) => {
+  const add = (e: Entry, text: string, color: string, who = e.params.target, hit = false) => {
     const at = pos(who)
-    if (at) out.push({ text, color, at, born: now })
+    if (at) out.push({ text, color, at, born: now, hit })
   }
   for (const e of after.log.slice(before.log.length)) {
     const p = e.params
-    const odds = p.chance === undefined ? "" : ` ${p.chance}%`
     const spell = e.key === "log.fear" || e.key === "log.dread" || e.key === "log.dominate"
-    if (e.key === "log.hit" || e.key === "log.lash") add(e, `-${p.dmg} · ${odds.trim()}`, "#ff6a5a")
-    if (e.key === "log.cleave" || e.key === "log.burn") add(e, `-${p.dmg}`, "#ff6a5a")
-    if (e.key === "log.crit") add(e, `-${p.dmg}! · ${odds.trim()}`, "#ffb02e")
-    if (e.key === "log.miss") add(e, `${t("ui.miss")} · ${odds.trim()}`, "#d9dde3")
+    if (e.key === "log.hit" || e.key === "log.lash" || e.key === "log.burn")
+      add(e, `−${p.dmg}`, "#ff6a5a", p.target, true)
+    if (e.key === "log.crit") add(e, `${t("ui.crit")} −${p.dmg}`, "#ffb02e", p.target, true)
+    if (e.key === "log.miss") add(e, t("ui.miss"), "#d9dde3")
     if (e.key === "log.heal") add(e, `+${p.amount}`, "#5fd35f")
-    if (e.key === "log.burning") add(e, `-${p.dmg}`, "#ff8a3c", p.unit)
+    if (e.key === "log.burning") add(e, `−${p.dmg}`, "#ff8a3c", p.unit, true)
     if (e.key === "log.detected") add(e, "!", "#ffd84a", p.unit)
-    if (spell) add(e, `${t(p.saved ? "ui.saved" : "ui.failed")} · ${odds.trim()}`, p.saved ? "#d9dde3" : "#c38bff")
+    if (spell) add(e, t(p.saved ? "ui.saved" : "ui.failed"), p.saved ? "#d9dde3" : "#c38bff")
+    const dead = e.key === "log.dies" ? after.units.find((u) => u.id === p.unit) : undefined
+    if (dead) out.push({ text: "", color: "", at: dead.pos, born: now, unit: dead })
   }
   return out
 }

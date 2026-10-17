@@ -119,11 +119,12 @@ export function seen(game: Game, u: Unit): boolean {
   return game.units.some((x) => alive(x) && foes(x, u) && sees(game, x, u.pos))
 }
 
-/** Round end: each group with an Engaged unit alive blows the horn and calls groups in range. */
+/** Round end: a group that just engaged sounds the alarm once and calls groups in range. */
 export function horn(game: Game): void {
   for (const g of game.groups) {
     const callers = members(game, g.id).filter((u) => u.alert === "engaged")
-    if (callers.length === 0 || !g.target) continue
+    if (callers.length === 0 || !g.target || g.alarmed) continue
+    g.alarmed = true
     const range = callers.some((u) => u.kind === "warchief") ? HORN.warchief : HORN.range
     game.log.push({ key: "log.horn", params: { group: g.id } })
     game.noises.push({ at: { ...callers[0].pos }, radius: range, round: game.round })

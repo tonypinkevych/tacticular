@@ -83,7 +83,7 @@ h1 {
 }
 h2,
 .label,
-.log summary,
+.log h3,
 .stat span,
 .chip {
   font-size: 11px;
@@ -114,7 +114,7 @@ h2 {
 .corner {
   position: absolute;
   bottom: 8px;
-  width: 290px;
+  width: 270px;
   pointer-events: none;
   transition: opacity 0.2s;
 }
@@ -148,7 +148,7 @@ h2 {
 }
 #bar {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
@@ -204,14 +204,6 @@ h2 {
 .end {
   padding: 8px 14px;
   border-color: var(--line-hi);
-}
-.speeds {
-  display: flex;
-}
-.speeds button {
-  padding: 3px 7px;
-  font-size: 11px;
-  margin-left: -1px;
 }
 #panel {
   position: absolute;
@@ -322,12 +314,6 @@ header {
 .chips:empty {
   display: none;
 }
-.status {
-  margin-top: 6px;
-}
-.status .small {
-  color: var(--muted);
-}
 .hp {
   display: flex;
   align-items: center;
@@ -385,8 +371,8 @@ header {
   background: var(--text);
 }
 .stats {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  display: none;
+  grid-template-columns: repeat(5, 1fr);
   margin-top: 8px;
   border: 1px solid var(--line);
 }
@@ -421,15 +407,10 @@ header {
   margin: 6px 0;
 }
 .strip span {
-  font-size: 9px;
-  text-align: center;
-  line-height: 16px;
-  color: var(--bg);
-  font-weight: 700;
+  height: 6px;
 }
 .strip .miss {
   background: #3a1d1b;
-  color: var(--muted);
 }
 .strip .hit {
   background: var(--good);
@@ -443,10 +424,10 @@ header {
   margin: 6px 0;
   font-size: 13px;
 }
-.log summary {
-  cursor: pointer;
+.log h3 {
+  margin: 8px 0 2px;
   color: var(--muted);
-  padding: 4px 0;
+  padding-bottom: 2px;
   border-bottom: 1px solid var(--line);
 }
 .log ol {
@@ -472,16 +453,6 @@ header {
 }
 .log .text {
   flex: 1;
-}
-.log .full {
-  display: none;
-  flex: 1;
-}
-.log li:hover .text {
-  display: none;
-}
-.log li:hover .full {
-  display: block;
 }
 .log .mark {
   flex: none;
@@ -567,4 +538,55 @@ main.alien #dock > * {
 .end .small {
   margin-left: 6px;
   font-size: 10px;
+}
+.corner .card {
+  pointer-events: auto;
+}
+.card:hover .stats {
+  display: grid;
+}
+.odds .more {
+  display: none;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.card:hover .odds .more {
+  display: block;
+}
+.big .dmg {
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+#menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+#menu .row {
+  display: flex;
+}
+#menu .row button {
+  flex: 1;
+  margin-left: -1px;
+}
+#menu p {
+  margin: 0;
+}
+#help {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--line-hi);
+  line-height: 1.7;
 }

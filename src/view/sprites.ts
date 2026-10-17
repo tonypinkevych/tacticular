@@ -85,7 +85,7 @@ export const UNIT_CELLS: Record<Kind, Cell> = {
 
 /** Cells of the 1-bit sheet for action bar slots, by slot id. */
 export const SLOT_CELLS: Record<string, Cell> = {
-  "weapon:warblade": [32, 8],
+  "weapon:shotgun": [39, 9],
   "weapon:longbow": [42, 9],
   "weapon:repeater": [40, 9],
   "weapon:crossbow": [41, 9],
@@ -198,7 +198,7 @@ export function glyph(biome: Biome, tile: Tile, p: Point): { cell: Cell; color: 
   }
 }
 
-/** The 1-bit sheet, tinted once per color and drawn crisp at any whole scale. */
+/** A pixel sheet, tinted once per color and drawn crisp at any whole scale. */
 export class Sprites {
   readonly loaded: Promise<void>
   private sheet = new Image()
@@ -209,10 +209,12 @@ export class Sprites {
     this.loaded = this.sheet.decode()
   }
 
-  draw(ctx: CanvasRenderingContext2D, cell: Cell, color: string, x: number, y: number, size: number): void {
+  /** Draws a cell; a color multiplies it, so white takes the color and grey a darker shade; null draws it as is. */
+  draw(ctx: CanvasRenderingContext2D, cell: Cell, color: string | null, x: number, y: number, size: number): void {
     if (!this.sheet.complete || this.sheet.naturalWidth === 0) return
     ctx.imageSmoothingEnabled = false
-    ctx.drawImage(this.tint(color), cell[0] * TILE, cell[1] * TILE, TILE, TILE, x, y, size, size)
+    const from = color ? this.tint(color) : this.sheet
+    ctx.drawImage(from, cell[0] * TILE, cell[1] * TILE, TILE, TILE, x, y, size, size)
   }
 
   private tint(color: string): HTMLCanvasElement {
@@ -223,9 +225,11 @@ export class Sprites {
     c.height = this.sheet.naturalHeight
     const g = c.getContext("2d")!
     g.drawImage(this.sheet, 0, 0)
-    g.globalCompositeOperation = "source-in"
+    g.globalCompositeOperation = "multiply"
     g.fillStyle = color
     g.fillRect(0, 0, c.width, c.height)
+    g.globalCompositeOperation = "destination-in"
+    g.drawImage(this.sheet, 0, 0)
     this.tinted.set(color, c)
     return c
   }
@@ -234,3 +238,6 @@ export class Sprites {
 export const sprites = new Sprites(`${import.meta.env.BASE_URL}sprites/1bit.png`)
 
 export const figures = new Sprites(`${import.meta.env.BASE_URL}sprites/units.png`)
+
+/** Untinted parts of the unit figures: visors, guns, eyes. */
+export const gear = new Sprites(`${import.meta.env.BASE_URL}sprites/units-gear.png`)

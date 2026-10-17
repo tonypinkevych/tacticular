@@ -3,29 +3,28 @@ import type { AbilityId, ClassId, Dice, EnemyKind, ItemId, Kind, Weapon, WeaponI
 const d = (count: number, sides: number, bonus = 0): Dice => ({ count, sides, bonus })
 
 export const WEAPONS: Record<WeaponId, Weapon> = {
-  warblade: { id: "warblade", dice: d(2, 6, 2), min: 1, max: 1, melee: true, noise: 4, ammo: null },
-  axes: { id: "axes", dice: d(1, 6, 1), min: 1, max: 4, melee: false, noise: 4, ammo: null },
-  longbow: { id: "longbow", dice: d(1, 10, 3), min: 6, max: 20, melee: false, noise: 8, ammo: null, twoAp: true },
-  repeater: { id: "repeater", dice: d(1, 8, 1), min: 2, max: 8, melee: false, noise: 8, ammo: 5 },
-  crossbow: { id: "crossbow", dice: d(1, 6, 2), min: 2, max: 8, melee: false, noise: 8, ammo: 4 },
-  knives: { id: "knives", dice: d(1, 6, 1), min: 1, max: 6, melee: false, noise: 0, ammo: null },
-  bolt: { id: "bolt", dice: d(1, 8, 2), min: 2, max: 10, melee: false, noise: 8, ammo: null, ignoresArmor: true },
-  dagger: { id: "dagger", dice: d(1, 6, 2), min: 1, max: 1, melee: true, noise: 0, ammo: null },
-  heavyCrossbow: { id: "heavyCrossbow", dice: d(1, 8, 2), min: 2, max: 10, melee: false, noise: 8, ammo: 4 },
-  club: { id: "club", dice: d(2, 6, 2), min: 1, max: 1, melee: true, noise: 4, ammo: null, push: true },
-  spear: { id: "spear", dice: d(1, 8, 0), min: 1, max: 1, melee: true, noise: 4, ammo: null },
-  blades: { id: "blades", dice: d(1, 8, 3), min: 1, max: 1, melee: true, noise: 0, ammo: null },
-  greataxe: { id: "greataxe", dice: d(1, 12, 2), min: 1, max: 1, melee: true, noise: 4, ammo: null },
-  javelin: { id: "javelin", dice: d(1, 6, 2), min: 2, max: 6, melee: false, noise: 4, ammo: null },
+  shotgun: { id: "shotgun", dice: d(1, 3, 3), min: 1, max: 4, melee: false, noise: 8, ammo: 4 },
+  axes: { id: "axes", dice: d(1, 2, 1), min: 1, max: 4, melee: false, noise: 4, ammo: null },
+  longbow: { id: "longbow", dice: d(1, 3, 4), min: 6, max: 20, melee: false, noise: 8, ammo: null, twoAp: true },
+  repeater: { id: "repeater", dice: d(1, 2, 3), min: 1, max: 8, melee: false, noise: 8, ammo: 5 },
+  crossbow: { id: "crossbow", dice: d(1, 2, 2), min: 1, max: 8, melee: false, noise: 8, ammo: 4 },
+  knives: { id: "knives", dice: d(1, 2, 1), min: 1, max: 6, melee: false, noise: 0, ammo: null },
+  bolt: { id: "bolt", dice: d(1, 2, 2), min: 1, max: 10, melee: false, noise: 8, ammo: null },
+  dagger: { id: "dagger", dice: d(1, 2, 2), min: 1, max: 1, melee: true, noise: 0, ammo: null },
+  heavyCrossbow: { id: "heavyCrossbow", dice: d(1, 2, 2), min: 1, max: 10, melee: false, noise: 8, ammo: 4 },
+  club: { id: "club", dice: d(1, 3, 3), min: 1, max: 1, melee: true, noise: 4, ammo: null, push: true },
+  spear: { id: "spear", dice: d(1, 2, 2), min: 1, max: 1, melee: true, noise: 4, ammo: null },
+  blades: { id: "blades", dice: d(1, 3, 2), min: 1, max: 1, melee: true, noise: 0, ammo: null },
+  greataxe: { id: "greataxe", dice: d(1, 3, 3), min: 1, max: 1, melee: true, noise: 4, ammo: null },
+  javelin: { id: "javelin", dice: d(1, 2, 2), min: 1, max: 6, melee: false, noise: 4, ammo: null },
   lash: {
     id: "lash",
-    dice: d(1, 6, 2),
+    dice: d(1, 2, 2),
     min: 1,
     max: 8,
     melee: false,
     noise: 0,
     ammo: null,
-    ignoresArmor: true,
     ignoresCover: true,
     saveHalf: true,
   },
@@ -35,7 +34,6 @@ export interface Profile {
   hp: number
   aim: number
   defense: number
-  armor: number
   mobility: number
   vision: number
   will: number
@@ -50,24 +48,22 @@ const kit = (flask: number, smoke = 0): Record<ItemId, number> => ({ flask, smok
 
 export const PROFILES: Record<Kind, Profile> = {
   vanguard: {
-    hp: 13,
+    hp: 9,
     aim: 4,
-    defense: 11,
-    armor: 1,
+    defense: 12,
     mobility: 6,
     vision: 8,
     will: 1,
-    weapon: "warblade",
+    weapon: "shotgun",
     sidearm: null,
     abilities: ["charge", "shove", "rouse"],
     items: kit(1),
     axes: 0,
   },
   ranger: {
-    hp: 9,
+    hp: 7,
     aim: 6,
     defense: 11,
-    armor: 0,
     mobility: 5,
     vision: 9,
     will: 1,
@@ -78,10 +74,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   warden: {
-    hp: 14,
+    hp: 10,
     aim: 3,
     defense: 12,
-    armor: 0,
     mobility: 5,
     vision: 8,
     will: 2,
@@ -92,10 +87,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   cleric: {
-    hp: 10,
+    hp: 8,
     aim: 3,
     defense: 11,
-    armor: 0,
     mobility: 6,
     vision: 8,
     will: 3,
@@ -106,10 +100,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   rogue: {
-    hp: 9,
+    hp: 7,
     aim: 4,
     defense: 12,
-    armor: 0,
     mobility: 7,
     vision: 10,
     will: 1,
@@ -120,10 +113,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   mage: {
-    hp: 8,
+    hp: 6,
     aim: 4,
     defense: 10,
-    armor: 0,
     mobility: 5,
     vision: 8,
     will: 4,
@@ -134,10 +126,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   orc: {
-    hp: 9,
+    hp: 7,
     aim: 3,
     defense: 11,
-    armor: 0,
     mobility: 5,
     vision: 8,
     will: 0,
@@ -148,10 +139,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   bomber: {
-    hp: 6,
+    hp: 5,
     aim: 2,
     defense: 12,
-    armor: 0,
     mobility: 6,
     vision: 8,
     will: 0,
@@ -162,10 +152,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   ogre: {
-    hp: 16,
+    hp: 12,
     aim: 4,
-    defense: 9,
-    armor: 1,
+    defense: 10,
     mobility: 7,
     vision: 8,
     will: -1,
@@ -176,10 +165,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   shieldwall: {
-    hp: 12,
+    hp: 9,
     aim: 2,
-    defense: 13,
-    armor: 1,
+    defense: 14,
     mobility: 4,
     vision: 8,
     will: 1,
@@ -190,10 +178,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   assassin: {
-    hp: 8,
+    hp: 6,
     aim: 5,
     defense: 13,
-    armor: 0,
     mobility: 6,
     vision: 8,
     will: 2,
@@ -204,10 +191,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   warchief: {
-    hp: 14,
+    hp: 10,
     aim: 4,
-    defense: 12,
-    armor: 1,
+    defense: 13,
     mobility: 5,
     vision: 8,
     will: 2,
@@ -218,10 +204,9 @@ export const PROFILES: Record<Kind, Profile> = {
     axes: 0,
   },
   whisperer: {
-    hp: 8,
+    hp: 6,
     aim: 3,
     defense: 11,
-    armor: 0,
     mobility: 5,
     vision: 8,
     will: 4,
@@ -266,4 +251,4 @@ export const RANGE = { stone: 6, flask: 7, ward: 6, blink: 5, fear: 10, dread: 8
 
 export const DETECTION = { unaware: 4, investigating: 6, assassin: 3, rogue: 2 }
 
-export const HORN = { range: 15, warchief: 30 }
+export const HORN = { range: 10, warchief: 16 }

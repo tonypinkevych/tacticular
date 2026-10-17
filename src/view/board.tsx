@@ -6,7 +6,7 @@ import type { Point } from "../rules/types"
 import { sideOf } from "../rules/units"
 import { aimFor, type Model, range, slots } from "./model"
 import { draw, type Scene } from "./scene"
-import { figures, PALETTES, sprites, TILE } from "./sprites"
+import { figures, gear, PALETTES, sprites, TILE } from "./sprites"
 
 const ZOOMS = [2, 3, 4]
 const MARGIN = 320
@@ -40,11 +40,12 @@ export function Board(props: { model: Model }) {
   let dragged = false
   let wheel = 0
   const size = () => Math.round(TILE * scale)
-  Promise.all([sprites.loaded, figures.loaded]).then(() => {
+  Promise.all([sprites.loaded, figures.loaded, gear.loaded]).then(() => {
     dirty = true
   })
 
   let mouse: MouseEvent | null = null
+  let shown: Scene | null = null
 
   /** Keeps the map on screen, with room past its edges for the HUD; the hovered tile follows the camera. */
   const clamp = () => {
@@ -141,7 +142,7 @@ export function Board(props: { model: Model }) {
         } else if (armed.at && armed.slot.startsWith("item:"))
           spot = armed.slot === "item:stone" ? [armed.at] : area(armed.at, 1)
         else if (armed.at && slot?.aim === "tile") spot = [armed.at]
-      } else {
+      } else if (hover) {
         const r = reach(g, u, u.mobility * u.ap)
         for (const [k, c] of r.cost) {
           if (c === 0) continue
@@ -201,9 +202,12 @@ export function Board(props: { model: Model }) {
       }
       clamp()
     }
-    if (dirty || m.playback.live) {
+    if (dirty || m.playback.live || !last) {
       dirty = false
-      const sc = scene(performance.now())
+      shown = scene(performance.now())
+    }
+    if (shown) {
+      const sc = { ...shown, now: performance.now() }
       const dpr = window.devicePixelRatio || 1
       const w = canvas.clientWidth
       const h = canvas.clientHeight

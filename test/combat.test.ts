@@ -39,14 +39,13 @@ describe("odds", () => {
     expect(o.disadvantages).toContain("range")
     expect(o.aim).toBe(3)
   })
-  test("ward adds 2 defense, shieldwall adds 1 armor", () => {
+  test("ward adds 2 defense, a Shield trooper ally adds 1", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 0, y: 8 })
     const s = enemy("s", "shieldwall", { x: 1, y: 8 })
     addStatus(e, { id: "ward", rounds: 2 })
     const o = odds(setup(open(3, 10), [r, e, s]), r, e)
-    expect(o.defense).toBe(13)
-    expect(o.max).toBe(13 - 1)
+    expect(o.defense).toBe(14)
   })
 })
 
@@ -59,7 +58,7 @@ describe("results", () => {
     attack(g, r, e)
     expect(g.log.find((x) => x.key !== "log.dies")?.params.chance).toBe(expected)
   })
-  test("an attack logs the roll it needed and the die that counted", () => {
+  test("an attack logs the roll it needed and the die it rolled", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 0, y: 8 })
     const g = setup(open(3, 10), [r, e])
@@ -67,8 +66,6 @@ describe("results", () => {
     attack(g, r, e)
     const p = g.log.find((x) => x.key !== "log.dies")!.params
     expect(p.need).toBe(need)
-    const rolls = String(p.rolls).split("/").map(Number)
-    expect(rolls).toContain(p.kept)
-    expect(p.kept).toBe(Math.max(...rolls))
+    expect(p.total).toBe(Number(p.roll) + odds(g, r, e).aim + 4 * odds(g, r, e).edge)
   })
 })

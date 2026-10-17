@@ -43,7 +43,7 @@ const SPEED_KEY = "tacticular.speed"
 
 const dice = (w: WeaponId): string => {
   const d = WEAPONS[w].dice
-  return `${d.count}d${d.sides}${d.bonus ? `+${d.bonus}` : ""}`
+  return `${d.count + d.bonus}–${d.count * d.sides + d.bonus}`
 }
 
 const point = (k: number): Point => ({ x: k % 1000, y: Math.floor(k / 1000) })
@@ -273,6 +273,8 @@ export function createModel(session: Session, store: Storage) {
   const [confirmNew, setConfirmNew] = createSignal(false)
   const [logOpen, setLogOpen] = createSignal(true)
   const [look, setLook] = createSignal<Point | null>(null, { equals: false })
+  const [help, setHelp] = createSignal(false)
+  const [menu, setMenu] = createSignal(false)
 
   const unit = (): Unit | null => {
     const u = game().units.find((x) => x.id === selected())
@@ -406,7 +408,13 @@ export function createModel(session: Session, store: Storage) {
       batch(() => {
         setArmed(null)
         setMessage("")
+        setHelp(false)
+        setMenu(false)
       })
+      return
+    }
+    if (e.key === "?") {
+      setHelp(!help())
       return
     }
     if (e.key === "Tab") {
@@ -505,6 +513,10 @@ export function createModel(session: Session, store: Storage) {
     setHover: point,
     logOpen,
     setLogOpen,
+    help,
+    setHelp,
+    menu,
+    setMenu,
     hint,
     setHint,
     message,

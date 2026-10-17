@@ -29,7 +29,6 @@ export function makeUnit(
     maxHp: p.hp + spread.hp,
     aim: p.aim + spread.aim,
     defense: p.defense,
-    armor: p.armor,
     mobility: p.mobility,
     vision: p.vision,
     will: p.will + spread.will,
@@ -81,9 +80,10 @@ export function groupAim(game: Game, u: Unit): number {
   return game.units.some((x) => alive(x) && x.kind === "warchief" && x.group === u.group) ? 1 : 0
 }
 
-export function armorOf(game: Game, u: Unit): number {
+/** +1 Defense when a Shield trooper ally stands next to the unit. */
+export function wallOf(game: Game, u: Unit): number {
   const wall = game.units.some(
     (x) => alive(x) && x !== u && x.kind === "shieldwall" && !foes(x, u) && adjacent(x.pos, u.pos),
   )
-  return u.armor + (wall ? 1 : 0)
+  return wall ? 1 : 0
 }

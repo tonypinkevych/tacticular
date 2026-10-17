@@ -134,7 +134,11 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
   }
   if (u.intent?.type === "bomb") {
     const at = u.intent.at
-    if (distance(u.pos, at) <= RANGE.flask && lineOfSight(game, u.pos, at, false)) {
+    const friendly = area(at, 1).some((p) => {
+      const x = unitAt(game, p)
+      return x && alive(x) && !foes(u, x)
+    })
+    if (!friendly && distance(u.pos, at) <= RANGE.flask && lineOfSight(game, u.pos, at, false)) {
       return { action: { type: "item", unit: u.id, item: "flask", at }, value: 100 }
     }
   }

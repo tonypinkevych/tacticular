@@ -208,7 +208,7 @@ function squad(r: Rng, board: Board, taken: Set<number>): Unit[] {
   const spots = [-3, -1, 1, 3].map((dy) => free(board, { x: 1, y: mid + dy }, taken))
   return classes.map((kind, i) =>
     makeUnit(`s${i + 1}`, kind, "squad", spots[i], names[i], null, {
-      hp: between(r, -2, 2),
+      hp: between(r, -1, 1),
       aim: between(r, -1, 1),
       will: between(r, -1, 1),
     }),

@@ -12,24 +12,31 @@ import { Board } from "./board"
 import { Log } from "./log"
 import { type Forecast, forecast, type Model, slots } from "./model"
 import { SPEEDS } from "./motion"
-import { type Cell, figures, SLOT_CELLS, type Sprites, sprites, tone, UNIT_CELLS } from "./sprites"
+import { type Cell, figures, gear, SLOT_CELLS, type Sprites, sprites, tone, UNIT_CELLS } from "./sprites"
 
-/** One cell of a pixel sheet drawn at twice its size. */
-function Pixel(props: { sheet: Sprites; cell: Cell; color: string; class: string }) {
+/** One cell drawn at twice its size from each sheet in turn, each with its color or as it is. */
+function Pixel(props: { layers: [Sprites, string | null][]; cell: Cell; class: string }) {
   let canvas!: HTMLCanvasElement
   createEffect(() => {
-    const { sheet, cell, color } = props
-    sheet.loaded.then(() => {
+    const { layers, cell } = props
+    Promise.all(layers.map(([sheet]) => sheet.loaded)).then(() => {
       const g = canvas.getContext("2d")!
       g.clearRect(0, 0, 32, 32)
-      sheet.draw(g, cell, color, 0, 0, 32)
+      for (const [sheet, color] of layers) sheet.draw(g, cell, color, 0, 0, 32)
     })
   })
   return <canvas ref={canvas} class={props.class} width={32} height={32} />
 }
 
 const Portrait = (props: { unit: Unit }) => (
-  <Pixel sheet={figures} cell={UNIT_CELLS[props.unit.kind]} color={tone(props.unit)} class="portrait" />
+  <Pixel
+    layers={[
+      [figures, tone(props.unit)],
+      [gear, null],
+    ]}
+    cell={UNIT_CELLS[props.unit.kind]}
+    class="portrait"
+  />
 )
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
@@ -49,7 +56,7 @@ function Hp(props: { unit: Unit }) {
   )
 }
 
-/** A unit at a glance: who, how healthy, how many actions left, what it carries, what affects it. */
+/** A unit at a glance: who, health, actions, weapon and what affects it; stats show on hover. */
 function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
   const u = () => props.unit
   const soldier = () => u().side === "squad"
@@ -61,7 +68,7 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
   const w = () => WEAPONS[u().weapon]
   const stat = (label: string, value: string | number) => (
     <div class="stat">
-      <span class="muted">{label}</span>
+      <span>{label}</span>
       <b>{value}</b>
     </div>
   )
@@ -71,9 +78,9 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
         <Portrait unit={u()} />
         <div class="who">
           <div class="name">{soldier() ? u().name : t(`kind.${u().kind}`)}</div>
-          <div class="muted small">{soldier() ? t(`kind.${u().kind}`) : t(`alert.${u().alert}`)}</div>
+          <div class="small">{soldier() ? t(`kind.${u().kind}`) : t(`alert.${u().alert}`)}</div>
         </div>
-        <Show when={soldier()} fallback={<span class={`chip alert ${u().alert}`}>{t(`alert.${u().alert}`)}</span>}>
+        <Show when={soldier()}>
           <div class="ap" title={t("ui.ap")}>
             <Index each={[0, 1]}>{(_, i) => <span class="pip" classList={{ full: i < u().ap }} />}</Index>
           </div>
@@ -81,10 +88,9 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
       </div>
       <Hp unit={u()} />
       <div class="weapon">
-        <b>{t(`weapon.${u().weapon}`)}</b>
+        <span>{t(`weapon.${u().weapon}`)}</span>
         <span class="muted">
-          {w().dice.count}d{w().dice.sides}
-          {w().dice.bonus ? `+${w().dice.bonus}` : ""} · {w().melee ? t("ui.melee") : `${w().min}–${w().max}`}
+          {w().dice.count + w().dice.bonus}–{w().dice.count * w().dice.sides + w().dice.bonus}
         </span>
         <Show when={w().ammo !== null}>
           <span class="ammo">
@@ -94,25 +100,12 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
           </span>
         </Show>
       </div>
-      <div class="stats">
-        {stat(t("ui.aim"), signed(u().aim))}
-        {stat(t("ui.defense"), u().defense)}
-        {stat(t("ui.armor"), u().armor)}
-        {stat(t("ui.mobility"), u().mobility)}
-        {stat(t("ui.vision"), u().vision)}
-        {stat(t("ui.will"), signed(u().will))}
-      </div>
       <div class="chips">
-        <Show when={soldier()}>
-          <span class="chip" classList={{ hidden: u().concealed }}>
-            {u().concealed ? t("ui.concealed") : t("ui.revealed")}
-          </span>
+        <Show when={soldier() && u().concealed}>
+          <span class="chip hidden">{t("ui.concealed")}</span>
         </Show>
         <Show when={flanked()}>
           <span class="chip danger">{t("ui.flanked")}</span>
-        </Show>
-        <Show when={soldier() && u().ap === 0}>
-          <span class="chip spent">{t("ui.noAp")}</span>
         </Show>
         <Show when={u().intent}>
           <span class="chip danger">{t("ui.telegraph")}</span>
@@ -120,18 +113,22 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
         <Show when={u().stance !== "none"}>
           <span class="chip">{t(`action.${u().stance}`)}</span>
         </Show>
+        <For each={u().statuses}>
+          {(st) => (
+            <span class="chip status" title={t(`about.${st.id}`)}>
+              {t(`status.${st.id}`)}
+              <Show when={st.rounds < 99}> {st.rounds}</Show>
+            </span>
+          )}
+        </For>
       </div>
-      <For each={u().statuses}>
-        {(st) => (
-          <div class={`status ${st.id}`}>
-            <span class="chip status">{t(`status.${st.id}`)}</span>
-            <Show when={st.rounds < 99}>
-              <span class="muted small"> {t("ui.rounds", { rounds: st.rounds })}</span>
-            </Show>
-            <div class="small">{t(`about.${st.id}`)}</div>
-          </div>
-        )}
-      </For>
+      <div class="stats">
+        {stat(t("ui.aim"), signed(u().aim))}
+        {stat(t("ui.defense"), u().defense)}
+        {stat(t("ui.mobility"), u().mobility)}
+        {stat(t("ui.vision"), u().vision)}
+        {stat(t("ui.will"), signed(u().will))}
+      </div>
       {props.children}
     </section>
   )
@@ -155,9 +152,7 @@ function Strip(props: { need: number }) {
         {(face) => (
           <span
             classList={{ crit: face() === 20, hit: face() >= props.need && face() < 20, miss: face() < props.need }}
-          >
-            {face()}
-          </span>
+          />
         )}
       </Index>
     </div>
@@ -180,7 +175,7 @@ function Edge(props: { edge: number; advantages: string[]; disadvantages: string
   )
 }
 
-/** How the chance of an armed action is built, step by step. */
+/** The chance of an armed action in big type, with how it is built on hover. */
 function Odds(props: { forecast: Forecast }) {
   const d = () => props.forecast
   return (
@@ -190,44 +185,44 @@ function Odds(props: { forecast: Forecast }) {
         {(a) => (
           <>
             <div class="big">
-              {t("ui.need", { need: a().odds.need })} <span class="pct">· {Math.round(a().odds.chance * 100)}%</span>
+              {Math.round(a().odds.chance * 100)}%
+              <span class="dmg">
+                {a().odds.min}–{a().odds.max} {t("ui.damage")}
+              </span>
             </div>
             <Strip need={a().odds.need} />
-            <div>
-              {t("ui.yourAim")}: {signed(a().odds.aim)}
-              <Parts parts={a().odds.aimParts} />
+            <div class="more">
+              <div>{t("ui.need", { need: a().odds.need })}</div>
+              <div>
+                {t("ui.yourAim")} {signed(a().odds.aim)}
+                <Parts parts={a().odds.aimParts} />
+              </div>
+              <div>
+                {t("ui.theirDefense")} {a().odds.defense}
+                <Parts parts={a().odds.defenseParts} />
+              </div>
+              <Edge
+                edge={a().odds.edge}
+                advantages={a().odds.advantages}
+                disadvantages={a().odds.disadvantages}
+                before={chance(a().odds.aim, a().odds.defense, 0)}
+                after={a().odds.chance}
+              />
+              <div class="muted small">{t("ui.naturals")}</div>
             </div>
-            <div>
-              {t("ui.theirDefense")}: {a().odds.defense}
-              <Parts parts={a().odds.defenseParts} />
-            </div>
-            <Edge
-              edge={a().odds.edge}
-              advantages={a().odds.advantages}
-              disadvantages={a().odds.disadvantages}
-              before={chance(a().odds.aim, a().odds.defense, 0)}
-              after={a().odds.chance}
-            />
-            <div>
-              {t("ui.damage")}: {a().odds.min}–{a().odds.max}
-              <Show when={a().odds.armor}>
-                <span class="muted"> ({t("ui.armorCut", { armor: a().odds.armor })})</span>
-              </Show>
-            </div>
-            <div class="muted small">{t("ui.naturals")}</div>
           </>
         )}
       </Show>
       <Show when={d().kind === "save" && (d() as Extract<Forecast, { kind: "save" }>)}>
         {(s) => (
           <>
-            <div class="big">
-              {t("ui.works")}: {Math.round(s().chance * 100)}%
+            <div class="big">{Math.round(s().chance * 100)}%</div>
+            <div class="more">
+              <div>{t("ui.saveRule", { will: signed(s().will), dc: s().dc })}</div>
+              <Show when={s().edge > 0}>
+                <div class="bad">{t("ui.saveHunker")}</div>
+              </Show>
             </div>
-            <div>{t("ui.saveRule", { will: signed(s().will), dc: s().dc })}</div>
-            <Show when={s().edge > 0}>
-              <div class="bad">{t("ui.saveHunker")}</div>
-            </Show>
           </>
         )}
       </Show>
@@ -267,7 +262,7 @@ function Target(props: { model: Model }) {
   )
 }
 
-/** Round, mission and the buttons that are not actions. */
+/** Round and phase, the log toggle and a menu with everything that is not an action. */
 function Top(props: { model: Model }) {
   const m = props.model
   const canUndo = () => {
@@ -280,27 +275,52 @@ function Top(props: { model: Model }) {
       <span class={`phase ${m.shown().phase}`}>
         {t("ui.round", { round: m.shown().round })} · {t(`ui.phase.${m.shown().phase}`)}
       </span>
-      <span class="muted small">{t("ui.seed", { seed: m.game().seed })}</span>
       <span class="grow" />
-      <button type="button" disabled={!canUndo()} onClick={() => m.undo()}>
-        {t("ui.undo")}
-      </button>
-      <button type="button" classList={{ active: m.zones() }} onClick={() => m.setZones(!m.zones())}>
-        {t("ui.zones")}
-      </button>
-      <button type="button" onClick={() => m.newMission()}>
-        {m.confirmNew() ? t("ui.confirm") : t("ui.newMission")}
+      <button type="button" classList={{ active: m.help() }} onClick={() => m.setHelp(!m.help())}>
+        ?
       </button>
       <button type="button" classList={{ active: m.logOpen() }} onClick={() => m.setLogOpen(!m.logOpen())}>
         {t("ui.log")}
       </button>
-      <For each={["en", "ru"] as const}>
-        {(l) => (
-          <button type="button" classList={{ active: m.lang() === l }} onClick={() => m.setLanguage(l)}>
-            {l.toUpperCase()}
+      <button type="button" classList={{ active: m.menu() }} onClick={() => m.setMenu(!m.menu())}>
+        {t("ui.menu")}
+      </button>
+      <Show when={m.menu()}>
+        <div id="menu">
+          <span class="muted small">{t("ui.seed", { seed: m.game().seed })}</span>
+          <button type="button" disabled={!canUndo()} onClick={() => m.undo()}>
+            {t("ui.undo")}
           </button>
-        )}
-      </For>
+          <button type="button" classList={{ active: m.zones() }} onClick={() => m.setZones(!m.zones())}>
+            {t("ui.zones")}
+          </button>
+          <button type="button" onClick={() => m.newMission()}>
+            {m.confirmNew() ? t("ui.confirm") : t("ui.newMission")}
+          </button>
+          <div class="row" title={t("ui.speed")}>
+            <For each={SPEEDS}>
+              {(sp) => (
+                <button type="button" classList={{ active: m.speed() === sp }} onClick={() => m.setSpeed(sp)}>
+                  {sp === 0 ? t("ui.instant") : `${sp}×`}
+                </button>
+              )}
+            </For>
+          </div>
+          <div class="row">
+            <For each={["en", "ru"] as const}>
+              {(l) => (
+                <button type="button" classList={{ active: m.lang() === l }} onClick={() => m.setLanguage(l)}>
+                  {l.toUpperCase()}
+                </button>
+              )}
+            </For>
+          </div>
+          <p class="muted small">
+            {t("ui.save", { count: m.session.events.length, key: `${m.session.author.slice(0, 12)}…` })}
+          </p>
+          <p class="muted small">{t("ui.credits")}</p>
+        </div>
+      </Show>
     </header>
   )
 }
@@ -308,10 +328,6 @@ function Top(props: { model: Model }) {
 /** The log panel, which the player can hide. */
 function Panel(props: { model: Model }) {
   const m = props.model
-  const events = () => {
-    m.game()
-    return m.session.events.length
-  }
   return (
     <aside id="panel">
       <header>
@@ -321,12 +337,18 @@ function Panel(props: { model: Model }) {
         </button>
       </header>
       <Log game={m.shown()} />
-      <p class="muted small">{t("ui.save", { count: events(), key: `${m.session.author.slice(0, 12)}…` })}</p>
-      <p class="muted small">{t("ui.credits")}</p>
     </aside>
   )
 }
 
+const GROUPS = ["weapon", "ability", "item", "stance"] as const
+
+const group = (id: string): (typeof GROUPS)[number] => {
+  const kind = id.split(":")[0]
+  return kind === "weapon" || kind === "ability" || kind === "item" ? kind : "stance"
+}
+
+/** Action slots grouped as weapon, abilities, items and stances, then End turn. */
 function Bar(props: { model: Model }) {
   const m = props.model
   const list = () => {
@@ -335,52 +357,47 @@ function Bar(props: { model: Model }) {
   }
   return (
     <nav id="bar">
-      <div class="slots">
-        <Index each={list()}>
-          {(s) => (
-            <button
-              type="button"
-              class="slot"
-              aria-label={s().label}
-              classList={{ active: m.armed()?.slot === s().id }}
-              disabled={s().disabled}
-              onClick={() => m.press(s())}
-              onMouseEnter={() => m.setHint(s())}
-              onMouseLeave={() => m.setHint(null)}
-            >
-              <span class="face">
-                <span class="key">{s().key}</span>
-                <Show when={s().badge}>
-                  <span class="badge">{s().badge}</span>
-                </Show>
-                <Pixel sheet={sprites} cell={SLOT_CELLS[s().id] ?? [36, 13]} color="#d6e4ea" class="glyph" />
-              </span>
-            </button>
-          )}
-        </Index>
-      </div>
+      <For each={GROUPS.filter((k) => list().some((s) => group(s.id) === k))}>
+        {(k) => (
+          <div class="slots">
+            <Index each={list().filter((s) => group(s.id) === k)}>
+              {(s) => (
+                <button
+                  type="button"
+                  class="slot"
+                  aria-label={s().label}
+                  classList={{ active: m.armed()?.slot === s().id }}
+                  disabled={s().disabled}
+                  onClick={() => m.press(s())}
+                  onMouseEnter={() => m.setHint(s())}
+                  onMouseLeave={() => m.setHint(null)}
+                >
+                  <span class="face">
+                    <span class="key">{s().key}</span>
+                    <Show when={s().badge}>
+                      <span class="badge">{s().badge}</span>
+                    </Show>
+                    <Pixel layers={[[sprites, "#d6e4ea"]]} cell={SLOT_CELLS[s().id] ?? [36, 13]} class="glyph" />
+                  </span>
+                </button>
+              )}
+            </Index>
+          </div>
+        )}
+      </For>
       <button
         type="button"
         class="end"
         disabled={m.game().phase !== "squad"}
         onClick={() => m.act({ type: "endTurn" })}
       >
-        {t("ui.endTurn")} <span class="muted small">Enter</span>
+        {t("ui.endTurn")}
       </button>
-      <div class="speeds" title={t("ui.speed")}>
-        <For each={SPEEDS}>
-          {(sp) => (
-            <button type="button" classList={{ active: m.speed() === sp }} onClick={() => m.setSpeed(sp)}>
-              {sp === 0 ? t("ui.instant") : `${sp}×`}
-            </button>
-          )}
-        </For>
-      </div>
     </nav>
   )
 }
 
-/** The description of the hovered action, else of the armed one, else the message or the help. */
+/** The hovered or armed action's name and effect, or a message; hidden when there is nothing to say. */
 function Tip(props: { model: Model }) {
   const m = props.model
   const shown = () => {
@@ -391,23 +408,31 @@ function Tip(props: { model: Model }) {
     return a && u ? slots(m.game(), u).find((s) => s.id === a.slot) : undefined
   }
   return (
-    <div id="tip">
-      <Show when={shown()}>
-        {(s) => (
-          <>
-            <div class="name">
-              {s().label} <span class="muted small">{t("ui.key", { key: s().key })}</span>
+    <Show when={shown() || m.message()}>
+      <div id="tip">
+        <Show when={shown()}>
+          {(s) => (
+            <div>
+              <span class="name">{s().label}</span> <span class="muted">{s().info}</span>
             </div>
-            <div>{s().info}</div>
-          </>
-        )}
-      </Show>
-      <Show when={!m.hint()}>
-        <div classList={{ message: !!m.message(), muted: !m.message() }}>
-          {m.message() || (shown() ? "" : t("ui.help"))}
-        </div>
-      </Show>
-    </div>
+          )}
+        </Show>
+        <Show when={!m.hint() && m.message()}>
+          <div class="message">{m.message()}</div>
+        </Show>
+      </div>
+    </Show>
+  )
+}
+
+/** The keys and clicks, shown while the player asks for them. */
+function Help(props: { model: Model }) {
+  return (
+    <Show when={props.model.help()}>
+      <div id="help" class="card">
+        <For each={t("ui.help").split(" · ")}>{(line) => <div>{line}</div>}</For>
+      </div>
+    </Show>
   )
 }
 
@@ -424,10 +449,9 @@ export function App(props: { model: Model }): JSX.Element {
         <Show when={m.shown().phase === "enemy"}>
           <div id="banner">{t("ui.activity")}</div>
         </Show>
+        <Help model={m} />
         <div class="corner left">
-          <Show when={m.unit()} fallback={<p class="card muted">{t("ui.pick")}</p>}>
-            {(u) => <Card unit={u()} game={m.game()} />}
-          </Show>
+          <Show when={m.unit()}>{(u) => <Card unit={u()} game={m.game()} />}</Show>
         </div>
         <div class="corner right">
           <Target model={m} />

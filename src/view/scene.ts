@@ -6,7 +6,7 @@ import { visibleToSquad } from "../rules/stealth"
 import type { Game, Point, Unit } from "../rules/types"
 import { alive, sideOf } from "../rules/units"
 import type { Float } from "./motion"
-import { figures, glyph, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
+import { figures, gear, glyph, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
 
 /** What the board shows besides the game: selection, reach, hover and overlays. */
 export interface Scene {
@@ -55,16 +55,51 @@ function tile(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): v
   } else if (g) sprites.draw(ctx, g.cell, g.color, x, y, s)
 }
 
-/** A unit's pixel sprite in its side's color, with a shadow; concealed units get a dashed ring. */
-function figure(ctx: CanvasRenderingContext2D, s: number, u: Unit, alpha = 1, at: Point = u.pos): void {
+const phase = (id: string): number => [...id].reduce((sum, c) => sum + c.charCodeAt(0), 0)
+
+/**
+ * A unit's sprite on a base disc in its side's color; aliens face left. It bobs at rest and while walking,
+ * kicks back when it fires and flashes and shakes when hit. Concealed units get a dashed ring.
+ */
+function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at: Point = u.pos): void {
+  const s = sc.size
+  const px = s / 16
   const x = at.x * s
   const y = at.y * s
+  const walking = at.x % 1 !== 0 || at.y % 1 !== 0
+  const bob = walking
+    ? -Math.round(Math.abs(Math.sin((at.x + at.y) * Math.PI * 2)))
+    : Math.sin(sc.now / 450 + phase(u.id)) > 0.4
+      ? -1
+      : 0
+  const firing = sc.shot && sc.shot.progress < 0.3 && sc.shot.from.x === at.x && sc.shot.from.y === at.y
+  const kick = firing ? -Math.sign(sc.shot!.to.x - sc.shot!.from.x || 1) : 0
+  const struck = sc.texts.some((f) => f.hit && same(f.at, u.pos) && sc.now - f.born < 220)
+  const shake = struck ? (Math.floor(sc.now / 40) % 2 ? 1 : -1) : 0
   ctx.globalAlpha = alpha
-  ctx.fillStyle = "rgba(0,0,0,0.5)"
+  ctx.fillStyle = "rgba(0,0,0,0.55)"
+  ctx.strokeStyle = tone(u)
+  ctx.lineWidth = Math.max(1, px)
   ctx.beginPath()
-  ctx.ellipse(x + s / 2, y + s * 0.88, s * 0.34, s * 0.1, 0, 0, Math.PI * 2)
+  ctx.ellipse(x + s / 2, y + s * 0.88, s * 0.36, s * 0.11, 0, 0, Math.PI * 2)
   ctx.fill()
-  figures.draw(ctx, UNIT_CELLS[u.kind], tone(u), x, y, s)
+  ctx.globalAlpha = alpha * 0.6
+  ctx.stroke()
+  ctx.globalAlpha = alpha
+  ctx.lineWidth = 1
+  ctx.save()
+  ctx.translate(x + (kick + shake) * px, y + bob * px)
+  if (sideOf(u) === "enemy") {
+    ctx.translate(s, 0)
+    ctx.scale(-1, 1)
+  }
+  figures.draw(ctx, UNIT_CELLS[u.kind], struck ? "#ffffff" : tone(u), 0, 0, s)
+  if (!struck) gear.draw(ctx, UNIT_CELLS[u.kind], null, 0, 0, s)
+  if (firing) {
+    ctx.fillStyle = "#fff4c2"
+    ctx.fillRect(s - 2 * px, s * 0.5, 2 * px, 2 * px)
+  }
+  ctx.restore()
   if (u.concealed) {
     ctx.setLineDash([3, 3])
     ctx.strokeStyle = "rgba(232,241,255,0.8)"
@@ -325,7 +360,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const g of game.ghosts) {
     const u = game.units.find((x) => x.id === g.unit)
     if (!u || enemies.includes(u)) continue
-    figure(ctx, s, { ...u, pos: g.at, concealed: false }, 0.35)
+    figure(ctx, sc, { ...u, pos: g.at, concealed: false }, 0.35)
     ctx.fillStyle = "#fff"
     ctx.font = `${Math.floor(s * 0.3)}px system-ui`
     ctx.textAlign = "left"
@@ -364,18 +399,21 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
     const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0
-    figure(ctx, s, u, spent ? 0.45 : 1, at)
+    figure(ctx, sc, u, spent ? 0.45 : 1, at)
     badges(ctx, s, u, at)
     if (u.side === "squad" && sideOf(u) === "squad" && flankers(game, u, enemies).length > 0) warn(ctx, s, at)
   }
   if (sc.ghost) {
-    figure(ctx, s, sc.ghost.unit, 0.5, sc.ghost.at)
+    figure(ctx, sc, sc.ghost.unit, 0.5, sc.ghost.at)
     cover(ctx, s, game, sc.ghost.at)
   }
   if (sc.mover && !game.units.some((u) => u.id === sc.mover!.id && (u.side === "squad" || enemies.includes(u)))) {
     const u = game.units.find((x) => x.id === sc.mover!.id)
     if (u && seen.has(key({ x: Math.round(sc.mover.at.x), y: Math.round(sc.mover.at.y) })))
-      figure(ctx, s, u, 1, sc.mover.at)
+      figure(ctx, sc, u, 1, sc.mover.at)
+  }
+  for (const f of sc.texts) {
+    if (f.unit && seen.has(key(f.at))) figure(ctx, sc, f.unit, Math.max(0, 1 - (sc.now - f.born) / sc.life), f.at)
   }
   if (sc.selected) {
     const id = sc.selected.id

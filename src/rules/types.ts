@@ -30,7 +30,7 @@ export interface Dice {
 }
 
 export type WeaponId =
-  | "warblade"
+  | "shotgun"
   | "axes"
   | "longbow"
   | "repeater"
@@ -55,7 +55,6 @@ export interface Weapon {
   noise: number
   ammo: number | null
   twoAp?: boolean
-  ignoresArmor?: boolean
   ignoresCover?: boolean
   saveHalf?: boolean
   push?: boolean
@@ -113,7 +112,6 @@ export interface Unit {
   maxHp: number
   aim: number
   defense: number
-  armor: number
   mobility: number
   vision: number
   will: number
@@ -143,6 +141,7 @@ export interface Group {
   id: string
   revealed: boolean
   target: Point | null
+  alarmed?: boolean
 }
 
 export interface Noise {

@@ -1,7 +1,7 @@
 import { attack, canReach, hurt, push } from "./combat"
 import { inCover } from "./cover"
 import { ABILITIES, NOISE, PROFILES, RANGE, WEAPONS } from "./data"
-import { d20, failChance, rollDice } from "./dice"
+import { d20, EDGE, failChance, rollDice } from "./dice"
 import { AROUND, adjacent, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid"
 import { endPhase } from "./round"
 import { lineOfSight, sees } from "./sight"
@@ -210,7 +210,7 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
     }
     case "heal": {
       check(!!t && !foes(u, t) && (t === u || adjacent(u.pos, t.pos)) && alive(t), "target")
-      const amount = Math.min(t!.maxHp - t!.hp, rollDice(game, { count: 2, sides: 4, bonus: 2 }))
+      const amount = Math.min(t!.maxHp - t!.hp, rollDice(game, { count: 1, sides: 3, bonus: 2 }))
       t!.hp += amount
       game.log.push({ key: "log.heal", params: { unit: u.id, target: t!.id, amount } })
       break
@@ -232,19 +232,20 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
     case "dominate": {
       check(!!t && canTarget(game, u, t) && distance(u.pos, t.pos) <= RANGE[id], "target")
       if (id === "dominate") check(t!.side === "squad", "target")
-      const save = d20(game, t!.stance === "hunker" ? 1 : 0)
+      const edge = t!.stance === "hunker" ? 1 : 0
+      const roll = d20(game)
       const dc = 10 + u.will
-      const saved = save.kept + t!.will >= dc
+      const saved = roll + t!.will + EDGE * edge >= dc
       game.log.push({
         key: `log.${id}`,
         params: {
           unit: u.id,
           target: t!.id,
-          rolls: save.rolls.join("/"),
-          total: save.kept + t!.will,
+          roll,
+          total: roll + t!.will + EDGE * edge,
           dc,
           saved,
-          chance: Math.round(failChance(t!.will, dc, t!.stance === "hunker" ? 1 : 0) * 100),
+          chance: Math.round(failChance(t!.will, dc, edge) * 100),
         },
       })
       if (!saved && id === "dominate") {
