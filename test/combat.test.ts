@@ -1,4 +1,4 @@
-import { odds } from "../src/rules/combat"
+import { attack, odds } from "../src/rules/combat"
 import { addStatus } from "../src/rules/units"
 import { enemy, open, setup, squad } from "./fixture"
 
@@ -47,5 +47,16 @@ describe("odds", () => {
     const o = odds(setup(open(3, 10), [r, e, s]), r, e)
     expect(o.defense).toBe(13)
     expect(o.max).toBe(13 - 1)
+  })
+})
+
+describe("results", () => {
+  test("an attack logs the hit chance it had", () => {
+    const r = squad("r", "ranger", { x: 0, y: 0 })
+    const e = enemy("e", "orc", { x: 0, y: 8 })
+    const g = setup(open(3, 10), [r, e])
+    const expected = Math.round(odds(g, r, e).chance * 100)
+    attack(g, r, e)
+    expect(g.log.find((x) => x.key !== "log.dies")?.params.chance).toBe(expected)
   })
 })

@@ -398,9 +398,11 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     if (u && seen.has(key({ x: Math.round(sc.mover.at.x), y: Math.round(sc.mover.at.y) })))
       disk(ctx, s, sc, u, 1, sc.mover.at)
   }
-  if (sc.selected && !sc.mover) {
-    ring(ctx, s, sc.selected.pos, "#ffffff")
-    cover(ctx, s, game, sc.selected.pos)
+  if (sc.selected) {
+    const id = sc.selected.id
+    const at = sc.mover?.id === id ? sc.mover.at : (game.units.find((x) => x.id === id)?.pos ?? sc.selected.pos)
+    ring(ctx, s, at, "#ffffff")
+    if (!sc.mover) cover(ctx, s, game, at)
   }
   if (sc.aimed) {
     ring(ctx, s, sc.aimed, "#ff3b3b")

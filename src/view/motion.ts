@@ -111,15 +111,16 @@ export function floats(before: Game, after: Game, now: number): Float[] {
   }
   for (const e of after.log.slice(before.log.length)) {
     const p = e.params
-    if (e.key === "log.hit" || e.key === "log.cleave" || e.key === "log.burn" || e.key === "log.lash")
-      add(e, `-${p.dmg}`, "#ff6a5a")
-    if (e.key === "log.crit") add(e, `-${p.dmg}!`, "#ffb02e")
-    if (e.key === "log.miss") add(e, "✕", "#d9dde3")
+    const odds = p.chance === undefined ? "" : ` ${p.chance}%`
+    const spell = e.key === "log.fear" || e.key === "log.dread" || e.key === "log.dominate"
+    if (e.key === "log.hit" || e.key === "log.lash") add(e, `-${p.dmg} · ${odds.trim()}`, "#ff6a5a")
+    if (e.key === "log.cleave" || e.key === "log.burn") add(e, `-${p.dmg}`, "#ff6a5a")
+    if (e.key === "log.crit") add(e, `-${p.dmg}! · ${odds.trim()}`, "#ffb02e")
+    if (e.key === "log.miss") add(e, `✕ · ${odds.trim()}`, "#d9dde3")
     if (e.key === "log.heal") add(e, `+${p.amount}`, "#5fd35f")
     if (e.key === "log.burning") add(e, `-${p.dmg}`, "#ff8a3c", p.unit)
     if (e.key === "log.detected") add(e, "!", "#ffd84a", p.unit)
-    if ((e.key === "log.fear" || e.key === "log.dread" || e.key === "log.dominate") && !p.saved) add(e, "☠", "#c38bff")
-    if ((e.key === "log.fear" || e.key === "log.dread" || e.key === "log.dominate") && p.saved) add(e, "✓", "#d9dde3")
+    if (spell) add(e, `${p.saved ? "✓" : "☠"} · ${odds.trim()}`, p.saved ? "#d9dde3" : "#c38bff")
   }
   return out
 }

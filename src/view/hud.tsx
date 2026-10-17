@@ -243,6 +243,7 @@ function Bar(props: { model: Model }) {
             <button
               type="button"
               class="slot"
+              aria-label={s().label}
               classList={{ active: m.armed()?.slot === s().id }}
               disabled={s().disabled}
               onClick={() => m.press(s())}
@@ -253,9 +254,11 @@ function Bar(props: { model: Model }) {
               <Show when={s().badge}>
                 <span class="badge">{s().badge}</span>
               </Show>
-              <span class="label" lang={m.lang()}>
-                {s().label}
-              </span>
+              <img
+                class="glyph"
+                src={`${import.meta.env.BASE_URL}icons/actions/${s().id.replace(":", "-")}.svg`}
+                alt={s().label}
+              />
             </button>
           )}
         </Index>

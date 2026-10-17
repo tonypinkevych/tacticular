@@ -14,3 +14,28 @@ shieldwall.svg  Visored helm     by Lorc
 assassin.svg    Hooded assassin  by DarkZaitzev
 warchief.svg    Horned helm      by Lorc
 whisperer.svg   Cultist          by Lorc
+
+Action icons (public/icons/actions):
+weapon-warblade.svg   Broadsword        by Lorc
+weapon-axes.svg       Battle axe        by Lorc
+weapon-longbow.svg    Bow arrow         by Delapouite
+weapon-repeater.svg   Crossbow          by Carl Olsen
+weapon-crossbow.svg   Crossbow          by Carl Olsen
+weapon-knives.svg     Thrown daggers    by Lorc
+weapon-bolt.svg       Energy arrow      by Lorc
+weapon-dagger.svg     Plain dagger      by Lorc
+ability-charge.svg    Charging bull     by Delapouite
+ability-volley.svg    Striking arrows   by Lorc
+ability-bulwark.svg   Stone wall        by Delapouite
+ability-heal.svg      Healing           by Delapouite
+ability-ward.svg      Magic shield      by Lorc
+ability-vanish.svg    Invisible         by Delapouite
+ability-fear.svg      Terror            by Lorc
+ability-blink.svg     Teleport          by Lorc
+ability-rouse.svg     Alarm clock       by Delapouite
+item-flask.svg        Molotov           by Lorc
+item-smoke.svg        Smoke bomb        by DarkZaitzev
+item-stone.svg        Stone pile        by Delapouite
+overwatch.svg         Eye target        by Delapouite
+hunker.svg            Checked shield    by Lorc
+reload.svg            Cycle             by Lorc

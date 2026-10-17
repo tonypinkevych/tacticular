@@ -1,5 +1,5 @@
 import { PROFILES } from "../src/rules/data"
-import { walkable } from "../src/rules/grid"
+import { key, reach, walkable } from "../src/rules/grid"
 import { mission } from "../src/rules/mission"
 
 describe("mission", () => {
@@ -49,6 +49,16 @@ describe("mission", () => {
         expect(kinds.length).toBeLessThanOrEqual(4)
         if (kinds.length >= 3) expect(kinds).toContain("warchief")
         expect(kinds.filter((k) => ["ogre", "assassin", "whisperer"].includes(k)).length).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+  test("every enemy can walk to the squad", () => {
+    for (const seed of seeds) {
+      const g = mission(seed)
+      const free = { ...g, units: [] }
+      for (const e of g.units.filter((u) => u.side === "enemy")) {
+        const r = reach(free, e, 10_000)
+        expect(r.cost.has(key(g.units[0].pos)), `seed ${seed}: ${e.id}`).toBe(true)
       }
     }
   })

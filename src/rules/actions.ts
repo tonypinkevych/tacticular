@@ -1,7 +1,7 @@
 import { attack, canReach, hurt } from "./combat"
 import { inCover } from "./cover"
 import { ABILITIES, NOISE, PROFILES, RANGE, WEAPONS } from "./data"
-import { d20, rollDice } from "./dice"
+import { d20, failChance, rollDice } from "./dice"
 import { AROUND, adjacent, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid"
 import { endPhase } from "./round"
 import { lineOfSight, sees } from "./sight"
@@ -72,6 +72,7 @@ export function walk(game: Game, u: Unit, path: Point[]): void {
         !adjacent(x.pos, step),
     )
     u.pos = { ...step }
+    if (tileAt(game, step) === "door") game.board.tiles[step.y * game.board.width + step.x] = "open"
     stepped(game, u)
     for (const x of game.units) {
       if (!alive(u)) return
@@ -216,7 +217,15 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
       const saved = save.kept + t!.will >= dc
       game.log.push({
         key: `log.${id}`,
-        params: { unit: u.id, target: t!.id, rolls: save.rolls.join("/"), total: save.kept + t!.will, dc, saved },
+        params: {
+          unit: u.id,
+          target: t!.id,
+          rolls: save.rolls.join("/"),
+          total: save.kept + t!.will,
+          dc,
+          saved,
+          chance: Math.round(failChance(t!.will, dc, t!.stance === "hunker" ? 1 : 0) * 100),
+        },
       })
       if (!saved && id === "dominate") {
         addStatus(t!, { id: "dominated", rounds: 2, source: u.id })

@@ -19,6 +19,9 @@ export function tileAt(game: Game, p: Point): Tile {
 
 export const walkable = (tile: Tile): boolean => tile === "floor" || tile === "open" || tile === "bridge"
 
+/** A tile a walk can pass: walkable ground, or a closed door that opens on the way. */
+export const passable = (tile: Tile): boolean => walkable(tile) || tile === "door"
+
 export const blocksSight = (tile: Tile): boolean => tile === "wall" || tile === "high" || tile === "door"
 
 export function coverOf(tile: Tile): number {
@@ -83,10 +86,10 @@ export function reach(game: Game, unit: Unit, budget: number, side = unit.side):
       for (const step of AROUND) {
         const next = plus(p, step)
         const diagonal = step.x !== 0 && step.y !== 0
-        if (!walkable(tileAt(game, next))) continue
+        if (!passable(tileAt(game, next))) continue
         if (
           diagonal &&
-          (!walkable(tileAt(game, { x: next.x, y: p.y })) || !walkable(tileAt(game, { x: p.x, y: next.y })))
+          (!passable(tileAt(game, { x: next.x, y: p.y })) || !passable(tileAt(game, { x: p.x, y: next.y })))
         )
           continue
         const other = unitAt(game, next)

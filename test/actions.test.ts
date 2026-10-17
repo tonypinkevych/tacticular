@@ -155,6 +155,18 @@ describe("charge landing", () => {
   })
 })
 
+describe("doors", () => {
+  test("walking into a closed door opens it", () => {
+    const g = setup(
+      ["#####", "#.+..", "#####"],
+      [squad("v", "vanguard", { x: 1, y: 1 }), enemy("e", "orc", { x: 4, y: 1 }, "unaware")],
+    )
+    const a = apply(g, { type: "move", unit: "v", to: { x: 3, y: 1 } })
+    expect(find(a, "v").pos).toEqual({ x: 3, y: 1 })
+    expect(tileAt(a, { x: 2, y: 1 })).toBe("open")
+  })
+})
+
 describe("mission end", () => {
   test("killing the last enemy wins", () => {
     const g = setup(open(4, 3), [squad("v", "vanguard", { x: 0, y: 0 }), enemy("e", "orc", { x: 1, y: 0 })])

@@ -84,38 +84,36 @@ canvas {
 }
 .slot {
   position: relative;
-  width: 92px;
-  height: 64px;
+  width: 54px;
+  height: 54px;
+  padding: 0;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 4px 5px;
-  text-align: left;
+  align-items: center;
+  justify-content: center;
+}
+.slot .glyph {
+  width: 32px;
+  height: 32px;
 }
 .slot .key {
   position: absolute;
-  top: 3px;
-  left: 6px;
-  font-size: 12px;
+  top: 2px;
+  left: 4px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--gold);
 }
 .slot .badge {
   position: absolute;
-  top: 3px;
-  right: 6px;
+  bottom: 2px;
+  right: 4px;
   font-size: 11px;
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--text);
+  text-shadow: 0 0 3px #000;
 }
-.slot .label {
-  font-size: 11px;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-  hyphens: auto;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.slot.active {
+  box-shadow: 0 0 0 2px var(--gold);
 }
 .side {
   display: flex;

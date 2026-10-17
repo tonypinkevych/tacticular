@@ -1,6 +1,6 @@
 import { coverAgainst } from "./cover"
 import { WEAPONS } from "./data"
-import { chance, d20, die, rollDice } from "./dice"
+import { chance, d20, die, failChance, rollDice } from "./dice"
 import { AROUND, adjacent, distance, plus, same, tileAt, unitAt, walkable } from "./grid"
 import type { Game, Unit, Weapon, WeaponId } from "./types"
 import { addStatus, alive, armorOf, foes, groupAim, has, sideOf } from "./units"
@@ -123,6 +123,7 @@ export function attack(
         dc,
         saved,
         dmg,
+        chance: Math.round(failChance(target.will, dc, target.stance === "hunker" ? 1 : 0) * 100),
       },
     })
     hurt(game, target, dmg)
@@ -141,6 +142,7 @@ export function attack(
     hit,
     crit,
     reaction: !!shot.reaction,
+    chance: Math.round(o.chance * 100),
   }
   if (!hit) {
     game.log.push({ key: "log.miss", params })
