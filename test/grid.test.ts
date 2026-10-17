@@ -32,4 +32,21 @@ describe("grid", () => {
     const r = reach(setup([".#", ".."], [v]), v, 10)
     expect(r.cost.get(key({ x: 1, y: 1 }))).toBe(2)
   })
+  test("a unit vaults over low cover for 2 and cannot stop on it", () => {
+    const v = squad("v", "vanguard", { x: 0, y: 0 })
+    const r = reach(setup([".:.."], [v]), v, 10)
+    expect(r.cost.get(key({ x: 2, y: 0 }))).toBe(2)
+    expect(r.cost.has(key({ x: 1, y: 0 }))).toBe(false)
+    expect(r.path({ x: 3, y: 0 })).toEqual([
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+    ])
+  })
+  test("no vault onto a foe, a wall or across two low tiles", () => {
+    const v = squad("v", "vanguard", { x: 0, y: 0 })
+    const e = enemy("e", "orc", { x: 2, y: 0 })
+    expect(reach(setup([".:."], [v, e]), v, 10).cost.has(key({ x: 2, y: 0 }))).toBe(false)
+    expect(reach(setup([".:#"], [v]), v, 10).cost.size).toBe(1)
+    expect(reach(setup([".::."], [v]), v, 10).cost.size).toBe(1)
+  })
 })

@@ -59,7 +59,8 @@ const phase = (id: string): number => [...id].reduce((sum, c) => sum + c.charCod
 
 /**
  * A unit's sprite on a base disc in its side's color; aliens face left. It bobs at rest and while walking,
- * kicks back when it fires and flashes and shakes when hit. Concealed units get a dashed ring.
+ * hops over low cover, kicks back when it fires and flashes and shakes when hit. Concealed units get a
+ * dashed ring.
  */
 function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at: Point = u.pos): void {
   const s = sc.size
@@ -67,8 +68,12 @@ function figure(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, alpha = 1, at
   const x = at.x * s
   const y = at.y * s
   const walking = at.x % 1 !== 0 || at.y % 1 !== 0
+  const below = { x: Math.round(at.x), y: Math.round(at.y) }
+  const lift = 1 - 2 * Math.max(Math.abs(at.x - below.x), Math.abs(at.y - below.y))
   const bob = walking
-    ? -Math.round(Math.abs(Math.sin((at.x + at.y) * Math.PI * 2)))
+    ? tileAt(sc.game, below) === "low"
+      ? -Math.round(5 * lift)
+      : -Math.round(Math.abs(Math.sin((at.x + at.y) * Math.PI * 2)))
     : Math.sin(sc.now / 450 + phase(u.id)) > 0.4
       ? -1
       : 0
@@ -152,7 +157,7 @@ function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u
           shaken: "K",
           burning: "B",
           dominated: "D",
-          ward: "W",
+          ward: "",
           exposed: "X",
           staggered: "≈",
         })[st.id],
@@ -166,6 +171,10 @@ function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u
     ctx.textAlign = "right"
     ctx.textBaseline = "top"
     ctx.fillText(marks, x + s - 2, y + 1)
+  }
+  if (u.statuses.some((st) => st.id === "ward")) {
+    const r = Math.max(4, s * 0.14)
+    shield(ctx, x + s - r - 2, y + (marks ? s * 0.5 : r + 2), r, true, "#b98cff")
   }
 }
 
@@ -248,7 +257,14 @@ function zones(ctx: CanvasRenderingContext2D, s: number, game: Game, enemies: Un
   }
 }
 
-function shield(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, full: boolean): void {
+function shield(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  full: boolean,
+  color = "#4fc3ff",
+): void {
   ctx.beginPath()
   ctx.moveTo(cx, cy - r)
   ctx.lineTo(cx + r * 0.85, cy - r * 0.6)
@@ -261,7 +277,7 @@ function shield(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number
   ctx.fill()
   ctx.save()
   ctx.clip()
-  ctx.fillStyle = "#4fc3ff"
+  ctx.fillStyle = color
   if (full) ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
   else ctx.fillRect(cx - r, cy, r * 2, r)
   ctx.restore()
@@ -349,12 +365,16 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   outline(ctx, s, sc.near, "#4aa3ff")
   tint(ctx, s, sc.area.map(key), "rgba(255,120,40,0.35)")
   if (sc.path.length > 0 && sc.selected) {
-    ctx.strokeStyle = "#ffffff"
     ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(sc.selected.pos.x * s + s / 2, sc.selected.pos.y * s + s / 2)
-    for (const p of sc.path) ctx.lineTo(p.x * s + s / 2, p.y * s + s / 2)
-    ctx.stroke()
+    let from = sc.selected.pos
+    for (const p of sc.path) {
+      ctx.strokeStyle = sc.near.has(key(p)) ? "#4aa3ff" : "#f2c94c"
+      ctx.beginPath()
+      ctx.moveTo(from.x * s + s / 2, from.y * s + s / 2)
+      ctx.lineTo(p.x * s + s / 2, p.y * s + s / 2)
+      ctx.stroke()
+      from = p
+    }
     ctx.lineWidth = 1
   }
   for (const g of game.ghosts) {

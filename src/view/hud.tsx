@@ -74,6 +74,7 @@ function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
   )
   return (
     <section class="card" classList={{ foe: !soldier() }}>
+      <span class="more-mark">?</span>
       <div class="head">
         <Portrait unit={u()} />
         <div class="who">

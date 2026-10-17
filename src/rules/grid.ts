@@ -67,7 +67,10 @@ export interface Reach {
   path(to: Point): Point[]
 }
 
-/** Tiles a unit can walk to within a budget; allies can be passed, nobody can be stood on. */
+/** Tiles a unit can walk to within a budget; allies can be passed, nobody can be stood on.
+ *
+ * A straight step onto low cover vaults it and lands on the tile behind, for 2.
+ */
 export function reach(game: Game, unit: Unit, budget: number, side = unit.side): Reach {
   const best = new Map<number, number>()
   const prev = new Map<number, number>()
@@ -84,8 +87,9 @@ export function reach(game: Game, unit: Unit, budget: number, side = unit.side):
       const p = point(s)
       const parity = s % 2
       for (const step of AROUND) {
-        const next = plus(p, step)
         const diagonal = step.x !== 0 && step.y !== 0
+        const vault = !diagonal && tileAt(game, plus(p, step)) === "low"
+        const next = vault ? plus(plus(p, step), step) : plus(p, step)
         if (!passable(tileAt(game, next))) continue
         if (
           diagonal &&
@@ -94,7 +98,7 @@ export function reach(game: Game, unit: Unit, budget: number, side = unit.side):
           continue
         const other = unitAt(game, next)
         if (other && other.side !== side) continue
-        const nextCost = cost + (diagonal ? (parity ? 2 : 1) : 1)
+        const nextCost = cost + (diagonal ? (parity ? 2 : 1) : vault ? 2 : 1)
         if (nextCost > budget) continue
         const ns = state(next, diagonal ? 1 - parity : parity)
         if ((best.get(ns) ?? Infinity) <= nextCost) continue
