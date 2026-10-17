@@ -1,4 +1,4 @@
-import { attack, canReach, hurt } from "./combat"
+import { attack, canReach, hurt, push } from "./combat"
 import { inCover } from "./cover"
 import { ABILITIES, NOISE, PROFILES, RANGE, WEAPONS } from "./data"
 import { d20, failChance, rollDice } from "./dice"
@@ -68,6 +68,7 @@ export function walk(game: Game, u: Unit, path: Point[]): void {
         foes(x, u) &&
         WEAPONS[x.weapon].melee &&
         x.stance !== "hunker" &&
+        !has(x, "staggered") &&
         adjacent(x.pos, u.pos) &&
         !adjacent(x.pos, step),
     )
@@ -76,7 +77,7 @@ export function walk(game: Game, u: Unit, path: Point[]): void {
     stepped(game, u)
     for (const x of game.units) {
       if (!alive(u)) return
-      if (!alive(x) || !foes(x, u) || x.stance !== "overwatch") continue
+      if (!alive(x) || !foes(x, u) || x.stance !== "overwatch" || has(x, "staggered")) continue
       const w = WEAPONS[x.weapon]
       if (w.melee ? !adjacent(x.pos, u.pos) : !sees(game, x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
       if (u.kind === "assassin" && u.concealed) continue
@@ -156,6 +157,25 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
         attack(game, u, t!, u.weapon)
         attacked(game, u, t!, u.weapon)
       }
+      break
+    }
+    case "shove": {
+      check(!!t && foes(u, t) && adjacent(u.pos, t.pos), "target")
+      push(game, u, t!)
+      game.log.push({ key: "log.shove", params: { unit: u.id, target: t!.id } })
+      attacked(game, u, t!, u.weapon)
+      break
+    }
+    case "spot": {
+      check(!!t && canTarget(game, u, t), "target")
+      addStatus(t!, { id: "exposed", rounds: 1, source: u.id })
+      game.log.push({ key: "log.spot", params: { unit: u.id, target: t!.id } })
+      break
+    }
+    case "rally": {
+      check(!!t && t !== u && !foes(u, t) && distance(u.pos, t.pos) <= RANGE.rally && sees(game, u, t.pos), "target")
+      t!.ap = Math.min(3, t!.ap + 1)
+      game.log.push({ key: "log.rally", params: { unit: u.id, target: t!.id } })
       break
     }
     case "volley": {

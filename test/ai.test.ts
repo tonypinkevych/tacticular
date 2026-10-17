@@ -33,7 +33,7 @@ describe("enemy AI", () => {
   })
   test("a revealed group reacts once, in the player phase", () => {
     const g = setup(open(20, 5), [
-      squad("g", "rogue", { x: 0, y: 2 }),
+      squad("g", "warden", { x: 0, y: 2 }),
       squad("h", "warden", { x: 0, y: 4 }),
       enemy("a", "orc", { x: 10, y: 2 }, "unaware"),
       enemy("b", "orc", { x: 11, y: 3 }, "unaware"),

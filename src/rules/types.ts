@@ -70,10 +70,21 @@ export type AbilityId =
   | "dread"
   | "dominate"
   | "mark"
+  | "shove"
+  | "spot"
+  | "rally"
 
 export type ItemId = "flask" | "smoke" | "stone"
 
-export type StatusId = "suppressed" | "frightened" | "shaken" | "burning" | "dominated" | "ward"
+export type StatusId =
+  | "suppressed"
+  | "frightened"
+  | "shaken"
+  | "burning"
+  | "dominated"
+  | "ward"
+  | "exposed"
+  | "staggered"
 
 export interface Status {
   id: StatusId

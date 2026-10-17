@@ -39,3 +39,6 @@ item-stone.svg        Stone pile        by Delapouite
 overwatch.svg         Eye target        by Delapouite
 hunker.svg            Checked shield    by Lorc
 reload.svg            Cycle             by Lorc
+ability-shove.svg     Shield bash       by Delapouite
+ability-spot.svg      Archery target    by Lorc
+ability-rally.svg     Rally the troops  by Lorc

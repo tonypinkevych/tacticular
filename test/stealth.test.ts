@@ -12,7 +12,7 @@ const kill = (g: Game, unit: string, target: string): Game => {
 
 describe("detection", () => {
   test("a concealed soldier is detected within 4 tiles of an unaware enemy", () => {
-    const g = setup(open(20, 3), [squad("g", "rogue", { x: 0, y: 1 }), enemy("e", "orc", { x: 10, y: 1 }, "unaware")])
+    const g = setup(open(20, 3), [squad("g", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 10, y: 1 }, "unaware")])
     const far = apply(g, { type: "move", unit: "g", to: { x: 5, y: 1 } })
     expect(find(far, "g").concealed).toBe(true)
     const near = apply(far, { type: "move", unit: "g", to: { x: 6, y: 1 } })
@@ -21,7 +21,7 @@ describe("detection", () => {
   })
   test("an investigating enemy detects within 6 tiles", () => {
     const g = setup(open(20, 3), [
-      squad("g", "rogue", { x: 0, y: 1 }),
+      squad("g", "warden", { x: 0, y: 1 }),
       enemy("e", "orc", { x: 10, y: 1 }, "investigating"),
     ])
     expect(find(apply(g, { type: "move", unit: "g", to: { x: 3, y: 1 } }), "g").concealed).toBe(true)
@@ -29,7 +29,7 @@ describe("detection", () => {
   })
   test("a first reveal in the player phase queues the group's reveal reaction", () => {
     const g = setup(open(20, 3), [
-      squad("g", "rogue", { x: 0, y: 1 }),
+      squad("g", "warden", { x: 0, y: 1 }),
       enemy("a", "orc", { x: 10, y: 1 }, "unaware"),
       enemy("b", "orc", { x: 11, y: 1 }, "unaware"),
     ])
@@ -43,7 +43,7 @@ describe("noise and silent kills", () => {
     const rows = open(20, 5)
     rows[0] = "...................H"
     const g = setup(rows, [
-      squad("g", "rogue", { x: 0, y: 2 }),
+      squad("g", "rogue", { x: 4, y: 2 }),
       enemy("a", "orc", { x: 5, y: 2 }, "unaware", "g1"),
       enemy("b", "orc", { x: 19, y: 4 }, "unaware", "g2"),
     ])

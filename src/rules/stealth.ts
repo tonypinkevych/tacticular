@@ -22,8 +22,9 @@ export function visibleToSquad(game: Game, e: Unit): boolean {
   return eyes(game).some((s) => sees(game, s, e.pos, radius === undefined ? s.vision : Math.min(radius, s.vision)))
 }
 
-/** Detection radius of an enemy against a concealed soldier. */
-function detection(e: Unit): number {
+/** Detection radius of an enemy against a concealed soldier; -1 means it cannot detect it at all. */
+function detection(e: Unit, s: Unit): number {
+  if (s.kind === "rogue") return e.alert === "unaware" ? -1 : DETECTION.rogue
   return e.alert === "unaware" ? DETECTION.unaware : DETECTION.investigating
 }
 
@@ -55,7 +56,8 @@ export function scan(game: Game): void {
   for (const e of hostiles(game)) {
     for (const s of game.units) {
       if (!alive(s) || !foes(e, s) || s.side !== "squad" || !alive(e)) continue
-      const radius = s.concealed ? Math.min(detection(e), e.vision) : e.vision
+      const radius = s.concealed ? Math.min(detection(e, s), e.vision) : e.vision
+      if (radius < 0) continue
       if (!sees(game, e, s.pos, radius)) continue
       if (s.concealed) game.log.push({ key: "log.detected", params: { unit: s.id, by: e.id } })
       s.concealed = false

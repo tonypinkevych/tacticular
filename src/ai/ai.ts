@@ -120,7 +120,7 @@ function patrol(game: Game, u: Unit): Action | null {
   return toward(game, u, goal)
 }
 
-function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark"): boolean {
+function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark" | "rally"): boolean {
   return PROFILES[u.kind].abilities.includes(id) && !u.cooldowns[id]
 }
 
@@ -160,6 +160,14 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
       }
     }
     if (best) return best
+  }
+  if (u.kind === "warchief" && ready(u, "rally") && targets.length > 0) {
+    const ally = game.units
+      .filter(
+        (x) => alive(x) && x !== u && !foes(u, x) && distance(u.pos, x.pos) <= RANGE.rally && sees(game, u, x.pos),
+      )
+      .sort((a, b) => b.ap - a.ap)[0]
+    if (ally) return { action: { type: "ability", unit: u.id, ability: "rally", target: ally.id }, value: 2.5 }
   }
   if (u.kind === "whisperer") {
     for (const id of ["dominate", "dread"] as const) {

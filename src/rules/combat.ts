@@ -5,8 +5,22 @@ import { AROUND, adjacent, distance, plus, same, tileAt, unitAt, walkable } from
 import type { Game, Unit, Weapon, WeaponId } from "./types"
 import { addStatus, alive, armorOf, foes, groupAim, has, sideOf } from "./units"
 
+/** Advantages that let the Rogue's Sneak Attack add 1d6. */
+const SNEAK: Reason[] = ["flanked", "unaware", "exposed", "staggered", "pincer"]
+
+/** True when an ally of the attacker stands on the far side of the target. */
+function pincer(game: Game, attacker: Unit, target: Unit): boolean {
+  const far = { x: 2 * target.pos.x - attacker.pos.x, y: 2 * target.pos.y - attacker.pos.y }
+  const ally = unitAt(game, far)
+  return !!ally && ally !== attacker && !foes(ally, attacker)
+}
+
 export type Reason =
   | "flanked"
+  | "exposed"
+  | "staggered"
+  | "pincer"
+  | "close"
   | "unaware"
   | "surprised"
   | "isolated"
@@ -66,9 +80,13 @@ export function odds(
   const weapon = WEAPONS[weaponId]
   const adv: Reason[] = []
   const dis: Reason[] = []
-  const facing = weapon.ignoresCover ? 0 : coverAgainst(game, target.pos, attacker.pos)
+  const exposed = has(target, "exposed")
+  const facing = weapon.ignoresCover || exposed ? 0 : coverAgainst(game, target.pos, attacker.pos)
   const cover = weapon.melee ? 0 : facing
-  if (!weapon.ignoresCover && facing === 0) adv.push("flanked")
+  if (exposed) adv.push("exposed")
+  else if (!weapon.ignoresCover && !weapon.melee && facing === 0) adv.push("flanked")
+  if (has(target, "staggered")) adv.push("staggered")
+  if (weapon.melee && pincer(game, attacker, target)) adv.push("pincer")
   if (target.side === "enemy" && target.alert === "unaware") adv.push("unaware")
   if (surprised(game, target)) adv.push("surprised")
   if (attacker.kind === "assassin" && isolated(game, target)) adv.push("isolated")
@@ -80,6 +98,7 @@ export function odds(
   const range = distance(attacker.pos, target.pos)
   const over = weapon.melee ? 0 : Math.max(0, range - weapon.max, weapon.min - range)
   if (over > 0) dis.push("range")
+  if (!weapon.melee && range <= 1) dis.push("close")
   const edge = adv.length > 0 && dis.length === 0 ? 1 : dis.length > 0 && adv.length === 0 ? -1 : 0
   const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
   if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
@@ -89,7 +108,7 @@ export function odds(
   const aim = aimParts.reduce((sum, p) => sum + p.value, 0)
   const defense = defenseParts.reduce((sum, p) => sum + p.value, 0)
   const armor = weapon.ignoresArmor ? 0 : armorOf(game, target)
-  const sneak = attacker.kind === "rogue" && (adv.includes("flanked") || adv.includes("unaware")) ? 6 : 0
+  const sneak = attacker.kind === "rogue" && adv.some((r) => SNEAK.includes(r)) ? 6 : 0
   const lo = weapon.dice.count + weapon.dice.bonus + (sneak ? 1 : 0)
   const hi = weapon.dice.count * weapon.dice.sides + weapon.dice.bonus + sneak
   return {
@@ -169,7 +188,7 @@ export function attack(
     game.log.push({ key: "log.miss", params })
     return
   }
-  const sneak = attacker.kind === "rogue" && (o.advantages.includes("flanked") || o.advantages.includes("unaware"))
+  const sneak = attacker.kind === "rogue" && o.advantages.some((r) => SNEAK.includes(r))
   const raw = rollDice(game, w.dice, crit ? 2 : 1) + (sneak ? die(game, 6) : 0)
   const armor = w.ignoresArmor ? 0 : armorOf(game, target)
   const dmg = Math.max(1, raw - armor)
@@ -179,7 +198,9 @@ export function attack(
   if (killed && attacker.kind === "vanguard" && weaponId === "warblade") cleave(game, attacker)
 }
 
-function push(game: Game, from: Unit, target: Unit): void {
+/** Pushes a target 1 tile away when the tile is free, and staggers it either way. */
+export function push(game: Game, from: Unit, target: Unit): void {
+  addStatus(target, { id: "staggered", rounds: 1, source: from.id })
   const to = {
     x: target.pos.x + Math.sign(target.pos.x - from.pos.x),
     y: target.pos.y + Math.sign(target.pos.y - from.pos.y),

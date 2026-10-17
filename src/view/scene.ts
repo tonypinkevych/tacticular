@@ -141,7 +141,17 @@ function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u
     u.stance === "overwatch" ? "◉" : "",
     u.stance === "hunker" ? "▼" : "",
     ...u.statuses.map(
-      (st) => ({ suppressed: "S", frightened: "F", shaken: "K", burning: "B", dominated: "D", ward: "W" })[st.id],
+      (st) =>
+        ({
+          suppressed: "S",
+          frightened: "F",
+          shaken: "K",
+          burning: "B",
+          dominated: "D",
+          ward: "W",
+          exposed: "X",
+          staggered: "≈",
+        })[st.id],
     ),
   ]
     .filter(Boolean)

@@ -4,7 +4,7 @@ import { canTarget, Illegal, landings } from "../rules/actions"
 import { type Odds, odds } from "../rules/combat"
 import { PROFILES, RANGE, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
-import { AROUND, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
+import { AROUND, adjacent, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
 import { visibleTiles } from "../rules/sight"
 import { visibleToSquad } from "../rules/stealth"
 import type { AbilityId, Action, Game, ItemId, Point, Unit, WeaponId } from "../rules/types"
@@ -35,8 +35,10 @@ export interface Armed {
   at: Point | null
 }
 
-const UNIT_ABILITIES: AbilityId[] = ["charge", "volley", "heal", "ward", "fear", "rouse"]
+const UNIT_ABILITIES: AbilityId[] = ["charge", "volley", "heal", "ward", "fear", "rouse", "shove", "spot", "rally"]
 const TILE_ABILITIES: AbilityId[] = ["bulwark", "blink"]
+/** Abilities that target an ally; every other unit-target action targets a foe. */
+const FRIENDLY: AbilityId[] = ["heal", "ward", "rally", "rouse"]
 const SPEED_KEY = "tacticular.speed"
 
 const dice = (w: WeaponId): string => {
@@ -116,7 +118,12 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
     case "heal":
     case "rouse":
     case "bulwark":
+    case "shove":
       return around()
+    case "spot":
+      return seen
+    case "rally":
+      return within(1, RANGE.rally)
     case "ward":
       return within(0, RANGE.ward)
     case "fear":
@@ -147,6 +154,11 @@ function defaultTarget(game: Game, u: Unit, slot: string): string | null {
     return near.sort((x, y) => x.hp / x.maxHp - y.hp / y.maxHp)[0]?.id ?? null
   }
   if (a === "ward") return friends.sort((x, y) => x.hp - y.hp)[0]?.id ?? null
+  if (a === "rally") {
+    const near = friends.filter((x) => x !== u && distance(u.pos, x.pos) <= RANGE.rally && x.ap < 3)
+    return near.sort((x, y) => x.ap - y.ap)[0]?.id ?? null
+  }
+  if (a === "shove") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
   if (a === "rouse")
     return game.units.find((x) => x.side === "squad" && has(x, "dominated") && distance(u.pos, x.pos) <= 1)?.id ?? null
   const reachable = foes.filter((e) => canTarget(game, u, e))
@@ -319,7 +331,9 @@ export function createModel(session: Session, store: Storage) {
     const current = armed()
     const slot = current && u ? slots(g, u).find((s) => s.id === current.slot) : undefined
     if (u && current && slot) {
-      if (slot.aim === "unit" && here) {
+      const friendly = FRIENDLY.includes(current.slot.slice(8) as AbilityId)
+      const ally = here && (current.slot === "ability:rouse" ? here.side === u.side : sideOf(here) === sideOf(u))
+      if (slot.aim === "unit" && here && ally === friendly) {
         if (current.target === here.id) act(action(u, aimFor(g, u, current, hover()))!)
         else setArmed({ ...current, target: here.id, at: null })
         return

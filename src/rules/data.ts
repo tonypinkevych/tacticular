@@ -10,7 +10,7 @@ export const WEAPONS: Record<WeaponId, Weapon> = {
   crossbow: { id: "crossbow", dice: d(1, 6, 2), min: 2, max: 8, melee: false, noise: 8, ammo: 4 },
   knives: { id: "knives", dice: d(1, 6, 1), min: 1, max: 6, melee: false, noise: 0, ammo: null },
   bolt: { id: "bolt", dice: d(1, 8, 2), min: 2, max: 10, melee: false, noise: 8, ammo: null, ignoresArmor: true },
-  dagger: { id: "dagger", dice: d(1, 4, 2), min: 1, max: 1, melee: true, noise: 0, ammo: null },
+  dagger: { id: "dagger", dice: d(1, 6, 2), min: 1, max: 1, melee: true, noise: 0, ammo: null },
   heavyCrossbow: { id: "heavyCrossbow", dice: d(1, 8, 2), min: 2, max: 10, melee: false, noise: 8, ammo: 4 },
   club: { id: "club", dice: d(2, 6, 2), min: 1, max: 1, melee: true, noise: 4, ammo: null, push: true },
   spear: { id: "spear", dice: d(1, 8, 0), min: 1, max: 1, melee: true, noise: 4, ammo: null },
@@ -58,10 +58,10 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 8,
     will: 1,
     weapon: "warblade",
-    sidearm: "axes",
-    abilities: ["charge", "rouse"],
+    sidearm: null,
+    abilities: ["charge", "shove", "rouse"],
     items: kit(1),
-    axes: 2,
+    axes: 0,
   },
   ranger: {
     hp: 9,
@@ -72,8 +72,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 9,
     will: 1,
     weapon: "longbow",
-    sidearm: "dagger",
-    abilities: ["rouse"],
+    sidearm: null,
+    abilities: ["spot", "rouse"],
     items: kit(1),
     axes: 0,
   },
@@ -86,7 +86,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 8,
     will: 2,
     weapon: "repeater",
-    sidearm: "dagger",
+    sidearm: null,
     abilities: ["volley", "bulwark", "rouse"],
     items: kit(1),
     axes: 0,
@@ -100,8 +100,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 8,
     will: 3,
     weapon: "crossbow",
-    sidearm: "dagger",
-    abilities: ["heal", "ward", "rouse"],
+    sidearm: null,
+    abilities: ["heal", "ward", "rally", "rouse"],
     items: kit(1),
     axes: 0,
   },
@@ -113,8 +113,8 @@ export const PROFILES: Record<Kind, Profile> = {
     mobility: 7,
     vision: 10,
     will: 1,
-    weapon: "knives",
-    sidearm: "dagger",
+    weapon: "dagger",
+    sidearm: null,
     abilities: ["vanish", "rouse"],
     items: kit(1, 2),
     axes: 0,
@@ -128,7 +128,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 8,
     will: 4,
     weapon: "bolt",
-    sidearm: "dagger",
+    sidearm: null,
     abilities: ["fear", "blink", "rouse"],
     items: kit(1),
     axes: 0,
@@ -212,8 +212,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 8,
     will: 2,
     weapon: "greataxe",
-    sidearm: "javelin",
-    abilities: [],
+    sidearm: null,
+    abilities: ["rally"],
     items: kit(0),
     axes: 0,
   },
@@ -255,12 +255,15 @@ export const ABILITIES: Record<AbilityId, AbilityRule> = {
   dread: { cooldown: 3, endsTurn: true },
   dominate: { cooldown: 4, endsTurn: true },
   mark: { cooldown: 0, endsTurn: true },
+  shove: { cooldown: 2, endsTurn: true },
+  spot: { cooldown: 2, endsTurn: false },
+  rally: { cooldown: 4, endsTurn: false },
 }
 
 export const NOISE = { stone: 5, flask: 16 }
 
-export const RANGE = { stone: 6, flask: 7, ward: 6, blink: 5, fear: 10, dread: 8, dominate: 8, volley: 8 }
+export const RANGE = { stone: 6, flask: 7, ward: 6, blink: 5, fear: 10, dread: 8, dominate: 8, volley: 8, rally: 6 }
 
-export const DETECTION = { unaware: 4, investigating: 6, assassin: 3 }
+export const DETECTION = { unaware: 4, investigating: 6, assassin: 3, rogue: 2 }
 
 export const HORN = { range: 15, warchief: 30 }
