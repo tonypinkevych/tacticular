@@ -1,6 +1,7 @@
 import { hurt } from "./combat"
+import { distance } from "./grid"
 import { calm, horn, observe } from "./stealth"
-import type { Game, Side } from "./types"
+import type { Game, Side, Unit } from "./types"
 import { alive, sideOf } from "./units"
 
 /** Ends the active side's phase; the enemy phase ends the round. */
@@ -28,8 +29,17 @@ export function startPhase(game: Game, side: Side): void {
     u.ap = 2
     u.moved = false
     u.stance = "none"
+    advance(u)
   }
   observe(game)
+}
+
+/** Moves a patrol on to its next point when the unit already stands at the current one. */
+function advance(u: Unit): void {
+  for (let i = 0; i < u.patrol.length; i++) {
+    if (distance(u.pos, u.patrol[u.patrolIndex % u.patrol.length]) > 1) return
+    u.patrolIndex = (u.patrolIndex + 1) % u.patrol.length
+  }
 }
 
 function endRound(game: Game): void {

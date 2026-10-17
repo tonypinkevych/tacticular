@@ -106,8 +106,6 @@ function move(game: Game, u: Unit, to: Point): void {
   u.ap -= cost <= u.mobility ? 1 : 2
   u.moved = true
   walk(game, u, r.path(to))
-  const goal = u.patrol[u.patrolIndex % Math.max(1, u.patrol.length)]
-  if (goal && distance(u.pos, goal) <= 1) u.patrolIndex += 1
 }
 
 export function canTarget(game: Game, u: Unit, t: Unit): boolean {
