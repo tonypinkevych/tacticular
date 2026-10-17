@@ -372,3 +372,31 @@ h2 {
     max-height: none;
   }
 }
+.pct {
+  color: var(--muted);
+  font-weight: 600;
+}
+.strip {
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  gap: 2px;
+  margin: 6px 0;
+}
+.strip span {
+  font-size: 9px;
+  text-align: center;
+  line-height: 16px;
+  border-radius: 2px;
+  color: #0e1116;
+  font-weight: 700;
+}
+.strip .miss {
+  background: #8a3a34;
+  color: #f2d4d0;
+}
+.strip .hit {
+  background: var(--good);
+}
+.strip .crit {
+  background: var(--gold);
+}

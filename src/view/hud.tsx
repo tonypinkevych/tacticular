@@ -3,6 +3,7 @@ import { t } from "../i18n/strings"
 import type { Part } from "../rules/combat"
 import { flankers } from "../rules/cover"
 import { WEAPONS } from "../rules/data"
+import { chance } from "../rules/dice"
 import { visibleToSquad } from "../rules/stealth"
 import type { Game, Unit } from "../rules/types"
 import { alive, foes } from "../rules/units"
@@ -131,14 +132,32 @@ function Parts(props: { parts: Part[] }) {
   )
 }
 
-function Edge(props: { edge: number; advantages: string[]; disadvantages: string[] }) {
+/** The 20 faces of the d20: red misses, green hits, gold 20 is a critical. */
+function Strip(props: { need: number }) {
+  return (
+    <div class="strip">
+      <Index each={Array.from({ length: 20 }, (_, i) => i + 1)}>
+        {(face) => (
+          <span
+            classList={{ crit: face() === 20, hit: face() >= props.need && face() < 20, miss: face() < props.need }}
+          >
+            {face()}
+          </span>
+        )}
+      </Index>
+    </div>
+  )
+}
+
+function Edge(props: { edge: number; advantages: string[]; disadvantages: string[]; before: number; after: number }) {
   const why = (list: string[]) => list.map((r) => t(`reason.${r}`)).join(", ")
+  const pct = { before: Math.round(props.before * 100), after: Math.round(props.after * 100) }
   return (
     <div classList={{ good: props.edge > 0, bad: props.edge < 0, muted: props.edge === 0 }}>
       {props.edge > 0
-        ? t("ui.edge.advantage", { why: why(props.advantages) })
+        ? t("ui.edge.advantage", { why: why(props.advantages), ...pct })
         : props.edge < 0
-          ? t("ui.edge.disadvantage", { why: why(props.disadvantages) })
+          ? t("ui.edge.disadvantage", { why: why(props.disadvantages), ...pct })
           : props.advantages.length || props.disadvantages.length
             ? t("ui.edge.cancel", { good: why(props.advantages), bad: why(props.disadvantages) })
             : t("ui.edge.none")}
@@ -165,9 +184,10 @@ function Preview(props: { model: Model }) {
             {(a) => (
               <>
                 <div class="big">
-                  {t("ui.chance")}: {Math.round(a().odds.chance * 100)}%
+                  {t("ui.need", { need: a().odds.need })}{" "}
+                  <span class="pct">· {Math.round(a().odds.chance * 100)}%</span>
                 </div>
-                <div>{t("ui.need", { need: a().odds.need })}</div>
+                <Strip need={a().odds.need} />
                 <div>
                   {t("ui.yourAim")}: {signed(a().odds.aim)}
                   <Parts parts={a().odds.aimParts} />
@@ -176,7 +196,13 @@ function Preview(props: { model: Model }) {
                   {t("ui.theirDefense")}: {a().odds.defense}
                   <Parts parts={a().odds.defenseParts} />
                 </div>
-                <Edge edge={a().odds.edge} advantages={a().odds.advantages} disadvantages={a().odds.disadvantages} />
+                <Edge
+                  edge={a().odds.edge}
+                  advantages={a().odds.advantages}
+                  disadvantages={a().odds.disadvantages}
+                  before={chance(a().odds.aim, a().odds.defense, 0)}
+                  after={a().odds.chance}
+                />
                 <div>
                   {t("ui.damage")}: {a().odds.min}–{a().odds.max}
                   <Show when={a().odds.armor}>

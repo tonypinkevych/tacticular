@@ -37,7 +37,7 @@ export interface Odds {
 
 /** One named number that adds up to Aim or Defense, for the chance breakdown. */
 export interface Part {
-  key: "aim" | "warchief" | "range" | "defense" | "low" | "high" | "ward"
+  key: "aim" | "warchief" | "defense" | "low" | "high" | "ward"
   value: number
 }
 
@@ -83,7 +83,6 @@ export function odds(
   const edge = adv.length > 0 && dis.length === 0 ? 1 : dis.length > 0 && adv.length === 0 ? -1 : 0
   const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
   if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
-  if (over) aimParts.push({ key: "range", value: -over })
   const defenseParts: Part[] = [{ key: "defense", value: target.defense }]
   if (cover) defenseParts.push({ key: cover >= 5 ? "high" : "low", value: cover })
   if (has(target, "ward")) defenseParts.push({ key: "ward", value: 2 })
@@ -163,6 +162,8 @@ export function attack(
     crit,
     reaction: !!shot.reaction,
     chance: Math.round(o.chance * 100),
+    need: o.need,
+    kept: roll.kept,
   }
   if (!hit) {
     game.log.push({ key: "log.miss", params })
