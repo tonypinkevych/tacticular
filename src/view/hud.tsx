@@ -4,11 +4,12 @@ import type { Part } from "../rules/combat"
 import { flankers } from "../rules/cover"
 import { WEAPONS } from "../rules/data"
 import { chance } from "../rules/dice"
+import { unitAt } from "../rules/grid"
 import { visibleToSquad } from "../rules/stealth"
 import type { Game, Unit } from "../rules/types"
 import { alive, foes } from "../rules/units"
 import { Board } from "./board"
-import { Log, name } from "./log"
+import { Log } from "./log"
 import { type Forecast, forecast, type Model, slots } from "./model"
 import { SPEEDS } from "./motion"
 
@@ -31,8 +32,8 @@ function Hp(props: { unit: Unit }) {
   )
 }
 
-/** A unit at a glance: who, how healthy, how many actions left, what it carries, what threatens it. */
-function Card(props: { unit: Unit; game: Game }) {
+/** A unit at a glance: who, how healthy, how many actions left, what it carries, what affects it. */
+function Card(props: { unit: Unit; game: Game; children?: JSX.Element }) {
   const u = () => props.unit
   const soldier = () => u().side === "squad"
   const flanked = () => {
@@ -48,30 +49,23 @@ function Card(props: { unit: Unit; game: Game }) {
     </div>
   )
   return (
-    <section class="card unit">
+    <section class="card" classList={{ foe: !soldier() }}>
       <div class="head">
         <img class="portrait" classList={{ foe: !soldier() }} src={icon(u().kind)} alt="" />
         <div class="who">
           <div class="name">{soldier() ? u().name : t(`kind.${u().kind}`)}</div>
-          <div class="muted">{soldier() ? t(`kind.${u().kind}`) : t(`alert.${u().alert}`)}</div>
+          <div class="muted small">{soldier() ? t(`kind.${u().kind}`) : t(`alert.${u().alert}`)}</div>
         </div>
         <Show when={soldier()} fallback={<span class={`chip alert ${u().alert}`}>{t(`alert.${u().alert}`)}</span>}>
-          <span class="chip" classList={{ hidden: u().concealed }}>
-            {u().concealed ? t("ui.concealed") : t("ui.revealed")}
-          </span>
+          <div class="ap" title={t("ui.ap")}>
+            <Index each={[0, 1]}>{(_, i) => <span class="pip" classList={{ full: i < u().ap }} />}</Index>
+          </div>
         </Show>
       </div>
       <Hp unit={u()} />
-      <Show when={soldier()}>
-        <div class="ap">
-          <span class="muted">{t("ui.ap")}</span>
-          <Index each={[0, 1]}>{(_, i) => <span class="pip" classList={{ full: i < u().ap }} />}</Index>
-        </div>
-      </Show>
       <div class="weapon">
         <b>{t(`weapon.${u().weapon}`)}</b>
         <span class="muted">
-          {" "}
           {w().dice.count}d{w().dice.sides}
           {w().dice.bonus ? `+${w().dice.bonus}` : ""} · {w().melee ? t("ui.melee") : `${w().min}–${w().max}`}
         </span>
@@ -91,33 +85,37 @@ function Card(props: { unit: Unit; game: Game }) {
         {stat(t("ui.vision"), u().vision)}
         {stat(t("ui.will"), signed(u().will))}
       </div>
-      <Show
-        when={
-          u().statuses.length > 0 || u().stance !== "none" || flanked() || u().intent || (soldier() && u().ap === 0)
-        }
-      >
-        <div class="chips">
-          <Show when={flanked()}>
-            <span class="chip danger">{t("ui.flanked")}</span>
-          </Show>
-          <Show when={soldier() && u().ap === 0}>
-            <span class="chip spent">{t("ui.noAp")}</span>
-          </Show>
-          <Show when={u().intent}>
-            <span class="chip danger">{t("ui.telegraph")}</span>
-          </Show>
-          <For each={u().statuses}>
-            {(s) => (
-              <span class={`chip status ${s.id}`}>
-                {t(`status.${s.id}`)} {s.rounds < 99 ? s.rounds : ""}
-              </span>
-            )}
-          </For>
-          <Show when={u().stance !== "none"}>
-            <span class="chip">{t(`action.${u().stance}`)}</span>
-          </Show>
-        </div>
-      </Show>
+      <div class="chips">
+        <Show when={soldier()}>
+          <span class="chip" classList={{ hidden: u().concealed }}>
+            {u().concealed ? t("ui.concealed") : t("ui.revealed")}
+          </span>
+        </Show>
+        <Show when={flanked()}>
+          <span class="chip danger">{t("ui.flanked")}</span>
+        </Show>
+        <Show when={soldier() && u().ap === 0}>
+          <span class="chip spent">{t("ui.noAp")}</span>
+        </Show>
+        <Show when={u().intent}>
+          <span class="chip danger">{t("ui.telegraph")}</span>
+        </Show>
+        <Show when={u().stance !== "none"}>
+          <span class="chip">{t(`action.${u().stance}`)}</span>
+        </Show>
+      </div>
+      <For each={u().statuses}>
+        {(st) => (
+          <div class={`status ${st.id}`}>
+            <span class="chip status">{t(`status.${st.id}`)}</span>
+            <Show when={st.rounds < 99}>
+              <span class="muted small"> {t("ui.rounds", { rounds: st.rounds })}</span>
+            </Show>
+            <div class="small">{t(`about.${st.id}`)}</div>
+          </div>
+        )}
+      </For>
+      {props.children}
     </section>
   )
 }
@@ -151,13 +149,13 @@ function Strip(props: { need: number }) {
 
 function Edge(props: { edge: number; advantages: string[]; disadvantages: string[]; before: number; after: number }) {
   const why = (list: string[]) => list.map((r) => t(`reason.${r}`)).join(", ")
-  const pct = { before: Math.round(props.before * 100), after: Math.round(props.after * 100) }
+  const pct = () => ({ before: Math.round(props.before * 100), after: Math.round(props.after * 100) })
   return (
     <div classList={{ good: props.edge > 0, bad: props.edge < 0, muted: props.edge === 0 }}>
       {props.edge > 0
-        ? t("ui.edge.advantage", { why: why(props.advantages), ...pct })
+        ? t("ui.edge.advantage", { why: why(props.advantages), ...pct() })
         : props.edge < 0
-          ? t("ui.edge.disadvantage", { why: why(props.disadvantages), ...pct })
+          ? t("ui.edge.disadvantage", { why: why(props.disadvantages), ...pct() })
           : props.advantages.length || props.disadvantages.length
             ? t("ui.edge.cancel", { good: why(props.advantages), bad: why(props.disadvantages) })
             : t("ui.edge.none")}
@@ -165,89 +163,134 @@ function Edge(props: { edge: number; advantages: string[]; disadvantages: string
   )
 }
 
-/** How the chance of the armed action is built, step by step. */
-function Preview(props: { model: Model }) {
+/** How the chance of an armed action is built, step by step. */
+function Odds(props: { forecast: Forecast }) {
+  const d = () => props.forecast
+  return (
+    <div class="odds">
+      <div class="label">{d().label}</div>
+      <Show when={d().kind === "attack" && (d() as Extract<Forecast, { kind: "attack" }>)}>
+        {(a) => (
+          <>
+            <div class="big">
+              {t("ui.need", { need: a().odds.need })} <span class="pct">· {Math.round(a().odds.chance * 100)}%</span>
+            </div>
+            <Strip need={a().odds.need} />
+            <div>
+              {t("ui.yourAim")}: {signed(a().odds.aim)}
+              <Parts parts={a().odds.aimParts} />
+            </div>
+            <div>
+              {t("ui.theirDefense")}: {a().odds.defense}
+              <Parts parts={a().odds.defenseParts} />
+            </div>
+            <Edge
+              edge={a().odds.edge}
+              advantages={a().odds.advantages}
+              disadvantages={a().odds.disadvantages}
+              before={chance(a().odds.aim, a().odds.defense, 0)}
+              after={a().odds.chance}
+            />
+            <div>
+              {t("ui.damage")}: {a().odds.min}–{a().odds.max}
+              <Show when={a().odds.armor}>
+                <span class="muted"> ({t("ui.armorCut", { armor: a().odds.armor })})</span>
+              </Show>
+            </div>
+            <div class="muted small">{t("ui.naturals")}</div>
+          </>
+        )}
+      </Show>
+      <Show when={d().kind === "save" && (d() as Extract<Forecast, { kind: "save" }>)}>
+        {(s) => (
+          <>
+            <div class="big">
+              {t("ui.works")}: {Math.round(s().chance * 100)}%
+            </div>
+            <div>{t("ui.saveRule", { will: signed(s().will), dc: s().dc })}</div>
+            <Show when={s().edge > 0}>
+              <div class="bad">{t("ui.saveHunker")}</div>
+            </Show>
+          </>
+        )}
+      </Show>
+    </div>
+  )
+}
+
+/** The armed action's target with its odds, else the unit under the cursor. */
+function Target(props: { model: Model }) {
   const m = props.model
-  const data = () => {
+  const g = () => m.game()
+  const armed = () => {
     const u = m.unit()
     const a = m.armed()
-    return u && a ? forecast(m.game(), u, a, m.hover()) : null
+    return u && a ? { u, a } : null
+  }
+  const shown = (): Unit | undefined => {
+    const a = m.armed()
+    if (a?.target) return g().units.find((x) => x.id === a.target && alive(x))
+    const h = m.hover()
+    const x = h ? unitAt(g(), h) : undefined
+    if (!x || x.id === m.unit()?.id) return undefined
+    return x.side === "squad" || visibleToSquad(g(), x) ? x : undefined
+  }
+  const odds = () => {
+    const x = armed()
+    return x ? forecast(g(), x.u, x.a, m.hover()) : null
   }
   return (
-    <Show when={data()}>
-      {(d) => (
-        <section class="card preview">
-          <div class="name">
-            {d().label} → {name(m.game(), d().target.id)}
-          </div>
-          <Show when={d().kind === "attack" && (d() as Extract<Forecast, { kind: "attack" }>)}>
-            {(a) => (
-              <>
-                <div class="big">
-                  {t("ui.need", { need: a().odds.need })}{" "}
-                  <span class="pct">· {Math.round(a().odds.chance * 100)}%</span>
-                </div>
-                <Strip need={a().odds.need} />
-                <div>
-                  {t("ui.yourAim")}: {signed(a().odds.aim)}
-                  <Parts parts={a().odds.aimParts} />
-                </div>
-                <div>
-                  {t("ui.theirDefense")}: {a().odds.defense}
-                  <Parts parts={a().odds.defenseParts} />
-                </div>
-                <Edge
-                  edge={a().odds.edge}
-                  advantages={a().odds.advantages}
-                  disadvantages={a().odds.disadvantages}
-                  before={chance(a().odds.aim, a().odds.defense, 0)}
-                  after={a().odds.chance}
-                />
-                <div>
-                  {t("ui.damage")}: {a().odds.min}–{a().odds.max}
-                  <Show when={a().odds.armor}>
-                    <span class="muted"> ({t("ui.armorCut", { armor: a().odds.armor })})</span>
-                  </Show>
-                </div>
-                <div class="muted small">{t("ui.naturals")}</div>
-              </>
-            )}
-          </Show>
-          <Show when={d().kind === "save" && (d() as Extract<Forecast, { kind: "save" }>)}>
-            {(s) => (
-              <>
-                <div class="big">
-                  {t("ui.works")}: {Math.round(s().chance * 100)}%
-                </div>
-                <div>{t("ui.saveRule", { will: signed(s().will), dc: s().dc })}</div>
-                <Show when={s().edge > 0}>
-                  <div class="bad">{t("ui.saveHunker")}</div>
-                </Show>
-              </>
-            )}
-          </Show>
-        </section>
+    <Show when={shown()}>
+      {(x) => (
+        <Card unit={x()} game={g()}>
+          <Show when={odds()}>{(f) => <Odds forecast={f()} />}</Show>
+        </Card>
       )}
     </Show>
   )
 }
 
-function Enemy(props: { model: Model }) {
+/** Round, mission and the buttons that are not actions. */
+function Top(props: { model: Model }) {
   const m = props.model
-  const foe = () => {
-    const h = m.hover()
-    return h ? m.foeAt(h) : undefined
-  }
-  return <Show when={foe()}>{(e) => <Card unit={e()} game={m.game()} />}</Show>
-}
-
-function Panel(props: { model: Model }) {
-  const m = props.model
-  const g = () => m.game()
   const canUndo = () => {
     m.game()
     return m.session.canUndo()
   }
+  return (
+    <header id="top">
+      <h1>{t("ui.title")}</h1>
+      <span class={`phase ${m.shown().phase}`}>
+        {t("ui.round", { round: m.shown().round })} · {t(`ui.phase.${m.shown().phase}`)}
+      </span>
+      <span class="muted small">{t("ui.seed", { seed: m.game().seed })}</span>
+      <span class="grow" />
+      <button type="button" disabled={!canUndo()} onClick={() => m.undo()}>
+        {t("ui.undo")}
+      </button>
+      <button type="button" classList={{ active: m.zones() }} onClick={() => m.setZones(!m.zones())}>
+        {t("ui.zones")}
+      </button>
+      <button type="button" onClick={() => m.newMission()}>
+        {m.confirmNew() ? t("ui.confirm") : t("ui.newMission")}
+      </button>
+      <button type="button" classList={{ active: m.logOpen() }} onClick={() => m.setLogOpen(!m.logOpen())}>
+        {t("ui.log")}
+      </button>
+      <For each={["en", "ru"] as const}>
+        {(l) => (
+          <button type="button" classList={{ active: m.lang() === l }} onClick={() => m.setLanguage(l)}>
+            {l.toUpperCase()}
+          </button>
+        )}
+      </For>
+    </header>
+  )
+}
+
+/** The log panel, which the player can hide. */
+function Panel(props: { model: Model }) {
+  const m = props.model
   const events = () => {
     m.game()
     return m.session.events.length
@@ -255,37 +298,11 @@ function Panel(props: { model: Model }) {
   return (
     <aside id="panel">
       <header>
-        <h1>{t("ui.title")}</h1>
-        <div class="row">
-          <For each={["en", "ru"] as const}>
-            {(l) => (
-              <button type="button" classList={{ active: m.lang() === l }} onClick={() => m.setLanguage(l)}>
-                {l.toUpperCase()}
-              </button>
-            )}
-          </For>
-        </div>
+        <h2>{t("ui.log")}</h2>
+        <button type="button" class="close" aria-label="×" onClick={() => m.setLogOpen(false)}>
+          ×
+        </button>
       </header>
-      <div class={`phase ${m.shown().phase}`}>
-        {t("ui.round", { round: m.shown().round })} · {t(`ui.phase.${m.shown().phase}`)}
-      </div>
-      <div class="muted small">{t("ui.seed", { seed: g().seed })}</div>
-      <Show when={m.unit()} fallback={<p class="muted">{t("ui.pick")}</p>}>
-        {(u) => <Card unit={u()} game={m.game()} />}
-      </Show>
-      <Preview model={m} />
-      <Enemy model={m} />
-      <div class="row wrap">
-        <button type="button" disabled={!canUndo()} onClick={() => m.undo()}>
-          {t("ui.undo")}
-        </button>
-        <button type="button" classList={{ active: m.zones() }} onClick={() => m.setZones(!m.zones())}>
-          {t("ui.zones")}
-        </button>
-        <button type="button" onClick={() => m.newMission()}>
-          {m.confirmNew() ? t("ui.confirm") : t("ui.newMission")}
-        </button>
-      </div>
       <Log game={m.shown()} />
       <p class="muted small">{t("ui.save", { count: events(), key: `${m.session.author.slice(0, 12)}…` })}</p>
       <p class="muted small">{t("ui.credits")}</p>
@@ -314,38 +331,37 @@ function Bar(props: { model: Model }) {
               onMouseEnter={() => m.setHint(s())}
               onMouseLeave={() => m.setHint(null)}
             >
-              <span class="key">{s().key}</span>
-              <Show when={s().badge}>
-                <span class="badge">{s().badge}</span>
-              </Show>
-              <img
-                class="glyph"
-                src={`${import.meta.env.BASE_URL}icons/actions/${s().id.replace(":", "-")}.svg`}
-                alt={s().label}
-              />
+              <span class="face">
+                <span class="key">{s().key}</span>
+                <Show when={s().badge}>
+                  <span class="badge">{s().badge}</span>
+                </Show>
+                <img
+                  class="glyph"
+                  src={`${import.meta.env.BASE_URL}icons/actions/${s().id.replace(":", "-")}.svg`}
+                  alt={s().label}
+                />
+              </span>
             </button>
           )}
         </Index>
       </div>
-      <div class="side">
-        <button
-          type="button"
-          class="end"
-          disabled={m.game().phase !== "squad"}
-          onClick={() => m.act({ type: "endTurn" })}
-        >
-          {t("ui.endTurn")} <span class="muted small">Enter</span>
-        </button>
-        <div class="speeds">
-          <span class="muted small">{t("ui.speed")}</span>
-          <For each={SPEEDS}>
-            {(sp) => (
-              <button type="button" classList={{ active: m.speed() === sp }} onClick={() => m.setSpeed(sp)}>
-                {sp === 0 ? t("ui.instant") : `${sp}×`}
-              </button>
-            )}
-          </For>
-        </div>
+      <button
+        type="button"
+        class="end"
+        disabled={m.game().phase !== "squad"}
+        onClick={() => m.act({ type: "endTurn" })}
+      >
+        {t("ui.endTurn")} <span class="muted small">Enter</span>
+      </button>
+      <div class="speeds" title={t("ui.speed")}>
+        <For each={SPEEDS}>
+          {(sp) => (
+            <button type="button" classList={{ active: m.speed() === sp }} onClick={() => m.setSpeed(sp)}>
+              {sp === 0 ? t("ui.instant") : `${sp}×`}
+            </button>
+          )}
+        </For>
       </div>
     </nav>
   )
@@ -391,11 +407,24 @@ export function App(props: { model: Model }): JSX.Element {
     <Show when={m.lang()} keyed>
       <main>
         <section id="stage">
-          <Board model={m} />
+          <Top model={m} />
+          <div id="field">
+            <Board model={m} />
+            <div class="corner left">
+              <Show when={m.unit()} fallback={<p class="card muted">{t("ui.pick")}</p>}>
+                {(u) => <Card unit={u()} game={m.game()} />}
+              </Show>
+            </div>
+            <div class="corner right">
+              <Target model={m} />
+            </div>
+          </div>
           <Tip model={m} />
           <Bar model={m} />
         </section>
-        <Panel model={m} />
+        <Show when={m.logOpen()}>
+          <Panel model={m} />
+        </Show>
       </main>
     </Show>
   )

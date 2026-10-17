@@ -1,7 +1,7 @@
 import { batch, createSignal } from "solid-js"
 import { type Lang, language, remember, t, use } from "../i18n/strings"
 import { canTarget, Illegal, landings } from "../rules/actions"
-import { type Odds, odds } from "../rules/combat"
+import { canReach, type Odds, odds } from "../rules/combat"
 import { PROFILES, RANGE, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
 import { AROUND, adjacent, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
@@ -197,6 +197,25 @@ export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): 
   return { ...armed, at: hover && range(game, u, armed.slot).has(key(hover)) ? hover : armed.at }
 }
 
+/** The armed action aimed at the unit under the cursor when it is a valid target, else unchanged. */
+export function retarget(game: Game, u: Unit, armed: Armed, hover: Point | null): Armed {
+  const [kind, id] = armed.slot.split(":")
+  const unitAim = kind === "weapon" || UNIT_ABILITIES.includes(id as AbilityId)
+  const t = hover && unitAim ? unitAt(game, hover) : undefined
+  if (!t || !alive(t) || t.id === armed.target) return armed
+  const friendly = FRIENDLY.includes(id as AbilityId)
+  const ok = friendly
+    ? (id === "rouse" ? t.side === u.side && has(t, "dominated") : sideOf(t) === sideOf(u)) &&
+      range(game, u, armed.slot).has(key(t.pos))
+    : canTarget(game, u, t) &&
+      (kind === "weapon"
+        ? canReach(u, t, WEAPONS[id as WeaponId])
+        : id === "charge"
+          ? landings(game, u, t).length > 0
+          : id === "spot" || range(game, u, armed.slot).has(key(t.pos)))
+  return ok ? { ...armed, target: t.id, at: null } : armed
+}
+
 /** What an armed action would do to its target: hit odds for attacks and Charge, save odds for mind spells. */
 export type Forecast =
   | { kind: "attack"; label: string; target: Unit; odds: Odds }
@@ -252,6 +271,7 @@ export function createModel(session: Session, store: Storage) {
   const [speed, setSpeedSignal] = createSignal<Speed>(playback.speed)
   const [lang, setLang] = createSignal<Lang>(language())
   const [confirmNew, setConfirmNew] = createSignal(false)
+  const [logOpen, setLogOpen] = createSignal(true)
 
   const unit = (): Unit | null => {
     const u = game().units.find((x) => x.id === selected())
@@ -457,6 +477,16 @@ export function createModel(session: Session, store: Storage) {
     })
   }
 
+  /** Moves the cursor; an armed action follows it onto a valid target. */
+  const point = (p: Point | null) => {
+    batch(() => {
+      setHover(p)
+      const u = unit()
+      const current = armed()
+      if (u && current) setArmed(retarget(game(), u, current, p))
+    })
+  }
+
   selectNext(false)
 
   return {
@@ -468,7 +498,9 @@ export function createModel(session: Session, store: Storage) {
     selected,
     armed,
     hover,
-    setHover,
+    setHover: point,
+    logOpen,
+    setLogOpen,
     hint,
     setHint,
     message,

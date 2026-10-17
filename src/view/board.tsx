@@ -8,8 +8,8 @@ import { sideOf } from "../rules/units"
 import { aimFor, type Model, range, slots } from "./model"
 import { draw, type Scene } from "./scene"
 
-const BAR_ROOM = 190
-const PANEL_ROOM = 400
+const BAR_ROOM = 170
+const PANEL_ROOM = 340
 
 /** The canvas board: drawn from the model's state, every frame while something moves. */
 export function Board(props: { model: Model }) {
@@ -35,12 +35,16 @@ export function Board(props: { model: Model }) {
     m.hover()
     m.zones()
     m.lang()
+    m.logOpen()
     dirty = true
   })
 
   const cellSize = () => {
     const { width, height } = m.game().board
-    const room = Math.min((window.innerWidth - PANEL_ROOM) / width, (window.innerHeight - BAR_ROOM) / height)
+    const room = Math.min(
+      (window.innerWidth - (m.logOpen() ? PANEL_ROOM : 24)) / width,
+      (window.innerHeight - BAR_ROOM) / height,
+    )
     size = Math.max(16, Math.min(44, Math.floor(room)))
     return size
   }
