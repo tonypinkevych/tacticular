@@ -1,7 +1,7 @@
 import type { Dice, Game } from "./types";
 
 /** Next random number in [0, 1) from the game's seeded stream (mulberry32). */
-export function random(game: Game): number {
+export function random(game: { rng: number }): number {
   game.rng = (game.rng + 0x6d2b79f5) | 0;
   let t = game.rng;
   t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -9,11 +9,11 @@ export function random(game: Game): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-export function die(game: Game, sides: number): number {
+export function die(game: { rng: number }, sides: number): number {
   return 1 + Math.floor(random(game) * sides);
 }
 
-export function pick<T>(game: Game, items: readonly T[]): T {
+export function pick<T>(game: { rng: number }, items: readonly T[]): T {
   return items[Math.floor(random(game) * items.length)];
 }
 
