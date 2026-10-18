@@ -18,7 +18,7 @@ loses.
 
 ## The run
 
-Pick 3 of 7 soldiers; up to 4 go on a mission, and the roster holds 5. Cross a chart of missions to the fortress and kill the Warchief there. HP carries from
+Pick 3 of 7 soldiers; 3 or 4 go on a mission, and the roster holds 5. Cross a chart of missions, each in a forest, village or town, to the fortress and kill the Warchief there. HP carries from
 mission to mission; a won mission gives a heal, a recruit or training, and changes the fortress. The run ends
 when no soldier is left.
 
@@ -36,10 +36,11 @@ pnpm build      # type-check and build to dist/
 ## Controls
 
 - Click a soldier, then click a tile to move, or click an enemy to see the hit chance. Click the enemy again to attack.
-- Use the panel for abilities, items, Overwatch, Hunker, Reload and End turn.
+- Use the panel for abilities, items, Overwatch, Hunker, Reload, Door and End turn. Door (`0` or `O`) opens or
+  closes a door next to the soldier for 1 AP.
 - Point at a tile to see where the soldier can move, the path, its cover and who flanks it there. Point at an
   alien to see the hit chance.
-- `Tab` selects the next soldier, or with an attack or a skill armed, its next target. `Esc` or a right click cancels. `Z` shows where aliens spot or fire.
+- `Tab` selects the next soldier, or with an attack or a skill armed, its next target. `Esc` or a right click cancels. `Z` shows where aliens spot or fire. While the selected soldier is concealed, a red fill always shows where seen aliens would spot it.
 - Drag or use the arrow keys to move the camera; the wheel zooms.
 - The EN/RU switch changes the language. The game remembers your choice.
 
