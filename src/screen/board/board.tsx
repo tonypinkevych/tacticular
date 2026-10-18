@@ -76,6 +76,16 @@ export function Board(props: { model: Model }) {
   )
 
   createEffect(
+    on(
+      () => m.shown().round,
+      (round, before) => {
+        const u = m.unit()
+        if (before !== undefined && round > before && u && canvas) camera.glide(projection.ground(u.pos))
+      },
+    ),
+  )
+
+  createEffect(
     on(m.game, (g) => {
       if (g.board.width !== projection.width || g.board.height !== projection.height) {
         projection = new Projection(g.board.width, g.board.height)
