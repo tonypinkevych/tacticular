@@ -30,7 +30,7 @@ describe("scale", () => {
   test("detection, alarm and weapon ranges fit the small map", () => {
     expect(DETECTION.unaware).toBe(2)
     expect(DETECTION.investigating).toBe(4)
-    expect(HORN).toBe(6)
+    expect(HORN).toBe(15)
     expect(WEAPONS.shotgun.max).toBe(3)
     expect(WEAPONS.repeater.max).toBe(6)
     expect(WEAPONS.longbow.min).toBe(4)

@@ -80,16 +80,22 @@ describe("alarm", () => {
     g.stealth.horn()
     expect(g.log.filter((x) => x.key === "log.horn")).toHaveLength(1)
   })
-  test("it calls groups within 6 tiles only", () => {
+  test("it calls groups within 15 tiles only, and 30 for a Warchief's group", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 1, y: 0 })
-    const near = enemy("n", "orc", { x: 7, y: 0 }, "unaware", "g2")
-    const far = enemy("f", "orc", { x: 9, y: 1 }, "unaware", "g3")
-    const g = setup(open(16, 2), [s, e, near, far])
+    const near = enemy("n", "orc", { x: 16, y: 0 }, "unaware", "g2")
+    const far = enemy("f", "orc", { x: 18, y: 1 }, "unaware", "g3")
+    const g = setup(open(40, 2), [s, e, near, far])
     g.groups[0].target = { x: 0, y: 0 }
     g.stealth.horn()
     expect(near.alert).toBe("investigating")
     expect(far.alert).toBe("unaware")
+    const chief = enemy("c", "warchief", { x: 1, y: 1 })
+    const distant = enemy("d", "orc", { x: 31, y: 0 }, "unaware", "g2")
+    const h = setup(open(40, 2), [s, chief, distant])
+    h.groups[0].target = { x: 0, y: 0 }
+    h.stealth.horn()
+    expect(distant.alert).toBe("investigating")
   })
 })
 

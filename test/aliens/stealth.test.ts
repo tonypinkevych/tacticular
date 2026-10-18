@@ -180,3 +180,17 @@ describe("captive", () => {
     expect(find(g, "e").alert).toBe("unaware")
   })
 })
+
+describe("wary", () => {
+  test("a group that calms down stays wary: it spots at 3 tiles and gives no unaware advantage", () => {
+    const s = squad("s", "warden", { x: 0, y: 1 })
+    const e = enemy("e", "orc", { x: 15, y: 1 }, "investigating")
+    const g = setup(open(20, 3), [s, e])
+    g.groups[0].target = { x: 15, y: 1 }
+    g.groups[0].searched = 1
+    g.stealth.calm()
+    expect(find(g, "e").alert).toBe("unaware")
+    expect(g.stealth.detection(find(g, "e"), find(g, "s"))).toBe(3)
+    expect(g.combat.odds(find(g, "s"), find(g, "e")).advantages).not.toContain("unaware")
+  })
+})

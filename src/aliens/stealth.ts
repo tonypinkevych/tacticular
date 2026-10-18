@@ -12,6 +12,8 @@ export interface Group {
   searched?: number
   /** Where the squad landed; routes drift toward it after round 3. */
   landing?: Point
+  /** It calmed down once and is never caught unaware again. */
+  wary?: boolean
 }
 
 export interface Noise {
@@ -22,7 +24,7 @@ export interface Noise {
   loud?: boolean
 }
 
-export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 3 }
+export const DETECTION = { unaware: 2, wary: 3, investigating: 4, assassin: 2, rogue: 3 }
 
 /** How far from its target an alien group searches. */
 export const SEARCH = 3
@@ -31,7 +33,7 @@ export const SEARCH = 3
 export const STEPS = 12
 
 /** How far an alarm calls other alien groups. */
-export const HORN = 6
+export const HORN = 15
 
 /** Concealment, alerts, noise and alarms of a game. */
 export class Stealth {
@@ -48,7 +50,8 @@ export class Stealth {
   /** Detection radius of an enemy against a concealed soldier on a tile, its own by default. Grass hides a soldier from all but next tiles. */
   detection(e: Unit, s: Unit, at: Point = s.pos): number {
     const alert = s.kind === "rogue" ? DETECTION.rogue : DETECTION.investigating
-    const radius = e.alert === "unaware" ? DETECTION.unaware : alert
+    const calm = this.wary(e) ? DETECTION.wary : DETECTION.unaware
+    const radius = e.alert === "unaware" ? calm : alert
     return this.game.tile(at) === "grass" ? Math.min(1, radius) : radius
   }
 
@@ -158,12 +161,17 @@ export class Stealth {
     game.noises.push({ at: game.dice.pick(around), radius: 0, round: game.round })
   }
 
+  /** True when the unit's group calmed down once and stays on guard. */
+  wary(u: Unit): boolean {
+    return !!this.group(u.group)?.wary
+  }
+
   /** True when any foe sees the unit. */
   seen(u: Unit): boolean {
     return this.game.units.some((x) => x.alive() && x.foe(u) && this.game.sight.sees(x, u.pos))
   }
 
-  /** Round end: a group that just engaged sounds the alarm once and calls groups in range. */
+  /** Round end: a group that just engaged sounds the alarm once and calls groups within 15 tiles, 30 with a Warchief. */
   horn(): void {
     const game = this.game
     for (const g of game.groups) {
@@ -171,17 +179,18 @@ export class Stealth {
       if (callers.length === 0 || !g.target || g.alarmed) continue
       g.alarmed = true
       game.log.push({ key: "log.horn", params: { group: g.id } })
-      game.noises.push({ at: { ...callers[0].pos }, radius: HORN, round: game.round })
+      const reach = this.members(g.id).some((u) => u.kind === "warchief") ? HORN * 2 : HORN
+      game.noises.push({ at: { ...callers[0].pos }, radius: reach, round: game.round })
       for (const other of game.groups) {
         if (other === g) continue
-        const near = this.members(other.id).some((u) => callers.some((c) => distance(c.pos, u.pos) <= HORN))
+        const near = this.members(other.id).some((u) => callers.some((c) => distance(c.pos, u.pos) <= reach))
         if (near) this.investigate(other.id, g.target)
       }
     }
   }
 
   /**
-   * Round end: a group that searched its target for 2 rounds and saw no soldier patrols again, toward where the
+   * Round end: a group that searched its target for 2 rounds and saw no soldier patrols again, wary, toward where the
    * squad landed when it has no route; beacon raiders do not.
    */
   calm(): void {
@@ -201,6 +210,7 @@ export class Stealth {
       if (g.searched < 2) continue
       g.target = null
       g.searched = 0
+      g.wary = true
       for (const u of units) {
         u.alert = "unaware"
         if (u.patrol.length === 0 && g.landing) u.patrol = [{ ...u.pos }, { ...g.landing }]

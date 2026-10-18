@@ -81,7 +81,8 @@ export class Combat {
     const cover = weapon.melee || (above && facing < 5) ? 0 : facing
     const open = weapon.melee ? this.pincer(attacker, target) : !weapon.ignoresCover && facing === 0
     if (exposed || open) adv.push("flanked")
-    if ((target.side === "enemy" && target.alert === "unaware") || this.surprised(target)) adv.push("unaware")
+    const caught = target.side === "enemy" && target.alert === "unaware" && !game.stealth.wary(target)
+    if (caught || this.surprised(target)) adv.push("unaware")
     if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
     if (target.stance === "hunker") dis.push("hunkered")
     if (attacker.has("shaken") || attacker.wounded() || this.surprised(attacker)) dis.push("shaken")
