@@ -100,8 +100,8 @@ describe("abilities and items", () => {
     g.phase = "enemy"
     find(g, "b").ap = 2
     const a = g.apply({ type: "ability", unit: "b", ability: "blast", at: { x: 2, y: 1 } })
-    expect(find(a, "e").hp).toBe(4)
-    expect(find(a, "r").hp).toBe(4)
+    expect(find(a, "e").hp).toBe(find(g, "e").maxHp - 3)
+    expect(find(a, "r").hp).toBe(find(g, "r").maxHp - 3)
     expect(a.tile({ x: 2, y: 1 })).toBe("floor")
     expect(a.tile({ x: 3, y: 1 })).toBe("low")
   })

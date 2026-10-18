@@ -1,4 +1,4 @@
-import { enemy, open, setup, squad } from "../fixture"
+import { enemy, open, reseed, setup, squad } from "../fixture"
 
 describe("odds", () => {
   test("cover adds defense and removes the flank", () => {
@@ -13,12 +13,19 @@ describe("odds", () => {
     expect(o.edge).toBe(0)
     expect(o.chance).toBeCloseTo(0.7)
   })
-  test("an open target is flanked and gives advantage", () => {
+  test("an open target is flanked: a sure hit", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 0, y: 8 })
     const o = setup(open(3, 10), [r, e]).combat.odds(r, e)
     expect(o.advantages).toContain("flanked")
-    expect(o.edge).toBe(1)
+    expect(o.sure).toBe(true)
+    expect(o.chance).toBe(1)
+  })
+  test("a sure hit forecasts critical damage", () => {
+    const r = squad("r", "ranger", { x: 0, y: 0 })
+    const e = enemy("e", "orc", { x: 0, y: 8 })
+    const o = setup(open(3, 10), [r, e]).combat.odds(r, e)
+    expect([o.min, o.max]).toEqual([8, 11])
   })
   test("overwatch disadvantage cancels the unaware advantage", () => {
     const w = squad("w", "warden", { x: 0, y: 0 })
@@ -48,6 +55,13 @@ describe("odds", () => {
 })
 
 describe("results", () => {
+  test("a sure hit is always a critical hit, whatever the die", () => {
+    const g = setup(open(3, 10), [squad("r", "ranger", { x: 0, y: 0 }), enemy("e", "orc", { x: 0, y: 6 })])
+    for (let seed = 1; seed <= 20; seed++) {
+      const a = reseed(g, seed).apply({ type: "attack", unit: "r", target: "e" })
+      expect(a.log.some((x) => x.key === "log.crit")).toBe(true)
+    }
+  })
   test("an attack logs the hit chance it had", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 0, y: 8 })

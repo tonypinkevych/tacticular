@@ -136,14 +136,18 @@ function Parts(props: { parts: Part[] }) {
   )
 }
 
-/** The 20 faces of the d20: red misses, green hits, gold 20 is a critical. */
-function Strip(props: { need: number }) {
+/** The 20 faces of the d20: red misses, green hits, gold is a critical; all gold for a sure critical. */
+function Strip(props: { need: number; sure: boolean }) {
   return (
     <div class="strip">
       <Index each={Array.from({ length: 20 }, (_, i) => i + 1)}>
         {(face) => (
           <span
-            classList={{ crit: face() === 20, hit: face() >= props.need && face() < 20, miss: face() < props.need }}
+            classList={{
+              crit: props.sure || face() === 20,
+              hit: !props.sure && face() >= props.need && face() < 20,
+              miss: !props.sure && face() < props.need,
+            }}
           />
         )}
       </Index>
@@ -192,9 +196,9 @@ function Odds(props: { forecast: Forecast }) {
                 {a().odds.min}–{a().odds.max} {t("ui.damage")}
               </span>
             </div>
-            <Strip need={a().odds.need} />
+            <Strip need={a().odds.need} sure={a().odds.sure} />
             <div class="more">
-              <div>{t("ui.need", { need: a().odds.need })}</div>
+              <div>{a().odds.sure ? t("ui.sure") : t("ui.need", { need: a().odds.need })}</div>
               <div>
                 {t("ui.yourAim")} {signed(a().odds.aim)}
                 <Parts parts={a().odds.aimParts} />

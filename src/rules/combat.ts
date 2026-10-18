@@ -8,13 +8,14 @@ import type { Unit } from "./unit"
 
 export type Reason = "flanked" | "unaware" | "range" | "reaction" | "hunkered" | "shaken"
 
-/** Everything a player sees before an attack: modifiers, the edge and the hit chance. */
+/** Everything a player sees before an attack: modifiers, the edge, the hit chance and whether it is a sure critical. */
 export interface Odds {
   weapon: Weapon
   aim: number
   defense: number
   cover: number
   edge: number
+  sure: boolean
   advantages: Reason[]
   disadvantages: Reason[]
   chance: number
@@ -84,7 +85,9 @@ export class Combat {
     if (attacker.has("shaken") || this.surprised(attacker)) dis.push("shaken")
     const range = distance(attacker.pos, target.pos)
     if (!weapon.melee && (range > weapon.max || range < weapon.min)) dis.push("range")
-    const edge = Math.max(-2, Math.min(2, adv.length - dis.length))
+    const sure = adv.length > dis.length
+    const scale = (n: number) => (sure ? crit(n) : n)
+    const edge = Math.max(-2, Math.min(0, adv.length - dis.length))
     const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
     if (this.groupAim(attacker)) aimParts.push({ key: "warchief", value: this.groupAim(attacker) })
     if (above) aimParts.push({ key: "height", value: 2 })
@@ -100,14 +103,15 @@ export class Combat {
       defense,
       cover,
       edge,
+      sure,
       advantages: adv,
       disadvantages: dis,
-      chance: weapon.saveHalf ? 1 : chance(aim, defense, edge),
-      need: Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
+      chance: weapon.saveHalf || sure ? 1 : chance(aim, defense, edge),
+      need: sure ? 1 : Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
       aimParts,
       defenseParts,
-      min: weapon.dice.count + weapon.dice.bonus,
-      max: weapon.dice.count * weapon.dice.sides + weapon.dice.bonus,
+      min: scale(weapon.dice.count + weapon.dice.bonus),
+      max: scale(weapon.dice.count * weapon.dice.sides + weapon.dice.bonus),
     }
   }
 
@@ -142,7 +146,7 @@ export class Combat {
       return
     }
     const roll = game.dice.d20()
-    const critical = roll === 20
+    const critical = o.sure || roll === 20
     const hit = critical || (roll !== 1 && roll + o.aim + EDGE * o.edge >= o.defense)
     const params: Record<string, string | number | boolean> = {
       unit: attacker.id,

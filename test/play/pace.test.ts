@@ -1,6 +1,5 @@
 import { Mind } from "../../src/ai/mind"
 import { WEAPONS } from "../../src/rules/data"
-import { chance } from "../../src/rules/dice"
 import { Kit } from "../../src/view/kit"
 import { spent } from "../../src/view/model"
 import { enemy, open, setup, squad } from "../fixture"
@@ -8,18 +7,11 @@ import { enemy, open, setup, squad } from "../fixture"
 describe("edge", () => {
   const rows = open(13, 13)
   rows[5] = "......:......"
-  test("advantages add up: flanked and unaware give 2 steps of 3", () => {
-    const r = squad("r", "warden", { x: 12, y: 6 })
-    const e = enemy("e", "orc", { x: 6, y: 6 }, "unaware")
-    const o = setup(rows, [r, e]).combat.odds(r, e)
-    expect(o.edge).toBe(2)
-    expect(chance(0, 10, 2)).toBe(17 / 20)
-  })
-  test("one disadvantage cancels one advantage, not all", () => {
+  test("one disadvantage cancels one advantage, not all: two against one is still a sure hit", () => {
     const r = squad("r", "warden", { x: 12, y: 6 })
     const e = enemy("e", "orc", { x: 6, y: 6 }, "unaware")
     e.stance = "hunker"
-    expect(setup(rows, [r, e]).combat.odds(r, e).edge).toBe(1)
+    expect(setup(rows, [r, e]).combat.odds(r, e).sure).toBe(true)
   })
 })
 

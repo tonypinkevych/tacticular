@@ -1,6 +1,6 @@
 import { Mind } from "../../src/ai/mind"
 import { crit } from "../../src/rules/combat"
-import { PROFILES, WEAPONS } from "../../src/rules/data"
+import { CLASSES, PROFILES, WEAPONS } from "../../src/rules/data"
 import { chance, failChance } from "../../src/rules/dice"
 import { enemy, open, setup, squad } from "../fixture"
 
@@ -18,12 +18,15 @@ describe("simplified d20", () => {
     expect(roll).toBeGreaterThanOrEqual(1)
     expect(roll).toBeLessThanOrEqual(20)
   })
-  test("the needed roll includes the edge", () => {
+  test("the needed roll includes the disadvantage", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
-    const e = enemy("e", "shieldwall", { x: 0, y: 8 }, "unaware")
-    const o = setup(open(3, 10), [r, e]).combat.odds(r, e)
-    expect(o.edge).toBe(2)
-    expect(o.need).toBe(Math.max(2, o.defense - o.aim - 6))
+    const e = enemy("e", "shieldwall", { x: 0, y: 8 })
+    e.stance = "hunker"
+    const rows = open(3, 10)
+    rows[7] = ":.."
+    const o = setup(rows, [r, e]).combat.odds(r, e)
+    expect(o.edge).toBe(-1)
+    expect(o.need).toBe(Math.min(20, o.defense - o.aim + 3))
   })
 })
 
@@ -34,6 +37,12 @@ describe("damage", () => {
       const hi = w.dice.count * w.dice.sides + w.dice.bonus
       expect(hi - lo).toBeLessThanOrEqual(2)
       expect(hi).toBeLessThanOrEqual(7)
+    }
+  })
+  test("a sure critical from a soldier's weapon kills an Orc; the psi bolt is the exception", () => {
+    for (const c of CLASSES.filter((c) => c !== "mage")) {
+      const w = WEAPONS[PROFILES[c].weapon]
+      expect(crit(w.dice.count + w.dice.bonus), c).toBeGreaterThanOrEqual(PROFILES.orc.hp)
     }
   })
   test("a crit adds half the damage, rounded up", () => {
