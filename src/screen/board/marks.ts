@@ -4,7 +4,7 @@ import { distance, key, ORTHOGONAL, type Point, plus, pointOf, same } from "../.
 import type { Game } from "../../mission/game"
 import type { Unit } from "../../units/unit"
 import { ALIEN, AMBER, BEACON, DASH, DOMINATED, EVAC, MOVE, type Rgb, rgb, SQUAD } from "./color"
-import { GOAL } from "./glyphs"
+import { FIRE, GOAL } from "./glyphs"
 import { height, tone } from "./picture"
 import type { Pixels } from "./pixels"
 import type { Scene } from "./scene"
@@ -127,8 +127,8 @@ export class Marks {
     const own = game.units.filter((u) => u.alive() && u.side === "squad").map((u) => key(u.pos))
     const close = new Set([...near, ...own.filter((k) => touches(near, k))])
     const wide = new Set([...far, ...own.filter((k) => !close.has(k) && touches(far, k))])
-    this.zone(new Set([...wide].filter((k) => !close.has(k))), DASH)
-    this.zone(close, MOVE)
+    this.zone(this.seen(new Set([...wide].filter((k) => !close.has(k)))), DASH)
+    this.zone(this.seen(close), MOVE)
   }
 
   /** Where the alien under the cursor can walk, or strike in melee, next turn. */
@@ -136,12 +136,16 @@ export class Marks {
     const { hover, game } = this.scene
     const e = hover ? this.aliens().find((u) => same(u.pos, hover)) : undefined
     if (!e) return
-    this.zone(new Mind(game).threat(e), ALIEN)
+    this.zone(this.seen(new Mind(game).threat(e)), ALIEN)
   }
 
-  /** A faint fill over the explored tiles of a zone; every tile zone is drawn this way, each in its own color. */
+  /** A faint fill over the tiles of a zone; every tile zone is drawn this way, each in its own color. */
   private zone(keys: Set<number>, color: Rgb): void {
-    this.px.fill(new Set([...keys].filter((k) => this.explored(pointOf(k)))), color, ZONE)
+    this.px.fill(keys, color, ZONE)
+  }
+
+  private seen(keys: Set<number>): Set<number> {
+    return new Set([...keys].filter((k) => this.explored(pointOf(k))))
   }
 
   /** The evac zone, the beacon, the terminal or relay, the captive and the next alien landing. */
@@ -154,8 +158,7 @@ export class Marks {
       const a = this.px.projection.ground(at)
       this.px.dot(a.x - 1, a.y - 1, color, 0.9, 3, 3)
     }
-    if ("tiles" in g && (g.kind !== "warchief" || g.slain))
-      this.px.outline(new Set(g.tiles.map(key)), EVAC, pulse, true)
+    if ("tiles" in g && (g.kind !== "warchief" || g.slain)) this.evac(new Set(g.tiles.map(key)))
     if (g.kind === "defend") post(g.at, BEACON)
     if (g.kind === "intel" && !g.taken) post(g.at, AMBER)
     if (g.kind === "relay") post(g.at, g.planted === null ? AMBER : ALIEN)
@@ -165,7 +168,21 @@ export class Marks {
     if (d) {
       const area = new Set<number>()
       for (const o of [{ x: 0, y: 0 }, ...ORTHOGONAL]) area.add(key(plus(d, o)))
-      this.px.outline(area, ALIEN, pulse, true)
+      this.zone(area, ALIEN)
+    }
+  }
+
+  /** The evac zone: a green fill with a flare on every other tile of its edge. */
+  private evac(keys: Set<number>): void {
+    this.zone(keys, EVAC)
+    for (const k of keys) {
+      const p = pointOf(k)
+      const edge = ORTHOGONAL.some((o) => !keys.has(key(plus(p, o))))
+      if (!edge || (p.x + p.y) % 2 !== 0) continue
+      const a = this.px.projection.ground(p)
+      const f = Math.floor(this.t / 120 + p.x * 7 + p.y * 3) % FIRE.length
+      this.px.glow(a.x, a.y - 4, 6, EVAC, 0.25)
+      this.px.glyph(FIRE[f], a.x, a.y, EVAC, 0.85)
     }
   }
 
@@ -182,7 +199,7 @@ export class Marks {
         e.stance === "overwatch" ? e.vision : e.alert === "unaware" ? DETECTION.unaware : DETECTION.investigating
       for (const k of game.sight.tiles(e)) if (distance(e.pos, pointOf(k)) <= radius) out.add(k)
     }
-    this.zone(out, ALIEN)
+    this.zone(this.seen(out), ALIEN)
   }
 
   /** The path to the cursor and the cursor's tile, while a move is planned; the area of an armed action. */
