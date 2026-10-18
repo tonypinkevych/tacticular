@@ -78,3 +78,22 @@ describe("floats", () => {
     expect(f.unit?.id).toBe("e")
   })
 })
+
+describe("shot styles", () => {
+  const style = (g: ReturnType<typeof setup>, frame: Frame) => {
+    const p = new Playback(1, g)
+    p.add(g, [frame])
+    return p.at(0).shot?.style
+  }
+  test("a melee attack plays as a strike, a gun as a bolt, a rocket as an arc", () => {
+    const g = setup(open(8, 3), [
+      squad("v", "vanguard", { x: 0, y: 1 }),
+      squad("h", "warden", { x: 0, y: 0 }),
+      enemy("e", "ogre", { x: 1, y: 1 }),
+    ])
+    expect(style(g, { action: { type: "attack", unit: "e", target: "v" }, game: g.clone() })).toBe("melee")
+    expect(style(g, { action: { type: "attack", unit: "v", target: "e" }, game: g.clone() })).toBe("bolt")
+    const at = { x: 5, y: 1 }
+    expect(style(g, { action: { type: "ability", unit: "h", ability: "rocket", at }, game: g.clone() })).toBe("arc")
+  })
+})

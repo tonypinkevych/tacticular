@@ -51,7 +51,10 @@ export class Picture {
   }
 
   draw(): void {
-    const { game } = this.scene
+    const { game, shot } = this.scene
+    const quake = shot?.style === "arc" && shot.progress > 0.6 && shot.progress < 0.85
+    this.px.ctx.save()
+    if (quake) this.px.ctx.translate(Math.floor(this.t / 30) % 2 ? 2 : -2, Math.floor(this.t / 45) % 2 ? 1 : -1)
     const { width, height } = game.board
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) this.order.push({ x, y })
     this.order.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y)
@@ -76,6 +79,7 @@ export class Picture {
     this.effects()
     this.marks.over()
     this.ambient()
+    this.px.ctx.restore()
   }
 
   private explored(p: Point): boolean {
@@ -190,13 +194,14 @@ export class Picture {
         ? -1
         : 0
     const float = u.kind === "whisperer" ? Math.round(Math.sin(this.t / 400) * 1.5) - 2 : 0
-    const firing = shot && shot.progress < 0.3 && same(shot.from, u.pos)
+    const firing = shot && shot.style !== "melee" && shot.progress < 0.3 && same(shot.from, u.pos)
     const kick = firing ? -Math.sign(shot.to.x - shot.to.y - shot.from.x + shot.from.y || 1) : 0
     const shake = struck ? (Math.floor(now / 40) % 2 ? 1 : -1) : 0
+    const push = this.push(u)
     const spent = u.side === "squad" && u.allegiance() === "squad" && game.phase === "squad" && u.ap === 0
     const alpha = fade ? Math.max(0, 1 - (now - fade.born) / life) : spent ? 0.55 : u.concealed ? 0.75 : 1
-    const x = a.x + kick + shake
-    const y = a.y - 2 - lift + bob + float
+    const x = a.x + kick + shake + push.x
+    const y = a.y - 2 - lift + bob + float + push.y
     for (const [dx, dy] of [
       [-1, 0],
       [1, 0],
@@ -204,7 +209,23 @@ export class Picture {
       [0, 1],
     ])
       this.px.glyph(UNITS[u.kind], x + dx, y + dy, BLACK, alpha * 0.85)
-    this.px.glyph(UNITS[u.kind], x, y, struck ? WHITE : mix(tone(u), WHITE, 0.15), alpha)
+    const flash =
+      struck || (shot?.style === "melee" && same(shot.to, u.pos) && shot.progress > 0.45 && shot.progress < 0.6)
+    this.px.glyph(UNITS[u.kind], x, y, flash ? WHITE : mix(tone(u), WHITE, 0.15), alpha)
+  }
+
+  /** How far a melee strike moves a unit on screen: the striker lunges in, the struck one reels back. */
+  private push(u: Unit): { x: number; y: number } {
+    const shot = this.scene.shot
+    if (shot?.style !== "melee") return { x: 0, y: 0 }
+    const A = this.px.projection.anchor(shot.from)
+    const B = this.px.projection.anchor(shot.to)
+    const len = Math.hypot(B.x - A.x, B.y - A.y) || 1
+    const [dx, dy] = [(B.x - A.x) / len, (B.y - A.y) / len]
+    const p = shot.progress
+    const k = same(shot.from, u.pos) ? Math.sin(Math.min(1, p / 0.9) * Math.PI) * 8 : 0
+    const back = same(shot.to, u.pos) && p > 0.45 ? 3 * (1 - (p - 0.45) / 0.55) : 0
+    return { x: Math.round(dx * (k + back)), y: Math.round(dy * (k + back)) }
   }
 
   private burning(p: Point): boolean {
@@ -223,6 +244,14 @@ export class Picture {
     const B = this.px.projection.anchor(shot.to)
     const la = height(game.tile(shot.from))
     const lb = height(game.tile(shot.to))
+    if (shot.style === "melee") {
+      this.slash(B.x, B.y - 6 - lb, shot.progress)
+      return
+    }
+    if (shot.style === "arc") {
+      this.arc(A.x, A.y - 7 - la, B.x, B.y - 4 - lb, shot.progress)
+      return
+    }
     const f = Math.min(1, shot.progress * 1.6)
     for (let k = 0; k < 4; k++) {
       const ff = Math.max(0, f - k * 0.05)
@@ -238,6 +267,43 @@ export class Picture {
         const y = B.y - 6 - lb + Math.sin(angle) * v * s * 0.6 + s * s * 8
         this.px.dot(x, y, k < 5 ? FLAME : mix(EMBER, BLACK, 0.4), 1 - s)
       }
+    }
+  }
+
+  /** A melee hit: a white slash across the target and a few sparks. */
+  private slash(x: number, y: number, progress: number): void {
+    if (progress < 0.4 || progress > 0.75) return
+    const s = (progress - 0.4) / 0.35
+    for (let k = 0; k < 7; k++) this.px.dot(x - 6 + k * 2, y - 5 + k * 1.5, WHITE, (1 - s) * (0.5 + k / 14), 2, 1)
+    for (let k = 0; k < 6; k++) {
+      const angle = hash(k, 4, 2) * 6.28
+      this.px.dot(x + Math.cos(angle) * 9 * s, y + Math.sin(angle) * 5 * s, FLAME, 1 - s)
+    }
+  }
+
+  /** A fired or thrown charge: it flies on a high arc with a smoke trail, then bursts in fire and debris. */
+  private arc(x0: number, y0: number, x1: number, y1: number, progress: number): void {
+    const rise = 16 + Math.hypot(x1 - x0, y1 - y0) * 0.2
+    const at = (f: number) => ({ x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f - Math.sin(f * Math.PI) * rise })
+    const f = Math.min(1, progress / 0.6)
+    if (f < 1) {
+      for (let k = 1; k <= 6; k++) {
+        const p = at(Math.max(0, f - k * 0.05))
+        this.px.dot(p.x, p.y, SMOKE, 0.5 - k * 0.07, 2, 2)
+      }
+      const p = at(f)
+      this.px.dot(p.x - 1, p.y - 1, FLAME, 1, 3, 3)
+      return
+    }
+    const s = (progress - 0.6) / 0.4
+    this.px.glow(x1, y1, 8 + s * 24, FLAME, 0.85 * (1 - s))
+    this.px.glow(x1, y1, 4 + s * 10, WHITE, 0.6 * (1 - s * 2))
+    for (let k = 0; k < 18; k++) {
+      const angle = hash(k, 7, 3) * 6.28
+      const v = 8 + hash(k, 11, 3) * 18
+      const x = x1 + Math.cos(angle) * v * s
+      const y = y1 + Math.sin(angle) * v * s * 0.6 - (1 - s) * s * 20 + s * s * 10
+      this.px.dot(x, y, k % 3 === 0 ? FLAME : mix(EMBER, BLACK, 0.3), 1 - s, 2, 2)
     }
   }
 

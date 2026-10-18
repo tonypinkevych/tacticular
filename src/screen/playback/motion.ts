@@ -1,3 +1,4 @@
+import { WEAPONS } from "../../combat/weapons"
 import { t } from "../../i18n/strings"
 import { key, type Point, same } from "../../map/point"
 import type { Entry, Game } from "../../mission/game"
@@ -21,11 +22,16 @@ export interface Float {
   unit?: Unit
 }
 
+/** How an attack travels: a bolt for guns and spells, a strike for melee, an arc for thrown and fired charges. */
+export type Style = "bolt" | "melee" | "arc"
+
+const ARCS = ["rocket", "smoke", "mine", "blast"]
+
 /** What the board shows at one moment of playback. */
 export interface Still {
   game: Game
   mover: { id: string; at: Point } | null
-  shot: { from: Point; to: Point; progress: number } | null
+  shot: { from: Point; to: Point; progress: number; style: Style } | null
   /** Where a visible enemy acts, for the camera to follow. */
   focus: Point | null
 }
@@ -41,6 +47,7 @@ interface Clip {
 
 const TILE_MS = 110
 const SHOT_MS = 420
+const ARC_MS = 700
 const STEP_MS = 260
 const FLOAT_MS = 1100
 const ACTIVITY_MS = 1500
@@ -84,6 +91,16 @@ function along(points: Point[], share: number): Point {
     left -= d
   }
   return points[points.length - 1]
+}
+
+function style(before: Game, frame: Frame): Style {
+  const a = frame.action
+  if (a.type === "attack") return WEAPONS[before.unit(a.unit).weapon].melee ? "melee" : "bolt"
+  return a.type === "ability" && ARCS.includes(a.ability) ? "arc" : "bolt"
+}
+
+function flight(before: Game, frame: Frame): number {
+  return style(before, frame) === "arc" ? ARC_MS : SHOT_MS
 }
 
 function target(before: Game, frame: Frame): Point | null {
@@ -203,7 +220,7 @@ export class Playback {
     const visible = shown(before, frame)
     const shotAt = target(before, frame)
     const scale = this.speed === 0 || instant || !visible ? 0 : 1 / this.speed
-    let length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? SHOT_MS : 0) + STEP_MS)
+    let length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? flight(before, frame) : 0) + STEP_MS)
     this.activity = before.phase === "enemy" ? (this.activity ?? now) : null
     if (this.activity !== null && frame.game.phase !== "enemy" && !instant && this.speed > 0)
       length = Math.max(length, ACTIVITY_MS / this.speed - (now - this.activity))
@@ -223,7 +240,7 @@ export class Playback {
     const id = actor(c.frame)
     const t = c.length > 0 ? (now - c.start) / c.length : 1
     const walk = span(c.before, c.frame, c.path) * TILE_MS
-    const total = walk + (target(c.before, c.frame) ? SHOT_MS : 0) + STEP_MS
+    const total = walk + (target(c.before, c.frame) ? flight(c.before, c.frame) : 0) + STEP_MS
     const walkEnd = walk / total
     let mover: Still["mover"] = null
     if (id && c.path.length > 0) {
@@ -234,7 +251,8 @@ export class Playback {
     const to = target(c.before, c.frame)
     if (id && to && t >= walkEnd) {
       const from = mover?.at ?? c.before.units.find((x) => x.id === id)!.pos
-      shot = { from, to, progress: Math.min(1, (t - walkEnd) / (SHOT_MS / total)) }
+      const progress = Math.min(1, (t - walkEnd) / (flight(c.before, c.frame) / total))
+      shot = { from, to, progress, style: style(c.before, c.frame) }
     }
     const u = id ? c.before.units.find((x) => x.id === id) : undefined
     const focus = u && c.visible && u.allegiance() === "enemy" ? (mover?.at ?? u.pos) : null

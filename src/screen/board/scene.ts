@@ -1,7 +1,7 @@
 import type { Point } from "../../map/point"
 import type { Game } from "../../mission/game"
 import type { Unit } from "../../units/unit"
-import type { Float } from "../playback/motion"
+import type { Float, Still } from "../playback/motion"
 import type { Daylight } from "./daylight"
 import type { Houses } from "./houses"
 
@@ -32,7 +32,7 @@ export interface Scene {
   ghost: { unit: Unit; at: Point } | null
   zones: boolean
   mover: { id: string; at: Point } | null
-  shot: { from: Point; to: Point; progress: number } | null
+  shot: Still["shot"]
   texts: Float[]
   now: number
   life: number
