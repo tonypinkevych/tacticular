@@ -196,6 +196,26 @@ export class Model {
     })
   }
 
+  /** Moves an armed action to its next target, or back; false when nothing is armed or it has no targets. */
+  private cycle(back: boolean): boolean {
+    const kit = this.kit()
+    const current = this.armed()
+    if (!kit || !current) return false
+    const all = kit.targets(current)
+    if (all.length === 0) return false
+    const at = all.findIndex(
+      (x) => x.target === current.target && (x.at && current.at ? same(x.at, current.at) : x.at === current.at),
+    )
+    const n = all.length
+    const next = at < 0 ? all[back ? n - 1 : 0] : all[(at + (back ? n - 1 : 1)) % n]
+    const foe = this.game().units.find((u) => u.id === next.target)
+    batch(() => {
+      this.setArmed(next)
+      this.setLook(foe?.pos ?? next.at)
+    })
+    return true
+  }
+
   /** A click on the board: picks targets, selects soldiers, opens doors, or moves. */
   click(p: Point): void {
     const g = this.game()
@@ -278,7 +298,7 @@ export class Model {
     }
     if (e.key === "Tab") {
       e.preventDefault()
-      this.selectNext(false, e.shiftKey, false)
+      if (!this.cycle(e.shiftKey)) this.selectNext(false, e.shiftKey, false)
       return
     }
     if (e.key === "Enter") {

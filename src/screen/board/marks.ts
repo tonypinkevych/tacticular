@@ -229,6 +229,7 @@ export class Marks {
       this.px.ring(u.pos, tone(u), a, true, lift)
       if (u.id === aim?.target.id) this.px.reticle(u.pos, tone(u), blink, lift)
     }
+    for (const p of this.scene.barrels) this.px.ring(p, AMBER, blink, true)
   }
 
   /** Cover shields on the tile edges that touch cover. */

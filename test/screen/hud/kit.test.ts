@@ -77,6 +77,11 @@ describe("a barrel", () => {
     expect(armed.at).toEqual({ x: 5, y: 1 })
     expect(kit.action(armed)).toEqual({ type: "shoot", unit: "w", at: { x: 5, y: 1 } })
   })
+  test("is one of the targets of a weapon, with the foes in reach, nearest first", () => {
+    const kit = new Kit(g, w)
+    const all = kit.targets({ slot: "weapon:repeater", target: null, at: null })
+    expect(all.map((x) => x.target ?? x.at)).toEqual([{ x: 5, y: 1 }, "e"])
+  })
 })
 
 describe("objective", () => {

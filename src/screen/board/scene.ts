@@ -20,6 +20,8 @@ export interface Scene {
   hover: Point | null
   /** Ids of the units an armed action can target. */
   targets: Set<string>
+  /** Barrels an armed weapon can shoot. */
+  barrels: Point[]
   /** Tiles an armed area action hits. */
   area: Point[]
   /** Tiles an armed action can reach. */

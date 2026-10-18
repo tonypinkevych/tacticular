@@ -95,6 +95,7 @@ export function Board(props: { model: Model }) {
     const far = new Set<number>()
     let path: Point[] = []
     const targets = new Set<string>()
+    const barrels: Point[] = []
     let area: Point[] = []
     let range = new Set<number>()
     let aim: Scene["aim"] = null
@@ -116,9 +117,10 @@ export function Board(props: { model: Model }) {
           const chance = Math.round((f.kind === "attack" ? f.odds.chance : f.chance) * 100)
           aim = { target: f.target, chance, cover: f.kind === "attack" ? f.odds.cover : 0, from }
         }
-        for (const e of g.units)
-          if (e.allegiance() === "enemy" && (e.side === "squad" || g.stealth.visible(e)) && g.orders.canTarget(u, e))
-            targets.add(e.id)
+        for (const t of kit.targets(raw)) {
+          if (t.target) targets.add(t.target)
+          if (t.at) barrels.push(t.at)
+        }
       } else {
         const r = g.reach(u, u.stride())
         for (const [k, c] of r.cost) {
@@ -146,6 +148,7 @@ export function Board(props: { model: Model }) {
       path,
       hover,
       targets,
+      barrels,
       area: area.filter((p) => g.board.inside(p)),
       range,
       aim,

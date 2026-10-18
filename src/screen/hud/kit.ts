@@ -297,6 +297,19 @@ export class Kit {
     return ok ? { ...armed, target: t.id, at: null } : armed
   }
 
+  /** Every target an armed action can take, a unit or a barrel, nearest first. */
+  targets(armed: Armed): Armed[] {
+    const { game, unit: u } = this
+    const empty = { ...armed, target: null, at: null }
+    const { width, tiles } = game.board
+    const barrels = tiles.flatMap((t, i) => (t === "barrel" ? [{ x: i % width, y: Math.floor(i / width) }] : []))
+    const spots = [...game.units.filter((x) => x.alive()).map((x) => x.pos), ...barrels]
+    return spots
+      .sort((a, b) => distance(u.pos, a) - distance(u.pos, b))
+      .map((p) => this.retarget(empty, p))
+      .filter((x) => x.target !== null || x.at !== null)
+  }
+
   forecast(armed: Armed, hover: Point | null): Forecast | null {
     const { game, unit: u } = this
     const aimed = this.aim(armed, hover)
