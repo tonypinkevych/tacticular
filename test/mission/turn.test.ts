@@ -36,16 +36,18 @@ describe("waiting", () => {
 })
 
 describe("relay", () => {
-  test("a planted charge blows up at the end of the next round: 3 damage around it, and the mission is won", () => {
+  test("a planted charge blows up at the end of the next round: 3 damage around it; the squad must then leave", () => {
     const g = setup(open(12, 3), [squad("s", "warden", { x: 2, y: 1 }), enemy("e", "orc", { x: 6, y: 1 }, "unaware")])
-    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: 1 }
+    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: 1, tiles: [{ x: 0, y: 1 }], blown: false }
     g.phase = "enemy"
     g.turn.end()
     expect(g.phase).toBe("squad")
     g.phase = "enemy"
     g.turn.end()
-    expect(g.phase).toBe("won")
+    expect(g.goal).toMatchObject({ blown: true })
+    expect(g.phase).toBe("squad")
     expect(find(g, "e").hp).toBe(find(g, "e").maxHp - 3)
     expect(find(g, "s").hp).toBe(find(g, "s").maxHp)
+    expect(g.apply({ type: "move", unit: "s", to: { x: 0, y: 1 } }).phase).toBe("won")
   })
 })

@@ -132,7 +132,7 @@ describe("maps for each mission", () => {
 
 describe("objective missions", () => {
   const goals = (goal: "intel" | "vip" | "relay") => Array.from({ length: 30 }, (_, i) => mission(i + 1, { goal }))
-  test("Intel and Relay put the objective inside a ring of low cover, and Intel has an evac zone", () => {
+  test("Intel and Relay put the objective inside a ring of low cover, and both have an evac zone", () => {
     for (const g of [...goals("intel"), ...goals("relay")]) {
       const goal = g.goal
       if (goal.kind !== "intel" && goal.kind !== "relay") throw new Error(goal.kind)
@@ -142,7 +142,7 @@ describe("objective missions", () => {
         { x: goal.at.x + d, y: goal.at.y + 2 },
       ])
       expect(ring.filter((p) => g.tile(p) === "low").length, `seed ${g.seed}`).toBeGreaterThan(4)
-      if (goal.kind === "intel") expect(goal.tiles.length).toBeGreaterThan(0)
+      expect(goal.tiles.length, `seed ${g.seed}`).toBeGreaterThan(0)
     }
   })
   test("VIP puts a captive soldier of a class not in the squad inside a walled yard", () => {

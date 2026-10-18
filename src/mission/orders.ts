@@ -164,7 +164,10 @@ export class Orders {
     )
       game.phase = "won"
     else if (
-      (goal.kind === "evac" || (goal.kind === "intel" && goal.taken) || (goal.kind === "warchief" && goal.slain)) &&
+      (goal.kind === "evac" ||
+        (goal.kind === "intel" && goal.taken) ||
+        (goal.kind === "warchief" && goal.slain) ||
+        (goal.kind === "relay" && goal.blown)) &&
       standing.every((u) => inside(u.pos, goal.tiles))
     )
       game.phase = "won"

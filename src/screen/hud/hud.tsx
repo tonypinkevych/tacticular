@@ -15,6 +15,7 @@ function goal(g: Game): string {
   if (goal.kind === "defend") return t("ui.goal.defend", { left: goal.rounds - g.round + 1 })
   if (goal.kind === "intel" && goal.taken) return t("ui.goal.intelTaken")
   if (goal.kind === "warchief" && goal.slain) return t("ui.goal.warchiefSlain")
+  if (goal.kind === "relay" && goal.blown) return t("ui.goal.relayBlown")
   if (goal.kind === "relay" && goal.planted !== null) return t("ui.goal.relayPlanted")
   return t(`ui.goal.${goal.kind}`)
 }

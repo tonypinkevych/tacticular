@@ -309,13 +309,13 @@ describe("objectives", () => {
   })
   test("Use away from the objective is refused", () => {
     const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), far()])
-    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: null }
+    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: null, tiles: [], blown: false }
     expect(() => g.apply({ type: "use", unit: "s" })).toThrow(Illegal)
   })
   test("Use next to the relay plants a charge", () => {
     const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), far()])
-    g.goal = { kind: "relay", at: { x: 2, y: 2 }, planted: null }
-    expect(g.apply({ type: "use", unit: "s" }).goal).toEqual({ kind: "relay", at: { x: 2, y: 2 }, planted: 1 })
+    g.goal = { kind: "relay", at: { x: 2, y: 2 }, planted: null, tiles: [], blown: false }
+    expect(g.apply({ type: "use", unit: "s" }).goal).toMatchObject({ kind: "relay", planted: 1 })
   })
   const captive = () => {
     const c = squad("c", "mage", { x: 5, y: 1 })

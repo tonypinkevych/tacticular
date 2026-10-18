@@ -54,15 +54,15 @@ export class Turn {
     } else if (game.round >= goal.rounds) game.phase = "won"
   }
 
-  /** Relay: a charge blows up at the end of the round after it was planted and wins the mission. */
+  /** Relay: a charge blows up at the end of the round after it was planted; the squad must then leave or win. */
   private detonate(): void {
     const game = this.game
     const goal = game.goal
-    if (goal.kind !== "relay" || goal.planted === null || goal.planted >= game.round) return
+    if (goal.kind !== "relay" || goal.planted === null || goal.blown || goal.planted >= game.round) return
+    goal.blown = true
     game.log.push({ key: "log.relay", params: {} })
     game.combat.explode(goal.at)
     game.orders.settle()
-    if (game.phase !== "lost") game.phase = "won"
   }
 
   /** After round 3, an unaware group at a route point gets its next point nearer to where the squad landed. */

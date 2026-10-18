@@ -109,7 +109,7 @@ export class Match {
         ? goal.at
         : captive?.has("captive")
           ? captive.pos
-          : "tiles" in goal && (goal.kind !== "warchief" || goal.slain)
+          : "tiles" in goal && (goal.kind !== "warchief" || goal.slain) && (goal.kind !== "relay" || goal.blown)
             ? goal.tiles.filter(free).sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
             : null
     if (spot) return same(spot, u.pos) ? null : new Mind(game).toward(u, spot)

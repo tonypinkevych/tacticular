@@ -35,7 +35,7 @@ export type Goal =
   | { kind: "defend"; at: Point; rounds: number }
   | { kind: "intel"; at: Point; taken: boolean; tiles: Point[] }
   | { kind: "vip"; captive: string; tiles: Point[] }
-  | { kind: "relay"; at: Point; planted: number | null }
+  | { kind: "relay"; at: Point; planted: number | null; tiles: Point[]; blown: boolean }
 
 /** The saved fields of a game. */
 export interface GameData {
