@@ -47,6 +47,16 @@ describe("chart", () => {
     run.go(first(run), ids(run))
     expect(run.conditions().squad).toEqual(run.roster)
   })
+  test("a lost mission is marked failed, a won one is not", () => {
+    const run = drafted()
+    const hp = Object.fromEntries(ids(run).map((id) => [id, 3]))
+    const lost = first(run)
+    run.go(lost, ids(run))
+    run.finish({ won: false, hp })
+    run.go(run.options()[0].id, ids(run))
+    run.finish({ won: true, hp })
+    expect(run.failed).toEqual([lost])
+  })
   test("needs 3 soldiers, or the whole roster when it has fewer", () => {
     const run = drafted()
     expect(() => run.go(first(run), ids(run).slice(0, 2))).toThrow()

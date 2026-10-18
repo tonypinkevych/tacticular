@@ -41,6 +41,7 @@ export class Run {
   at: number | null = null
   threat = 0
   done: Task[] = []
+  failed: number[] = []
   deployed: string[] = []
   offers: Reward[] = []
   captive: Recruit | null = null
@@ -159,6 +160,7 @@ export class Run {
       this.offers = this.offer()
       this.stage = "reward"
     } else {
+      this.failed.push(node.id)
       this.threat += 1
       this.stage = "chart"
     }

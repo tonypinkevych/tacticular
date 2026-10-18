@@ -56,7 +56,12 @@ export function Route(props: { expedition: Expedition }) {
               <button
                 type="button"
                 class="node"
-                classList={{ open: open(n) && ready(), here: run().at === n.id, [n.kind]: true }}
+                classList={{
+                  open: open(n) && ready(),
+                  here: run().at === n.id,
+                  failed: run().failed.includes(n.id),
+                  [n.kind]: true,
+                }}
                 style={{ left: `${(100 * p.x) / W}%`, top: `${(100 * p.y) / H}%` }}
                 aria-disabled={!open(n) || !ready()}
                 onClick={() => go(n)}

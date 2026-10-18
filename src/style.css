@@ -769,6 +769,11 @@ main.extended .more-mark {
   background: var(--accent);
   color: var(--bg);
 }
+.chart .node.failed {
+  border-color: var(--bad);
+  color: var(--bad);
+  text-decoration: line-through;
+}
 .chart .node.fortress {
   border-color: var(--bad);
 }
