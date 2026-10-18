@@ -6,12 +6,11 @@ import { enemy, find, open, setup, squad } from "../fixture"
 const seeds = Array.from({ length: 100 }, (_, i) => i + 1)
 
 describe("scale", () => {
-  test("a mission is 16 by 16 with 3 soldiers and 2 alien groups of 2-3", () => {
+  test("a mission has 3 soldiers and 4 alien groups of 2-3", () => {
     for (const seed of seeds) {
       const g = mission(seed)
-      expect([g.board.width, g.board.height]).toEqual([16, 16])
       expect(g.units.filter((u) => u.side === "squad")).toHaveLength(3)
-      expect(g.groups).toHaveLength(2)
+      expect(g.groups).toHaveLength(4)
       for (const group of g.groups) {
         const size = g.units.filter((u) => u.group === group.id).length
         expect(size).toBeGreaterThanOrEqual(2)

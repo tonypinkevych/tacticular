@@ -63,6 +63,19 @@ export class Board {
     if (tile === "high" || tile === "tree") this.set(p, "low")
   }
 
+  /** The map turned a quarter clockwise. */
+  turn(): Board {
+    const out = new Board(this.height, this.width, undefined, this.biome)
+    for (let y = 0; y < this.height; y++)
+      for (let x = 0; x < this.width; x++) out.set(this.turned({ x, y }), this.at({ x, y }))
+    return out
+  }
+
+  /** Where a point of this map lands when the map turns a quarter clockwise. */
+  turned(p: Point): Point {
+    return { x: this.height - 1 - p.y, y: p.x }
+  }
+
   /** The same map in a given biome. */
   in(biome: Biome): Board {
     return new Board(this.width, this.height, this.tiles, biome)

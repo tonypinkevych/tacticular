@@ -181,8 +181,9 @@ describe("objectives", () => {
       kinds.add(g.goal.kind)
       if (g.goal.kind === "evac") {
         expect(g.goal.tiles.length).toBeGreaterThan(0)
+        const start = g.units[0].pos
         for (const p of g.goal.tiles) {
-          expect(p.x).toBeGreaterThanOrEqual(g.board.width - 3)
+          expect(Math.max(Math.abs(p.x - start.x), Math.abs(p.y - start.y))).toBeGreaterThanOrEqual(g.board.width - 6)
           expect(walkable(g.tile(p))).toBe(true)
         }
       }

@@ -82,12 +82,12 @@ function enemies(
   reachable: Point[],
   landing: Point,
 ): { units: Unit[]; groups: Group[] } {
-  const count = 2
-  const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.45))
+  const count = 4
+  const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.6))
   const anchors: Point[] = []
-  for (let tries = 0; anchors.length < count && tries < 200; tries++) {
+  for (let tries = 0; anchors.length < count && tries < 400; tries++) {
     const p = r.pick(field)
-    if (anchors.every((a) => distance(a, p) >= 5)) anchors.push(p)
+    if (anchors.every((a) => distance(a, p) >= 6)) anchors.push(p)
   }
   const units: Unit[] = []
   const groups: Group[] = []
@@ -125,19 +125,32 @@ function goal(r: Dice, board: Board, reachable: Point[]): Goal {
   return { kind }
 }
 
-/** A new random mission from a seed: map, squad of 3 and 2 enemy groups. */
+/** A new random mission from a seed: map, squad of 3 at one edge and 4 enemy groups toward the opposite edge. */
 export function mission(seed: number): Game {
   const state = { rng: seed }
   const r = new Dice(state)
-  const board = map(r)
+  let board = map(r)
   const taken = new Set<number>()
   const team = squad(r, board, taken)
   const reachable = [...flood(board, team[0].pos)]
     .map((k) => ({ x: k % 1000, y: Math.floor(k / 1000) }))
     .filter((p) => board.tiles[p.y * board.width + p.x] !== "door")
   const { units, groups } = enemies(r, board, taken, reachable, team[0].pos)
+  let aim = goal(r, board, reachable)
+  for (let turns = r.between(0, 3); turns > 0; turns--) {
+    const from = board
+    const turn = (p: Point): Point => from.turned(p)
+    for (const u of [...team, ...units]) {
+      u.pos = turn(u.pos)
+      u.patrol = u.patrol.map(turn)
+    }
+    for (const g of groups) if (g.landing) g.landing = turn(g.landing)
+    if (aim.kind === "evac") aim = { ...aim, tiles: aim.tiles.map(turn) }
+    if (aim.kind === "defend") aim = { ...aim, at: turn(aim.at) }
+    board = from.turn()
+  }
   const game = Game.start({ seed, board, units: [...team, ...units], groups })
-  game.goal = goal(r, board, reachable)
+  game.goal = aim
   game.rng = state.rng
   return game
 }

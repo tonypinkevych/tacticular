@@ -1,18 +1,20 @@
 import { type Biome, Board } from "./board"
 import type { Dice } from "./dice"
-import { AROUND, key, type Point } from "./point"
+import { AROUND, key, type Point, plus, same } from "./point"
 import { blocksSight, climb, passable, type Tile } from "./tile"
 
-export const SIZE = { width: 16, height: 16 }
+export const SIZE = { width: 32, height: 32 }
 
 const START = 3
 
 /**
- * How a biome fills the map: river chance, house count, rooftop share, clutter, high cover share, fence lines,
- * groves, the share of high cover that is trees and rocks, grass patches and mud on river banks.
+ * How a biome fills a 16×16 area: river chance, the barrier tile when there is no river, house count, rooftop
+ * share, clutter, high cover share, fence lines, groves, the share of high cover that is trees and rocks, grass
+ * patches and mud on river banks.
  */
 interface Template {
   river: number
+  line: Tile
   houses: [number, number]
   roofs: number
   clutter: number
@@ -30,6 +32,7 @@ export const BIOMES: Biome[] = ["forest", "village", "town"]
 const TEMPLATES: Record<Biome, Template> = {
   forest: {
     river: 0.5,
+    line: "tree",
     houses: [0, 1],
     roofs: 0,
     clutter: 14,
@@ -43,6 +46,7 @@ const TEMPLATES: Record<Biome, Template> = {
   },
   village: {
     river: 0.4,
+    line: "high",
     houses: [2, 3],
     roofs: 0.35,
     clutter: 24,
@@ -56,6 +60,7 @@ const TEMPLATES: Record<Biome, Template> = {
   },
   town: {
     river: 0.2,
+    line: "wall",
     houses: [3, 4],
     roofs: 0.35,
     clutter: 28,
@@ -69,27 +74,74 @@ const TEMPLATES: Record<Biome, Template> = {
   },
 }
 
-/** The land of one map while it is laid out: river, houses, cover, grass and mud. */
+/** The land of one map while it is laid out: barrier, routes, houses, cover, grass and mud. */
 class Terrain {
+  private readonly kept = new Set<number>()
+
   constructor(
     private readonly dice: Dice,
     private readonly board: Board,
     private readonly template: Template,
   ) {}
 
-  river(): void {
-    const { dice: r, board: d } = this
-    let x = r.between(Math.floor(d.width * 0.4), Math.floor(d.width * 0.6))
-    const crossings = [
-      r.between(2, Math.floor(d.height / 2) - 2),
-      r.between(Math.floor(d.height / 2) + 1, d.height - 3),
-    ]
+  /** A river or a wall line across the map between the squad and the aliens, with 2 or 3 gaps; returns the gaps. */
+  barrier(): Point[] {
+    const { dice: r, board: d, template: t } = this
+    const river = r.random() < t.river
+    const count = r.between(2, 3)
+    const band = Math.floor((d.height - 4) / count)
+    const rows = Array.from({ length: count }, (_, i) => 2 + i * band + r.between(1, band - 2))
+    const left = Math.floor(d.width * 0.4)
+    const right = Math.floor(d.width * 0.6) - 1
+    let x = r.between(Math.floor(d.width * 0.45), Math.floor(d.width * 0.55))
+    const gaps: Point[] = []
     for (let y = 0; y < d.height; y++) {
-      if (y > 0 && r.random() < 0.3) x = Math.min(d.width - 6, Math.max(5, x + r.pick([-1, 1])))
-      const tile: Tile = crossings.includes(y) ? "bridge" : "water"
-      d.set({ x, y }, tile)
-      d.set({ x: x + 1, y }, tile)
+      const gap = rows.includes(y)
+      if (y > 0 && !gap && !rows.includes(y - 1) && r.random() < 0.3)
+        x = Math.min(right, Math.max(left, x + r.pick([-1, 1])))
+      for (let i = 0; i < (river ? 2 : 1); i++) {
+        const tile: Tile = river ? (gap ? "bridge" : "water") : gap ? "floor" : this.wall()
+        d.set({ x: x + i, y }, tile)
+      }
+      if (!gap) continue
+      gaps.push({ x, y })
+      for (let i = -2; i <= (river ? 3 : 2); i++) this.kept.add(key({ x: x + i, y }))
     }
+    return gaps
+  }
+
+  /** Keeps a winding way between two points free of clutter: wide and bare when direct, lined with cover on a flank. */
+  route(from: Point, to: Point, flank: boolean): void {
+    const { dice: r, board: d } = this
+    let p = from
+    for (let i = 0; i < 200 && !same(p, to); i++) {
+      const across = Math.abs(to.x - p.x)
+      const along = Math.abs(to.y - p.y)
+      const sideways = along > 0 && (across === 0 || r.random() < along / (across + along))
+      p = sideways ? { x: p.x, y: p.y + Math.sign(to.y - p.y) } : { x: p.x + Math.sign(to.x - p.x), y: p.y }
+      this.kept.add(key(p))
+      if (!flank) for (const s of AROUND) this.kept.add(key(plus(p, s)))
+      if (flank && i % 3 === 0) {
+        const side = sideways ? { x: r.pick([-1, 1]), y: 0 } : { x: 0, y: r.pick([-1, 1]) }
+        const c = plus(p, side)
+        if (d.at(c) === "floor" && !this.kept.has(key(c))) d.set(c, r.random() < 0.7 ? "low" : "high")
+      }
+    }
+  }
+
+  /** Low cover beside each of the squad's three start tiles. */
+  shelter(start: Point): void {
+    for (const dy of [-2, 0, 2]) {
+      this.board.set({ x: start.x, y: start.y + dy }, "floor")
+      this.board.set({ x: start.x + 1, y: start.y + dy }, "low")
+      this.kept.add(key({ x: start.x, y: start.y + dy }))
+    }
+  }
+
+  private wall(): Tile {
+    const { dice: r, template: t } = this
+    if (t.line !== "tree") return t.line
+    return r.random() < 0.8 ? "tree" : "rock"
   }
 
   /** A house with doors, or a flat rooftop with a ladder on one side. */
@@ -102,7 +154,8 @@ class Terrain {
       const y0 = r.between(1, d.height - h - 1)
       let free = true
       for (let y = y0 - 1; y <= y0 + h && free; y++) {
-        for (let x = x0 - 1; x <= x0 + w && free; x++) if (d.at({ x, y }) !== "floor") free = false
+        for (let x = x0 - 1; x <= x0 + w && free; x++)
+          if (d.at({ x, y }) !== "floor" || this.kept.has(key({ x, y }))) free = false
       }
       if (!free) continue
       if (roof) {
@@ -177,15 +230,16 @@ class Terrain {
             : [at]
       for (const p of spots) {
         const near = AROUND.map((s) => d.at({ x: p.x + s.x, y: p.y + s.y }))
-        if (d.at(p) === "floor" && !near.includes("door") && !near.includes("bridge")) d.set(p, tile)
+        if (d.at(p) === "floor" && !this.kept.has(key(p)) && !near.includes("door") && !near.includes("bridge"))
+          d.set(p, tile)
       }
     }
   }
 
   /** Patches of tall grass that grow over open ground. */
-  meadows(): void {
-    const { dice: r, board: d, template: t } = this
-    for (let i = 0; i < t.grass; i++) {
+  meadows(count: number): void {
+    const { dice: r, board: d } = this
+    for (let i = 0; i < count; i++) {
       const patch = [{ x: r.between(0, d.width - 1), y: r.between(0, d.height - 1) }]
       const size = r.between(4, 9)
       for (let tries = 0; patch.length < size && tries < 40; tries++) {
@@ -231,24 +285,33 @@ function walkables(d: Board): Point[] {
   return out
 }
 
-/** Builds a map of a biome where every passable tile can be reached from the squad's start. */
+/**
+ * Builds a map of a biome with the squad's start on the west edge and the aliens' side in the east: a barrier
+ * with 2 or 3 gaps between them, a direct route through the gap nearest the squad and flank routes through the
+ * others. Every passable tile can be reached from the start.
+ */
 export function map(r: Dice, biome: Biome = r.pick(BIOMES), width = SIZE.width, height = SIZE.height): Board {
   const t = TEMPLATES[biome]
+  const scale = (width * height) / 256
   for (let attempt = 0; ; attempt++) {
     const d = new Board(width, height)
     const land = new Terrain(r, d, t)
-    if (r.random() < t.river) land.river()
-    const houses = r.between(...t.houses)
+    const start = { x: 1, y: Math.floor(height / 2) }
+    const gaps = land.barrier().sort((a, b) => Math.abs(a.y - start.y) - Math.abs(b.y - start.y))
+    gaps.forEach((gap, i) => {
+      land.route({ x: start.x + 2, y: start.y }, { x: gap.x - 2, y: gap.y }, i > 0)
+      land.route({ x: gap.x + 3, y: gap.y }, { x: width - 3, y: r.between(2, height - 3) }, i > 0)
+    })
+    const houses = Math.round(r.between(...t.houses) * scale * 0.75)
     for (let i = 0; i < houses; i++) land.house(r.random() < t.roofs)
     land.clutter()
-    land.meadows()
+    land.meadows(Math.round(t.grass * scale))
     land.banks()
-    const ridges = r.between(1, 2)
+    const ridges = r.between(1, 2) * Math.round(scale)
     for (let i = 0; i < ridges; i++) land.ridge()
     for (let y = 0; y < height; y++)
       for (let x = 0; x < START; x++) if (blocksSight(d.at({ x, y }))) d.set({ x, y }, "low")
-    const start = { x: 1, y: Math.floor(height / 2) }
-    d.set(start, "floor")
+    land.shelter(start)
     const all = walkables(d)
     const reached = flood(d, start)
     if (reached.size < all.length * 0.95 && attempt < 20) continue
