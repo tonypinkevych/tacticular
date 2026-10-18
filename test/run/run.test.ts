@@ -44,8 +44,14 @@ describe("chart", () => {
   test("a mission carries the deployed soldiers with their HP", () => {
     const run = drafted()
     run.roster[0].hp = 2
-    run.go(first(run), [ids(run)[0]])
-    expect(run.conditions().squad).toEqual([run.roster[0]])
+    run.go(first(run), ids(run))
+    expect(run.conditions().squad).toEqual(run.roster)
+  })
+  test("needs 3 soldiers, or the whole roster when it has fewer", () => {
+    const run = drafted()
+    expect(() => run.go(first(run), ids(run).slice(0, 2))).toThrow()
+    run.roster.pop()
+    expect(() => run.go(first(run), ids(run))).not.toThrow()
   })
   test("each mission raises the threat, and threat brings more alien groups", () => {
     const run = drafted()

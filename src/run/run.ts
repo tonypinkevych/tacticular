@@ -86,10 +86,15 @@ export class Run {
     return this.at === null ? this.chart.layer(0) : this.chart.node(this.at).next.map((id) => this.chart.node(id))
   }
 
-  /** Goes to a mission with 1 to 4 soldiers of the roster; the threat rises, twice for the captain. */
+  /** The fewest soldiers a mission takes: 3, or the whole roster when it is smaller. */
+  fewest(): number {
+    return Math.min(DRAFT, this.roster.length)
+  }
+
+  /** Goes to a mission with the fewest to 4 soldiers of the roster; the threat rises, twice for the captain. */
   go(node: number, deploy: string[]): void {
     must(this.stage === "chart" && this.options().some((n) => n.id === node), "node")
-    must(deploy.length > 0 && deploy.length <= SQUAD && new Set(deploy).size === deploy.length, "deploy")
+    must(deploy.length >= this.fewest() && deploy.length <= SQUAD && new Set(deploy).size === deploy.length, "deploy")
     must(
       deploy.every((id) => this.roster.some((s) => s.id === id)),
       "deploy",

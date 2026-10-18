@@ -26,8 +26,9 @@ export function Route(props: { expedition: Expedition }) {
       .some((o) => o.id === n.id)
   const toggle = (id: string) =>
     setDeploy((d) => (d.includes(id) ? d.filter((x) => x !== id) : d.length < 4 ? [...d, id] : d))
+  const ready = () => deploy().length >= run().fewest()
   const go = (n: Node) => {
-    if (open(n) && deploy().length > 0) x.choose({ type: "go", node: n.id, deploy: deploy() })
+    if (open(n) && ready()) x.choose({ type: "go", node: n.id, deploy: deploy() })
   }
   return (
     <section class="run">
@@ -55,9 +56,9 @@ export function Route(props: { expedition: Expedition }) {
               <button
                 type="button"
                 class="node"
-                classList={{ open: open(n), here: run().at === n.id, [n.kind]: true }}
+                classList={{ open: open(n) && ready(), here: run().at === n.id, [n.kind]: true }}
                 style={{ left: `${(100 * p.x) / W}%`, top: `${(100 * p.y) / H}%` }}
-                aria-disabled={!open(n)}
+                aria-disabled={!open(n) || !ready()}
                 onClick={() => go(n)}
                 onMouseEnter={() => setHover(n)}
                 onMouseLeave={() => setHover(null)}
@@ -77,7 +78,7 @@ export function Route(props: { expedition: Expedition }) {
           )}
         </Show>
       </p>
-      <h3>{t("run.deploy")}</h3>
+      <h3>{t("run.deploy", { fewest: run().fewest() })}</h3>
       <div class="soldiers">
         <For each={run().roster}>
           {(s) => <Soldier soldier={s} on={deploy().includes(s.id)} onClick={() => toggle(s.id)} />}

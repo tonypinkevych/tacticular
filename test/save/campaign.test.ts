@@ -33,10 +33,11 @@ describe("campaign", () => {
   test("going to a mission starts it with the run's conditions, and it survives a reload", () => {
     const { c, store } = started()
     const node = c.run.options()[0]
-    c.choose({ type: "go", node: node.id, deploy: ["c1", "c2"] })
+    c.choose({ type: "go", node: node.id, deploy: ["c1", "c2", "c3"] })
     expect(c.session?.game.units.filter((u) => u.side === "squad" && !u.has("captive")).map((u) => u.id)).toEqual([
       "c1",
       "c2",
+      "c3",
     ])
     c.session?.act({ type: "endTurn" })
     const again = Campaign.open(store, () => 99)

@@ -41,7 +41,7 @@ describe("expedition", () => {
   test("the mission menu's new run starts a run at the draft", () => {
     const x = opened()
     x.choose({ type: "draft", picks: ["c1", "c2", "c3"] })
-    x.choose({ type: "go", node: x.run().options()[0].id, deploy: ["c1"] })
+    x.choose({ type: "go", node: x.run().options()[0].id, deploy: ["c1", "c2", "c3"] })
     x.model?.newMission()
     x.model?.newMission()
     expect(x.run().stage).toBe("draft")
