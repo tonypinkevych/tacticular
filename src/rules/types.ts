@@ -1,34 +1,5 @@
-export interface Point {
-  x: number
-  y: number
-}
-
-export type Tile =
-  | "floor"
-  | "low"
-  | "high"
-  | "wall"
-  | "door"
-  | "open"
-  | "water"
-  | "bridge"
-  | "ridge"
-  | "roof"
-  | "ladder"
-  | "grass"
-  | "tree"
-  | "rock"
-  | "mud"
-
-/** The kind of land a mission takes place in; it shapes the map and its look. */
-export type Biome = "forest" | "village" | "town"
-
-export interface Board {
-  width: number
-  height: number
-  tiles: Tile[]
-  biome?: Biome
-}
+import type { Roll } from "./dice"
+import type { Point } from "./point"
 
 export type Side = "squad" | "enemy"
 
@@ -40,12 +11,6 @@ export type Gadget = "drone" | "turret"
 export type EnemyKind = "orc" | "bomber" | "ogre" | "shieldwall" | "assassin" | "warchief" | "whisperer"
 
 export type Kind = ClassId | EnemyKind | Gadget
-
-export interface Dice {
-  count: number
-  sides: number
-  bonus: number
-}
 
 export type WeaponId =
   | "shotgun"
@@ -67,7 +32,7 @@ export type WeaponId =
 
 export interface Weapon {
   id: WeaponId
-  dice: Dice
+  dice: Roll
   min: number
   max: number
   melee: boolean
@@ -142,37 +107,6 @@ export type Alert = "unaware" | "investigating" | "engaged"
 
 export type Intent = { type: "charge"; target: string } | { type: "bomb"; at: Point } | { type: "psi"; target: string }
 
-export interface Unit {
-  id: string
-  kind: Kind
-  side: Side
-  name: string
-  group: string | null
-  pos: Point
-  hp: number
-  maxHp: number
-  down: number
-  aim: number
-  defense: number
-  mobility: number
-  vision: number
-  will: number
-  weapon: WeaponId
-  ammo: number
-  ap: number
-  moved: boolean
-  stance: Stance
-  statuses: Status[]
-  cooldowns: Partial<Record<AbilityId, number>>
-  ult: number
-  axes: number
-  concealed: boolean
-  alert: Alert
-  patrol: Point[]
-  patrolIndex: number
-  intent: Intent | null
-}
-
 export interface Zone {
   kind: "smoke" | "fire" | "mine"
   tiles: Point[]
@@ -206,24 +140,6 @@ export type Goal = { kind: "kill" } | { kind: "evac"; tiles: Point[] } | { kind:
 export interface Drop {
   at: Point
   round: number
-}
-
-export interface Game {
-  seed: number
-  rng: number
-  round: number
-  phase: Phase
-  board: Board
-  units: Unit[]
-  zones: Zone[]
-  groups: Group[]
-  explored: boolean[]
-  noises: Noise[]
-  reactions: string[]
-  log: Entry[]
-  goal: Goal
-  drop: Drop | null
-  drops: number
 }
 
 export type Action =

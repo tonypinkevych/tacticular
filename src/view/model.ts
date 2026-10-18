@@ -1,14 +1,14 @@
 import { batch, createSignal } from "solid-js"
-import { type Lang, language, remember, t, use } from "../i18n/strings"
-import { canTarget, Illegal, landings } from "../rules/actions"
-import { canReach, type Odds, odds } from "../rules/combat"
+import { type Lang, locale, t } from "../i18n/strings"
+import { canReach, type Odds } from "../rules/combat"
 import { PROFILES, RANGE, ULT, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
-import { AROUND, adjacent, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
-import { visibleTiles } from "../rules/sight"
-import { visibleToSquad } from "../rules/stealth"
-import type { AbilityId, Action, Game, Point, Unit, WeaponId } from "../rules/types"
-import { alive, has, sideOf } from "../rules/units"
+import type { Game } from "../rules/game"
+import { Illegal } from "../rules/orders"
+import { AROUND, adjacent, distance, key, type Point, same } from "../rules/point"
+import { walkable } from "../rules/tile"
+import type { AbilityId, Action, WeaponId } from "../rules/types"
+import type { Unit } from "../rules/unit"
 import type { Session } from "../save/session"
 import { Playback, SPEEDS, type Speed } from "./motion"
 
@@ -113,7 +113,7 @@ export function slots(game: Game, u: Unit): Slot[] {
     const cd = u.cooldowns[a] ?? 0
     skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : "", cd > 0)
   })
-  if (game.units.some((x) => alive(x) && x.side === "squad" && sideOf(x) === "enemy") && u.side === "squad")
+  if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
     skill("rouse", "skill", String(weapons.length + 1), "", false)
   if (p.ultimate) skill(p.ultimate, "ult", "R", u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
   if (u.kind === "drone") return out
@@ -129,14 +129,14 @@ export function slots(game: Game, u: Unit): Slot[] {
 export function spent(game: Game): boolean {
   return (
     game.phase === "squad" &&
-    !game.units.some((u) => alive(u) && u.side === "squad" && sideOf(u) === "squad" && u.ap > 0)
+    !game.units.some((u) => u.alive() && u.side === "squad" && u.allegiance() === "squad" && u.ap > 0)
   )
 }
 
 /** Tiles an armed action can reach, for the range outline on the board. */
 export function range(game: Game, u: Unit, slot: string): Set<number> {
   const [kind, id] = slot.split(":")
-  const seen = visibleTiles(game, u)
+  const seen = game.sight.tiles(u)
   const within = (lo: number, hi: number) =>
     new Set([...seen].filter((k) => distance(u.pos, point(k)) >= lo && distance(u.pos, point(k)) <= hi))
   const around = () => new Set([key(u.pos), ...AROUND.map((d) => key({ x: u.pos.x + d.x, y: u.pos.y + d.y }))])
@@ -149,7 +149,7 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
   switch (id as AbilityId) {
     case "charge":
     case "rampage":
-      return new Set(reach(game, u, u.mobility).cost.keys())
+      return new Set(game.reach(u, u.mobility).cost.keys())
     case "dominate":
       return within(0, RANGE.dominate)
     case "saturation":
@@ -179,7 +179,7 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
     case "mine":
       return within(1, RANGE.mine)
     case "grapple":
-      return new Set([...within(1, RANGE.grapple)].filter((k) => ["roof", "ridge"].includes(tileAt(game, point(k)))))
+      return new Set([...within(1, RANGE.grapple)].filter((k) => ["roof", "ridge"].includes(game.tile(point(k)))))
     case "rally":
       return within(1, RANGE.rally)
     case "fear":
@@ -187,7 +187,7 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
     case "volley":
       return within(0, RANGE.volley)
     case "blink":
-      return new Set([...within(1, RANGE.blink)].filter((k) => walkable(tileAt(game, point(k)))))
+      return new Set([...within(1, RANGE.blink)].filter((k) => walkable(game.tile(point(k)))))
     default:
       return new Set()
   }
@@ -196,18 +196,18 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
 /** A sensible first target, so a second press can confirm at once. */
 function defaultTarget(game: Game, u: Unit, slot: string): string | null {
   const [kind, id] = slot.split(":")
-  const foes = game.units.filter((e) => sideOf(e) === "enemy" && (e.side === "squad" || visibleToSquad(game, e)))
-  const friends = game.units.filter((x) => alive(x) && sideOf(x) === "squad")
+  const foes = game.units.filter((e) => e.allegiance() === "enemy" && (e.side === "squad" || game.stealth.visible(e)))
+  const friends = game.units.filter((x) => x.alive() && x.allegiance() === "squad")
   if (kind === "weapon") {
     const w = id as WeaponId
-    const ok = foes.filter((e) => canTarget(game, u, e) && (!WEAPONS[w].melee || distance(u.pos, e.pos) <= 1))
-    return ok.sort((a, b) => odds(game, u, b, w).chance - odds(game, u, a, w).chance)[0]?.id ?? null
+    const ok = foes.filter((e) => game.orders.canTarget(u, e) && (!WEAPONS[w].melee || distance(u.pos, e.pos) <= 1))
+    return ok.sort((a, b) => game.combat.odds(u, b, w).chance - game.combat.odds(u, a, w).chance)[0]?.id ?? null
   }
   if (kind !== "ability") return null
   const a = id as AbilityId
   if (a === "heal") {
     const near = game.units.filter(
-      (x) => (x.down > 0 || (alive(x) && x.hp < x.maxHp)) && sideOf(x) === "squad" && distance(u.pos, x.pos) <= 1,
+      (x) => (x.down > 0 || (x.alive() && x.hp < x.maxHp)) && x.allegiance() === "squad" && distance(u.pos, x.pos) <= 1,
     )
     return near.sort((x, y) => x.hp / x.maxHp - y.hp / y.maxHp)[0]?.id ?? null
   }
@@ -218,8 +218,8 @@ function defaultTarget(game: Game, u: Unit, slot: string): string | null {
   }
   if (a === "shove") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
   if (a === "rouse")
-    return game.units.find((x) => x.side === "squad" && has(x, "dominated") && distance(u.pos, x.pos) <= 1)?.id ?? null
-  const reachable = foes.filter((e) => canTarget(game, u, e))
+    return game.units.find((x) => x.side === "squad" && x.has("dominated") && distance(u.pos, x.pos) <= 1)?.id ?? null
+  const reachable = foes.filter((e) => game.orders.canTarget(u, e))
   return reachable.sort((x, y) => distance(u.pos, x.pos) - distance(u.pos, y.pos))[0]?.id ?? null
 }
 
@@ -245,7 +245,7 @@ export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): 
   if (armed.slot === "ability:charge") {
     const target = game.units.find((x) => x.id === armed.target)
     if (!target) return armed
-    const spots = landings(game, u, target)
+    const spots = game.orders.landings(u, target)
     const at = hover && spots.some((p) => same(p, hover)) ? hover : (armed.at ?? spots[0] ?? null)
     return { ...armed, at }
   }
@@ -258,19 +258,19 @@ export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): 
 export function retarget(game: Game, u: Unit, armed: Armed, hover: Point | null): Armed {
   const [kind, id] = armed.slot.split(":")
   const unitAim = kind === "weapon" || UNIT_ABILITIES.includes(id as AbilityId)
-  const t = hover && unitAim ? unitAt(game, hover) : undefined
-  if (!t || !alive(t) || t.id === armed.target) return armed
+  const t = hover && unitAim ? game.unitAt(hover) : undefined
+  if (!t?.alive() || t.id === armed.target) return armed
   const friendly = FRIENDLY.includes(id as AbilityId)
   const ok = ANY.includes(id as AbilityId)
     ? t !== u && range(game, u, armed.slot).has(key(t.pos))
     : friendly
-      ? (id === "rouse" ? t.side === u.side && has(t, "dominated") : sideOf(t) === sideOf(u)) &&
+      ? (id === "rouse" ? t.side === u.side && t.has("dominated") : t.allegiance() === u.allegiance()) &&
         range(game, u, armed.slot).has(key(t.pos))
-      : canTarget(game, u, t) &&
+      : game.orders.canTarget(u, t) &&
         (kind === "weapon"
           ? canReach(u, t, WEAPONS[id as WeaponId])
           : id === "charge" || id === "rampage"
-            ? landings(game, u, t).length > 0
+            ? game.orders.landings(u, t).length > 0
             : range(game, u, armed.slot).has(key(t.pos)))
   return ok ? { ...armed, target: t.id, at: null } : armed
 }
@@ -283,14 +283,14 @@ export type Forecast =
 export function forecast(game: Game, u: Unit, armed: Armed, hover: Point | null): Forecast | null {
   const aimed = aimFor(game, u, armed, hover)
   const target = game.units.find((x) => x.id === aimed.target)
-  if (!target || !alive(target)) return null
+  if (!target?.alive()) return null
   const [kind, id] = aimed.slot.split(":")
-  if (kind === "weapon" && sideOf(target) !== sideOf(u)) {
-    return { kind: "attack", label: t(`weapon.${id}`), target, odds: odds(game, u, target, id as WeaponId) }
+  if (kind === "weapon" && target.allegiance() !== u.allegiance()) {
+    return { kind: "attack", label: t(`weapon.${id}`), target, odds: game.combat.odds(u, target, id as WeaponId) }
   }
   if (aimed.slot === "ability:charge" && aimed.at) {
-    const from = { ...u, pos: aimed.at }
-    return { kind: "attack", label: t("ability.charge"), target, odds: odds(game, from, target, u.weapon) }
+    const from = u.at(aimed.at)
+    return { kind: "attack", label: t("ability.charge"), target, odds: game.combat.odds(from, target, u.weapon) }
   }
   if (kind === "ability" && (id === "fear" || id === "dread" || id === "dominate")) {
     const dc = 10 + u.will
@@ -328,7 +328,7 @@ export function createModel(session: Session, store: Storage) {
   const [message, setMessage] = createSignal("")
   const [zones, setZones] = createSignal(false)
   const [speed, setSpeedSignal] = createSignal<Speed>(playback.speed)
-  const [lang, setLang] = createSignal<Lang>(language())
+  const [lang, setLang] = createSignal<Lang>(locale.lang)
   const [confirmNew, setConfirmNew] = createSignal(false)
   const [logOpen, setLogOpen] = createSignal(true)
   const [look, setLook] = createSignal<Point | null>(null, { equals: false })
@@ -338,19 +338,19 @@ export function createModel(session: Session, store: Storage) {
 
   const unit = (): Unit | null => {
     const u = game().units.find((x) => x.id === selected())
-    return u && alive(u) && sideOf(u) === "squad" ? u : null
+    return u?.alive() && u.allegiance() === "squad" ? u : null
   }
 
   const foeAt = (p: Point): Unit | undefined => {
     const g = game()
-    const u = unitAt(g, p)
-    if (!u || sideOf(u) !== "enemy") return undefined
-    return u.side === "squad" || visibleToSquad(g, u) ? u : undefined
+    const u = g.unitAt(p)
+    if (u?.allegiance() !== "enemy") return undefined
+    return u.side === "squad" || g.stealth.visible(u) ? u : undefined
   }
 
   /** Selects the next soldier; with all set, any living soldier, else only those with AP left. */
   const selectNext = (all: boolean, back = false, fallback = true) => {
-    const squad = game().units.filter((u) => alive(u) && sideOf(u) === "squad" && (all || u.ap > 0))
+    const squad = game().units.filter((u) => u.alive() && u.allegiance() === "squad" && (all || u.ap > 0))
     if (squad.length === 0) {
       if (!all && fallback) selectNext(true)
       return
@@ -413,19 +413,20 @@ export function createModel(session: Session, store: Storage) {
     const g = game()
     if (g.phase !== "squad") return
     const u = unit()
-    const here = unitAt(g, p)
+    const here = g.unitAt(p)
     const current = armed()
     const slot = current && u ? slots(g, u).find((s) => s.id === current.slot) : undefined
     if (u && current && slot) {
       const friendly = FRIENDLY.includes(current.slot.slice(8) as AbilityId)
-      const ally = here && (current.slot === "ability:rouse" ? here.side === u.side : sideOf(here) === sideOf(u))
+      const ally =
+        here && (current.slot === "ability:rouse" ? here.side === u.side : here.allegiance() === u.allegiance())
       if (slot.aim === "unit" && here && (ally === friendly || ANY.includes(current.slot.slice(8) as AbilityId))) {
         if (current.target === here.id) act(action(u, aimFor(g, u, current, hover()))!)
         else setArmed({ ...current, target: here.id, at: null })
         return
       }
       const target = current.target ? g.units.find((x) => x.id === current.target) : undefined
-      if (current.slot === "ability:charge" && target && landings(g, u, target).some((q) => same(q, p))) {
+      if (current.slot === "ability:charge" && target && g.orders.landings(u, target).some((q) => same(q, p))) {
         if (current.at && same(current.at, p)) act(action(u, current)!)
         else setArmed({ ...current, at: p })
         return
@@ -436,7 +437,7 @@ export function createModel(session: Session, store: Storage) {
         return
       }
     }
-    if (here && here.side === "squad" && sideOf(here) === "squad") {
+    if (here && here.side === "squad" && here.allegiance() === "squad") {
       batch(() => {
         setSelected(here.id)
         setArmed(null)
@@ -456,7 +457,7 @@ export function createModel(session: Session, store: Storage) {
       setArmed(null)
       return
     }
-    if (tileAt(g, p) === "door" && AROUND.some((d) => u.pos.x + d.x === p.x && u.pos.y + d.y === p.y)) {
+    if (g.tile(p) === "door" && AROUND.some((d) => u.pos.x + d.x === p.x && u.pos.y + d.y === p.y)) {
       act({ type: "door", unit: u.id, at: p })
       return
     }
@@ -522,8 +523,8 @@ export function createModel(session: Session, store: Storage) {
   }
 
   const setLanguage = (l: Lang) => {
-    use(l)
-    remember(store, l)
+    locale.use(l)
+    locale.remember(store)
     setLang(l)
     setGame(session.game)
     setShown(shown())
@@ -603,7 +604,7 @@ export function createModel(session: Session, store: Storage) {
     key: key2,
     undo,
     newMission,
-    inside: (p: Point) => inside(game().board, p),
+    inside: (p: Point) => game().board.inside(p),
   }
 }
 

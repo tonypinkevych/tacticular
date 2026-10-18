@@ -1,6 +1,7 @@
 import { createEffect, createMemo, For, Show } from "solid-js"
 import { t } from "../i18n/strings"
-import type { Entry, Game } from "../rules/types"
+import type { Game } from "../rules/game"
+import type { Entry } from "../rules/types"
 
 /** A unit's display name: a soldier's own name, else the alien kind. */
 function name(game: Game, id: unknown): string {

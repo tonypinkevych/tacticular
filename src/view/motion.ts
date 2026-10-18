@@ -1,9 +1,9 @@
 import { t } from "../i18n/strings"
-import type { Frame } from "../play"
-import { key, reach, same } from "../rules/grid"
-import { visibleToSquad } from "../rules/stealth"
-import type { Entry, Game, Point, Unit } from "../rules/types"
-import { sideOf } from "../rules/units"
+import type { Frame } from "../match"
+import type { Game } from "../rules/game"
+import { key, type Point, same } from "../rules/point"
+import type { Entry } from "../rules/types"
+import type { Unit } from "../rules/unit"
 
 export const SPEEDS = [1, 2, 4, 0] as const
 
@@ -50,7 +50,7 @@ function walkPath(before: Game, frame: Frame): Point[] {
   const u = before.units.find((x) => x.id === a.unit)
   const after = frame.game.units.find((x) => x.id === a.unit)
   if (!u || !after || same(u.pos, after.pos)) return []
-  const r = reach(before, u, 400)
+  const r = before.reach(u, 400)
   const goal = a.type === "move" && r.cost.has(key(a.to)) ? a.to : after.pos
   const path = r.path(goal)
   const stop = path.findIndex((p) => same(p, after.pos))
@@ -107,7 +107,7 @@ function shown(before: Game, frame: Frame): boolean {
   const after = frame.game.units.find((x) => x.id === id)
   if (!u || !after) return false
   if (u.side === "squad") return true
-  return visibleToSquad(before, u) || visibleToSquad(frame.game, after)
+  return before.stealth.visible(u) || frame.game.stealth.visible(after)
 }
 
 /** Log entries that hurt a target by a set amount. */
@@ -221,7 +221,7 @@ export class Playback {
       shot = { from, to, progress: Math.min(1, (t - walkEnd) / (SHOT_MS / total)) }
     }
     const u = id ? c.before.units.find((x) => x.id === id) : undefined
-    const focus = u && c.visible && sideOf(u) === "enemy" ? (mover?.at ?? u.pos) : null
+    const focus = u && c.visible && u.allegiance() === "enemy" ? (mover?.at ?? u.pos) : null
     return { game: c.before, mover, shot, focus }
   }
 }

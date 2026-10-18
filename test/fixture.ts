@@ -1,6 +1,8 @@
-import { newGame, parseBoard } from "../src/rules/game"
-import type { Game, Kind, Point, Side, Unit } from "../src/rules/types"
-import { makeUnit } from "../src/rules/units"
+import { Board } from "../src/rules/board"
+import { Game } from "../src/rules/game"
+import type { Point } from "../src/rules/point"
+import type { Kind, Side } from "../src/rules/types"
+import { Unit } from "../src/rules/unit"
 
 export const open = (w = 12, h = 12): string[] => Array.from({ length: h }, () => ".".repeat(w))
 
@@ -10,11 +12,11 @@ export function setup(rows: string[], units: Unit[] = [], seed = 1): Game {
     revealed: false,
     target: null,
   }))
-  return newGame({ seed, board: parseBoard(rows), units, groups })
+  return Game.start({ seed, board: Board.parse(rows), units, groups })
 }
 
 export function squad(id: string, kind: Kind, pos: Point): Unit {
-  return makeUnit(id, kind, "squad", pos, id)
+  return Unit.of(id, kind, "squad", pos, id)
 }
 
 export function enemy(
@@ -25,10 +27,17 @@ export function enemy(
   group = "g1",
   side: Side = "enemy",
 ): Unit {
-  const u = makeUnit(id, kind, side, pos, id, group)
+  const u = Unit.of(id, kind, side, pos, id, group)
   u.alert = alert
   u.concealed = false
   return u
+}
+
+/** The same game with another state of its random stream. */
+export function reseed(game: Game, rng: number): Game {
+  const next = game.clone()
+  next.rng = rng
+  return next
 }
 
 export function find(game: Game, id: string): Unit {

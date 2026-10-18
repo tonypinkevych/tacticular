@@ -1,8 +1,9 @@
 import type { Event } from "nostr-tools/pure"
-import { type Frame, frames, play } from "../play"
+import { type Frame, Match } from "../match"
+import type { Game } from "../rules/game"
 import { mission } from "../rules/mission"
-import type { Action, Game } from "../rules/types"
-import { author, begin, read, record, secret } from "./journal"
+import type { Action } from "../rules/types"
+import { history, Journal } from "./journal"
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">
 
@@ -10,18 +11,18 @@ const SAVE = "tacticular.save"
 
 /** A mission in play: the game, its signed log and its saved copy in storage. */
 export class Session {
-  private readonly key: Uint8Array
+  private readonly journal: Journal
   events: Event[] = []
   games: Game[] = []
   actions: Action[] = []
 
   constructor(private readonly store: Store) {
-    this.key = secret(store)
+    this.journal = Journal.open(store)
   }
 
   /** The player's public key in hex. */
   get author(): string {
-    return author(this.key)
+    return this.journal.author()
   }
 
   get game(): Game {
@@ -45,27 +46,27 @@ export class Session {
   }
 
   start(seed: number): void {
-    this.events = [begin(this.key, seed)]
+    this.events = [this.journal.begin(seed)]
     this.games = [mission(seed)]
     this.actions = []
     this.save()
   }
 
   replay(events: Event[]): void {
-    const { seed, actions } = read(events)
+    const { seed, actions } = history(events)
     this.events = events
     this.actions = []
     this.games = [mission(seed)]
     for (const a of actions) {
-      this.games.push(play(this.game, a))
+      this.games.push(new Match(this.game).play(a).at(-1)!.game)
       this.actions.push(a)
     }
   }
 
   /** Plays an action; on success it is signed, logged and saved, and its steps are returned. */
   act(action: Action): Frame[] {
-    const steps = frames(this.game, action)
-    this.events.push(record(this.key, this.events[0], this.actions.length, action))
+    const steps = new Match(this.game).play(action)
+    this.events.push(this.journal.record(this.events[0], this.actions.length, action))
     this.actions.push(action)
     this.games.push(steps[steps.length - 1].game)
     this.save()

@@ -1,9 +1,5 @@
 import { createEffect, on, onCleanup, onMount } from "solid-js"
-import { canTarget } from "../rules/actions"
-import { inside, key, reach } from "../rules/grid"
-import { visibleToSquad } from "../rules/stealth"
-import type { Point } from "../rules/types"
-import { sideOf } from "../rules/units"
+import { key, type Point } from "../rules/point"
 import { aimFor, type Model, range, slots } from "./model"
 import { draw, type Scene } from "./scene"
 import { figures, gear, PALETTES, sprites, TILE } from "./sprites"
@@ -134,10 +130,10 @@ export function Board(props: { model: Model }) {
         aimed = target?.pos ?? armed.at
         if (armed.slot === "ability:charge" && armed.at) {
           ghost = { unit: u, at: armed.at }
-          path = reach(g, u, u.mobility).path(armed.at)
+          path = g.reach(u, u.mobility).path(armed.at)
         } else if (armed.at && slot?.aim === "tile") spot = [armed.at]
       } else if (hover) {
-        const r = reach(g, u, u.mobility * u.ap)
+        const r = g.reach(u, u.mobility * u.ap)
         for (const [k, c] of r.cost) {
           if (c === 0) continue
           far.add(k)
@@ -146,7 +142,7 @@ export function Board(props: { model: Model }) {
         if (hover && r.cost.has(key(hover))) path = r.path(hover)
       }
       for (const e of g.units) {
-        if (sideOf(e) === "enemy" && (e.side === "squad" || visibleToSquad(g, e)) && canTarget(g, u, e))
+        if (e.allegiance() === "enemy" && (e.side === "squad" || g.stealth.visible(e)) && g.orders.canTarget(u, e))
           targets.add(e.id)
       }
     }
@@ -159,7 +155,7 @@ export function Board(props: { model: Model }) {
       path,
       hover,
       targets,
-      area: spot.filter((p) => inside(g.board, p)),
+      area: spot.filter((p) => g.board.inside(p)),
       range: zone,
       aimed,
       ghost,

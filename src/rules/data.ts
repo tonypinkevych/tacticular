@@ -1,6 +1,7 @@
-import type { AbilityId, ClassId, Dice, EnemyKind, Kind, Weapon, WeaponId } from "./types"
+import type { Roll } from "./dice"
+import type { AbilityId, ClassId, EnemyKind, Kind, Weapon, WeaponId } from "./types"
 
-const d = (count: number, sides: number, bonus = 0): Dice => ({ count, sides, bonus })
+const d = (count: number, sides: number, bonus = 0): Roll => ({ count, sides, bonus })
 
 export const WEAPONS: Record<WeaponId, Weapon> = {
   shotgun: { id: "shotgun", dice: d(1, 3, 3), min: 1, max: 3, melee: false, noise: 8, ammo: 3 },

@@ -1,5 +1,8 @@
-import type { Biome, Kind, Point, Tile, Unit } from "../rules/types"
-import { has } from "../rules/units"
+import type { Biome } from "../rules/board"
+import type { Point } from "../rules/point"
+import type { Tile } from "../rules/tile"
+import type { Kind } from "../rules/types"
+import type { Unit } from "../rules/unit"
 
 /** One cell of the Kenney 1-Bit sheet, as [column, row]. */
 export type Cell = [number, number]
@@ -80,7 +83,7 @@ export const PALETTES: Record<Biome, Palette> = {
 }
 
 /** A unit's color: blue for the squad, red for enemies, violet for a Dominated soldier. */
-export const tone = (u: Unit): string => (has(u, "dominated") ? "#c08bff" : u.side === "squad" ? "#8ec5ff" : "#ff7a6b")
+export const tone = (u: Unit): string => (u.has("dominated") ? "#c08bff" : u.side === "squad" ? "#8ec5ff" : "#ff7a6b")
 
 /** Cells of the unit sheet, one figure per kind. */
 export const UNIT_CELLS: Record<Kind, Cell> = {

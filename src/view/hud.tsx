@@ -1,13 +1,10 @@
 import { createEffect, For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../i18n/strings"
 import type { Part } from "../rules/combat"
-import { flankers } from "../rules/cover"
 import { WEAPONS } from "../rules/data"
 import { chance, EDGE } from "../rules/dice"
-import { unitAt } from "../rules/grid"
-import { visibleToSquad } from "../rules/stealth"
-import type { Game, Unit } from "../rules/types"
-import { alive, foes } from "../rules/units"
+import type { Game } from "../rules/game"
+import type { Unit } from "../rules/unit"
 import { Board } from "./board"
 import { Log } from "./log"
 import { type Forecast, forecast, type Model, slots } from "./model"
@@ -62,8 +59,8 @@ function Card(props: { unit: Unit; game: Game; model: Model; children?: JSX.Elem
   const soldier = () => u().side === "squad"
   const flanked = () => {
     const g = props.game
-    const enemies = g.units.filter((x) => alive(x) && foes(x, u()) && (x.side === "squad" || visibleToSquad(g, x)))
-    return flankers(g, u(), enemies).length > 0
+    const enemies = g.units.filter((x) => x.alive() && x.foe(u()) && (x.side === "squad" || g.stealth.visible(x)))
+    return g.cover.flankers(u(), enemies).length > 0
   }
   const w = () => WEAPONS[u().weapon]
   const stat = (label: string, value: string | number) => (
@@ -261,11 +258,11 @@ function Target(props: { model: Model }) {
   }
   const shown = (): Unit | undefined => {
     const a = m.armed()
-    if (a?.target) return g().units.find((x) => x.id === a.target && alive(x))
+    if (a?.target) return g().units.find((x) => x.id === a.target && x.alive())
     const h = m.hover()
-    const x = h ? unitAt(g(), h) : undefined
+    const x = h ? g().unitAt(h) : undefined
     if (!x || x.id === m.unit()?.id) return undefined
-    return x.side === "squad" || visibleToSquad(g(), x) ? x : undefined
+    return x.side === "squad" || g().stealth.visible(x) ? x : undefined
   }
   const odds = () => {
     const x = armed()

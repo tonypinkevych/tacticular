@@ -618,38 +618,44 @@ export const DICTIONARIES: Record<Lang, Record<Key, string>> = { en, ru }
 
 const STORAGE = "tacticular.lang"
 
-/** The remembered language, else the browser's, else English. */
-export function detect(store: Pick<Storage, "getItem"> | undefined, languages: readonly string[]): Lang {
-  let saved: string | null = null
-  try {
-    saved = store?.getItem(STORAGE) ?? null
-  } catch {
-    saved = null
+/** The language the player reads, with its strings. */
+export class Locale {
+  lang: Lang = "en"
+
+  /** The remembered language, else the browser's, else English. */
+  static detect(store: Pick<Storage, "getItem"> | undefined, languages: readonly string[]): Lang {
+    let saved: string | null = null
+    try {
+      saved = store?.getItem(STORAGE) ?? null
+    } catch {
+      saved = null
+    }
+    if (saved === "en" || saved === "ru") return saved
+    return languages.some((l) => l.toLowerCase().startsWith("ru")) ? "ru" : "en"
   }
-  if (saved === "en" || saved === "ru") return saved
-  return languages.some((l) => l.toLowerCase().startsWith("ru")) ? "ru" : "en"
-}
 
-export function remember(store: Pick<Storage, "setItem"> | undefined, lang: Lang): void {
-  try {
-    store?.setItem(STORAGE, lang)
-  } catch {
-    return
+  use(lang: Lang): void {
+    this.lang = lang
+  }
+
+  /** Keeps the language in storage for the next visit. */
+  remember(store: Pick<Storage, "setItem"> | undefined): void {
+    try {
+      store?.setItem(STORAGE, this.lang)
+    } catch {
+      return
+    }
+  }
+
+  /** A translated string with {name} params filled in. */
+  t(key: string, params: Record<string, string | number | boolean> = {}): string {
+    const text = (DICTIONARIES[this.lang] as Record<string, string>)[key] ?? (en as Record<string, string>)[key] ?? key
+    return text.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`))
   }
 }
 
-let current: Lang = "en"
+/** The locale of the page. */
+export const locale = new Locale()
 
-export function use(lang: Lang): void {
-  current = lang
-}
-
-export function language(): Lang {
-  return current
-}
-
-/** A translated string with {name} params filled in. */
-export function t(key: string, params: Record<string, string | number | boolean> = {}): string {
-  const text = (DICTIONARIES[current] as Record<string, string>)[key] ?? (en as Record<string, string>)[key] ?? key
-  return text.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`))
-}
+/** A string of the page's locale. */
+export const t = (key: string, params: Record<string, string | number | boolean> = {}): string => locale.t(key, params)

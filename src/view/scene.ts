@@ -1,10 +1,7 @@
-import { coverAgainst, flankers, shelter } from "../rules/cover"
 import { DETECTION, WEAPONS } from "../rules/data"
-import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt, unitAt } from "../rules/grid"
-import { sees, visibleTiles } from "../rules/sight"
-import { detection, seen as spotted, visibleToSquad } from "../rules/stealth"
-import type { Game, Point, Unit } from "../rules/types"
-import { alive, sideOf } from "../rules/units"
+import type { Game } from "../rules/game"
+import { AROUND, distance, key, ORTHOGONAL, type Point, plus, same } from "../rules/point"
+import type { Unit } from "../rules/unit"
 import type { Float } from "./motion"
 import { FLAME, figures, gear, glyph, MINE, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
 
@@ -34,7 +31,7 @@ export interface Scene {
 export function sight(game: Game): Set<number> {
   const out = new Set<number>()
   for (const u of game.units) {
-    if (alive(u) && sideOf(u) === "squad") for (const k of visibleTiles(game, u)) out.add(k)
+    if (u.alive() && u.allegiance() === "squad") for (const k of game.sight.tiles(u)) out.add(k)
   }
   return out
 }
@@ -43,7 +40,7 @@ function tile(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): v
   const biome = game.board.biome ?? "forest"
   const x = p.x * s
   const y = p.y * s
-  const t = tileAt(game, p)
+  const t = game.tile(p)
   const palette = PALETTES[biome]
   ctx.fillStyle = t === "water" ? palette.water : palette.ground
   ctx.fillRect(x, y, s, s)
@@ -101,7 +98,7 @@ function figure(
   const below = { x: Math.round(at.x), y: Math.round(at.y) }
   const lift = 1 - 2 * Math.max(Math.abs(at.x - below.x), Math.abs(at.y - below.y))
   const bob = walking
-    ? tileAt(sc.game, below) === "low"
+    ? sc.game.tile(below) === "low"
       ? -Math.round(5 * lift)
       : -Math.round(Math.abs(Math.sin((at.x + at.y) * Math.PI * 2)))
     : Math.sin(sc.now / 450 + phase(u.id)) > 0.4
@@ -124,7 +121,7 @@ function figure(
   ctx.lineWidth = 1
   ctx.save()
   ctx.translate(x + (kick + shake) * px, y + bob * px)
-  if (sideOf(u) === "enemy") {
+  if (u.allegiance() === "enemy") {
     ctx.translate(s, 0)
     ctx.scale(-1, 1)
   }
@@ -221,7 +218,7 @@ function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u
       ctx.fillStyle = i < u.hp ? color : "#4a2222"
       ctx.fillRect(left + i * (seg + 1), y + s - 6, seg, 4)
     }
-  if (u.side === "squad" && sideOf(u) === "squad") {
+  if (u.side === "squad" && u.allegiance() === "squad") {
     for (let i = 0; i < u.ap; i++) {
       ctx.fillStyle = "#ffd84a"
       ctx.beginPath()
@@ -309,12 +306,11 @@ function highlights(sc: Scene, enemies: Unit[]): Map<string, string> {
   if (sel) out.set(sel.id, "#ffffff")
   if (hover && sel && (sc.near.has(key(hover)) || sc.far.has(key(hover)))) {
     for (const e of enemies) {
-      if (sees(game, e, hover) && coverAgainst(game, hover, e.pos) === 0) out.set(e.id, "#ff3b3b")
-      else if (sees(game, { ...sel, pos: hover }, e.pos) && coverAgainst(game, e.pos, hover) === 0)
-        out.set(e.id, "#3bff6a")
+      if (game.sight.sees(e, hover) && game.cover.against(hover, e.pos) === 0) out.set(e.id, "#ff3b3b")
+      else if (game.sight.sees(sel.at(hover), e.pos) && game.cover.against(e.pos, hover) === 0) out.set(e.id, "#3bff6a")
     }
   }
-  const aimed = sc.aimed && unitAt(game, sc.aimed)
+  const aimed = sc.aimed && game.unitAt(sc.aimed)
   if (aimed) out.set(aimed.id, "#ff3b3b")
   return out
 }
@@ -340,7 +336,7 @@ function zones(ctx: CanvasRenderingContext2D, s: number, game: Game, enemies: Un
     for (let y = e.pos.y - radius; y <= e.pos.y + radius; y++) {
       for (let x = e.pos.x - radius; x <= e.pos.x + radius; x++) {
         const p = { x, y }
-        if (inside(game.board, p) && distance(e.pos, p) <= radius && sees(game, e, p, radius)) keys.push(key(p))
+        if (game.board.inside(p) && distance(e.pos, p) <= radius && game.sight.sees(e, p, radius)) keys.push(key(p))
       }
     }
     tint(ctx, s, keys, color)
@@ -388,7 +384,7 @@ function shield(
 /** Shield icons on the tile edges that give cover: full for high cover, half for low. */
 function cover(ctx: CanvasRenderingContext2D, s: number, game: Game, p: Point): void {
   for (const d of ORTHOGONAL) {
-    const c = shelter(game, p, plus(p, d))
+    const c = game.cover.shelter(p, plus(p, d))
     if (c === 0) continue
     const cx = p.x * s + s / 2 + d.x * s * 0.42
     const cy = p.y * s + s / 2 + d.y * s * 0.42
@@ -480,7 +476,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
     if (z.kind === "mine") for (const p of tiles) sprites.draw(ctx, MINE, "#ff3b3b", p.x * s, p.y * s, s)
   }
-  const enemies = game.units.filter((u) => alive(u) && u.side === "enemy" && visibleToSquad(game, u))
+  const enemies = game.units.filter((u) => u.alive() && u.side === "enemy" && game.stealth.visible(u))
   if (sc.zones) zones(ctx, s, game, enemies)
   goal(ctx, s, game)
   outline(ctx, s, sc.range, "#ff8a3c")
@@ -519,11 +515,11 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
       )
     if (intent?.type === "psi") {
       const t = game.units.find((x) => x.id === intent.target)
-      if (t && alive(t)) arrow(ctx, s, e.pos, t.pos, "#c08bff", true)
+      if (t?.alive()) arrow(ctx, s, e.pos, t.pos, "#c08bff", true)
     }
     if (intent?.type === "charge") {
       const t = game.units.find((x) => x.id === intent.target)
-      if (t && alive(t)) arrow(ctx, s, e.pos, t.pos, "#ff5a3c", true)
+      if (t?.alive()) arrow(ctx, s, e.pos, t.pos, "#ff5a3c", true)
     }
     if (e.alert === "unaware" && e.patrol.length > 0) {
       const goal = e.patrol[e.patrolIndex % e.patrol.length]
@@ -533,18 +529,19 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
   }
   const marks = highlights(sc, enemies)
-  const viewer = sc.selected && game.units.find((x) => x.id === sc.selected?.id && alive(x))
+  const viewer = sc.selected && game.units.find((x) => x.id === sc.selected?.id && x.alive())
   for (const u of game.units) {
     if (u.down > 0) downed(ctx, sc, u)
-    if (!alive(u) || (u.side === "enemy" && !enemies.includes(u))) continue
+    if (!u.alive() || (u.side === "enemy" && !enemies.includes(u))) continue
     const at = sc.mover?.id === u.id ? sc.mover.at : u.pos
-    const spent = u.side === "squad" && sideOf(u) === "squad" && game.phase === "squad" && u.ap === 0
-    const looked = viewer && enemies.includes(u) ? sees(game, viewer, u.pos) : null
+    const spent = u.side === "squad" && u.allegiance() === "squad" && game.phase === "squad" && u.ap === 0
+    const looked = viewer && enemies.includes(u) ? game.sight.sees(viewer, u.pos) : null
     figure(ctx, sc, u, spent || looked === false ? 0.5 : 1, at, marks.get(u.id) ?? null)
     badges(ctx, s, u, at)
     if (looked) eye(ctx, s, at, "#4aa3ff")
-    if (u.side === "squad" && sideOf(u) === "squad" && !u.concealed && spotted(game, u)) eye(ctx, s, at, "#ff3b3b")
-    if (u.side === "squad" && sideOf(u) === "squad" && flankers(game, u, enemies).length > 0) warn(ctx, s, at)
+    if (u.side === "squad" && u.allegiance() === "squad" && !u.concealed && game.stealth.seen(u))
+      eye(ctx, s, at, "#ff3b3b")
+    if (u.side === "squad" && u.allegiance() === "squad" && game.cover.flankers(u, enemies).length > 0) warn(ctx, s, at)
   }
   if (sc.ghost) {
     figure(ctx, sc, sc.ghost.unit, 0.5, sc.ghost.at)
@@ -563,7 +560,7 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     const at = sc.mover?.id === id ? sc.mover.at : (game.units.find((x) => x.id === id)?.pos ?? sc.selected.pos)
     if (!sc.mover) cover(ctx, s, game, at)
   }
-  if (sc.aimed && !unitAt(game, sc.aimed)) {
+  if (sc.aimed && !game.unitAt(sc.aimed)) {
     ctx.strokeStyle = "#ff3b3b"
     ctx.lineWidth = 2
     ctx.strokeRect(sc.aimed.x * s + 1, sc.aimed.y * s + 1, s - 2, s - 2)
@@ -589,8 +586,8 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const sel = sc.selected
   if (hover && sel && (sc.near.has(key(hover)) || sc.far.has(key(hover)))) {
     cover(ctx, s, game, hover)
-    const radius = (e: Unit) => detection(game, e, { ...sel, pos: hover })
-    if (sel.concealed && enemies.some((e) => radius(e) >= 0 && sees(game, e, hover, radius(e)))) {
+    const radius = (e: Unit) => game.stealth.detection(e, sel.at(hover))
+    if (sel.concealed && enemies.some((e) => radius(e) >= 0 && game.sight.sees(e, hover, radius(e)))) {
       sprites.draw(ctx, [36, 13], "#ff3b3b", hover.x * s + s / 4, hover.y * s + s / 4, s / 2)
     }
   }
