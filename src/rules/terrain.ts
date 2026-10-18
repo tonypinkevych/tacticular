@@ -29,6 +29,12 @@ interface Template {
 
 export const BIOMES: Biome[] = ["forest", "village", "town"]
 
+/** A place a mission asks the map for: a walled yard for the alien leader, or a hill for the beacon. */
+export interface Site {
+  kind: "yard" | "hill"
+  at: Point
+}
+
 const TEMPLATES: Record<Biome, Template> = {
   forest: {
     river: 0.5,
@@ -84,13 +90,20 @@ class Terrain {
     private readonly template: Template,
   ) {}
 
-  /** A river or a wall line across the map between the squad and the aliens, with 2 or 3 gaps; returns the gaps. */
-  barrier(): Point[] {
+  /**
+   * A river or a wall line across the map between the squad and the aliens, with 2 or 3 gaps off the rows to
+   * avoid; returns the gaps.
+   */
+  barrier(avoid: number[]): Point[] {
     const { dice: r, board: d, template: t } = this
     const river = r.random() < t.river
     const count = r.between(2, 3)
     const band = Math.floor((d.height - 4) / count)
-    const rows = Array.from({ length: count }, (_, i) => 2 + i * band + r.between(1, band - 2))
+    const row = (i: number) => {
+      const free = Array.from({ length: band - 2 }, (_, j) => 2 + i * band + j + 1).filter((y) => !avoid.includes(y))
+      return free.length > 0 ? r.pick(free) : 2 + i * band + 1
+    }
+    const rows = Array.from({ length: count }, (_, i) => row(i))
     const left = Math.floor(d.width * 0.4)
     const right = Math.floor(d.width * 0.6) - 1
     let x = r.between(Math.floor(d.width * 0.45), Math.floor(d.width * 0.55))
@@ -127,6 +140,47 @@ class Terrain {
         if (d.at(c) === "floor" && !this.kept.has(key(c))) d.set(c, r.random() < 0.7 ? "low" : "high")
       }
     }
+  }
+
+  /** A walled yard of 7×6 around a point, with 2 doors. */
+  yard(at: Point): void {
+    const { dice: r, board: d } = this
+    const x0 = at.x - 3
+    const y0 = at.y - 2
+    for (let y = y0; y < y0 + 6; y++)
+      for (let x = x0; x < x0 + 7; x++) {
+        const edge = x === x0 || y === y0 || x === x0 + 6 || y === y0 + 5
+        d.set({ x, y }, edge ? "wall" : "floor")
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.kept.add(key({ x: x + dx, y: y + dy }))
+      }
+    const doors = r.shuffle([
+      { x: x0, y: at.y },
+      { x: x0 + 6, y: at.y },
+      { x: at.x, y: y0 },
+      { x: at.x, y: y0 + 5 },
+    ])
+    d.set(doors[0], "door")
+    d.set(doors[1], "door")
+  }
+
+  /** A ridge of 3×3 around a point, ringed by low cover with 3 openings. */
+  hill(at: Point): void {
+    const { dice: r, board: d } = this
+    const open = r
+      .shuffle([
+        { x: at.x - 2, y: at.y },
+        { x: at.x + 2, y: at.y },
+        { x: at.x, y: at.y - 2 },
+        { x: at.x, y: at.y + 2 },
+      ])
+      .slice(0, 3)
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const p = { x: at.x + dx, y: at.y + dy }
+        const ring = Math.max(Math.abs(dx), Math.abs(dy)) === 2
+        d.set(p, !ring ? "ridge" : open.some((o) => same(o, p)) ? "floor" : "low")
+      }
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) this.kept.add(key({ x: at.x + dx, y: at.y + dy }))
   }
 
   /** Low cover beside each of the squad's three start tiles. */
@@ -287,17 +341,26 @@ function walkables(d: Board): Point[] {
 
 /**
  * Builds a map of a biome with the squad's start on the west edge and the aliens' side in the east: a barrier
- * with 2 or 3 gaps between them, a direct route through the gap nearest the squad and flank routes through the
- * others. Every passable tile can be reached from the start.
+ * with 2 or 3 gaps between them, a direct route through the gap nearest the squad, flank routes through the
+ * others, and the site a mission asks for. Every passable tile can be reached from the start.
  */
-export function map(r: Dice, biome: Biome = r.pick(BIOMES), width = SIZE.width, height = SIZE.height): Board {
+export function map(
+  r: Dice,
+  biome: Biome = r.pick(BIOMES),
+  site: Site | null = null,
+  width = SIZE.width,
+  height = SIZE.height,
+): Board {
   const t = TEMPLATES[biome]
   const scale = (width * height) / 256
   for (let attempt = 0; ; attempt++) {
     const d = new Board(width, height)
     const land = new Terrain(r, d, t)
     const start = { x: 1, y: Math.floor(height / 2) }
-    const gaps = land.barrier().sort((a, b) => Math.abs(a.y - start.y) - Math.abs(b.y - start.y))
+    const avoid = site ? Array.from({ length: 9 }, (_, i) => site.at.y - 4 + i) : []
+    const gaps = land.barrier(avoid).sort((a, b) => Math.abs(a.y - start.y) - Math.abs(b.y - start.y))
+    if (site?.kind === "yard") land.yard(site.at)
+    if (site?.kind === "hill") land.hill(site.at)
     gaps.forEach((gap, i) => {
       land.route({ x: start.x + 2, y: start.y }, { x: gap.x - 2, y: gap.y }, i > 0)
       land.route({ x: gap.x + 3, y: gap.y }, { x: width - 3, y: r.between(2, height - 3) }, i > 0)

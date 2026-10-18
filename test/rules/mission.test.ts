@@ -77,6 +77,37 @@ describe("mission", () => {
   })
 })
 
+describe("maps for each mission", () => {
+  const games = Array.from({ length: 100 }, (_, i) => mission(i + 1))
+  const walled = (g: ReturnType<typeof mission>, p: { x: number; y: number }) =>
+    [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 },
+    ].every((d) => {
+      for (let i = 1; i <= 5; i++) {
+        const t = g.tile({ x: p.x + d.x * i, y: p.y + d.y * i })
+        if (t === "wall" || t === "door") return true
+      }
+      return false
+    })
+  test("in Kill all, a Warchief starts inside a walled yard", () => {
+    const kills = games.filter((g) => g.goal.kind === "kill")
+    expect(kills.length).toBeGreaterThan(10)
+    for (const g of kills) {
+      const chief = g.units.find((u) => u.kind === "warchief")
+      expect(chief, `seed ${g.seed}`).toBeDefined()
+      expect(walled(g, chief!.pos), `seed ${g.seed}`).toBe(true)
+    }
+  })
+  test("in Defend, the beacon stands on a ridge", () => {
+    const holds = games.filter((g) => g.goal.kind === "defend")
+    expect(holds.length).toBeGreaterThan(10)
+    for (const g of holds) if (g.goal.kind === "defend") expect(g.tile(g.goal.at), `seed ${g.seed}`).toBe("ridge")
+  })
+})
+
 describe("biomes", () => {
   const seeds = Array.from({ length: 60 }, (_, i) => i + 1)
   const count = (tiles: string[], t: string) => tiles.filter((x) => x === t).length

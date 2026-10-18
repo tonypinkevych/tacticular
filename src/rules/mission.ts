@@ -3,7 +3,7 @@ import { CLASSES } from "./data"
 import { Dice } from "./dice"
 import { Game } from "./game"
 import { area, distance, key, type Point } from "./point"
-import { flood, map } from "./terrain"
+import { flood, map, SIZE, type Site } from "./terrain"
 import type { EnemyKind, Goal, Group } from "./types"
 import { Unit } from "./unit"
 
@@ -81,10 +81,11 @@ function enemies(
   taken: Set<number>,
   reachable: Point[],
   landing: Point,
+  lead: Point | null,
 ): { units: Unit[]; groups: Group[] } {
   const count = 4
   const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.6))
-  const anchors: Point[] = []
+  const anchors: Point[] = lead ? [lead] : []
   for (let tries = 0; anchors.length < count && tries < 400; tries++) {
     const p = r.pick(field)
     if (anchors.every((a) => distance(a, p) >= 6)) anchors.push(p)
@@ -94,7 +95,7 @@ function enemies(
   anchors.forEach((anchor, g) => {
     const id = `g${g + 1}`
     groups.push({ id, revealed: false, target: null, landing: { ...landing } })
-    const kinds = composition(r, r.between(2, 3))
+    const kinds = composition(r, lead && g === 0 ? 3 : r.between(2, 3))
     const route = [anchor, r.pick(field), r.pick(field)]
     for (const kind of kinds) {
       const u = Unit.of(`e${units.length + 1}`, kind, "enemy", free(board, anchor, taken), kind, id)
@@ -105,9 +106,8 @@ function enemies(
   return { units, groups }
 }
 
-/** One of Kill all, Evac (a zone at the far edge) or Defend (a beacon between the squad and the aliens). */
-function goal(r: Dice, board: Board, reachable: Point[]): Goal {
-  const kind = r.pick(["kill", "evac", "defend"] as const)
+/** Kill all, Evac (a zone at the far edge) or Defend (the beacon on the hill the map was built with). */
+function goal(r: Dice, board: Board, reachable: Point[], kind: Goal["kind"], site: Site | null): Goal {
   const floor = (p: Point) => board.tiles[p.y * board.width + p.x] === "floor"
   const open = reachable.filter(floor)
   if (kind === "evac") {
@@ -117,26 +117,24 @@ function goal(r: Dice, board: Board, reachable: Point[]): Goal {
     const tiles = area(r.pick(edge), 1).filter((p) => keys.has(key(p)) && p.x >= board.width - 3)
     return { kind, tiles }
   }
-  if (kind === "defend") {
-    const mid = { x: Math.floor(board.width * 0.4), y: Math.floor(board.height / 2) }
-    const at = [...open].sort((a, b) => distance(a, mid) - distance(b, mid))[0]
-    return at ? { kind, at, rounds: 6 } : { kind: "kill" }
-  }
-  return { kind }
+  if (kind === "defend" && site) return { kind, at: site.at, rounds: 6 }
+  return { kind: "kill" }
 }
 
 /** A new random mission from a seed: map, squad of 3 at one edge and 4 enemy groups toward the opposite edge. */
 export function mission(seed: number): Game {
   const state = { rng: seed }
   const r = new Dice(state)
-  let board = map(r)
+  const kind = r.pick(["kill", "evac", "defend"] as const)
+  const site = place(r, kind)
+  let board = map(r, undefined, site)
   const taken = new Set<number>()
   const team = squad(r, board, taken)
   const reachable = [...flood(board, team[0].pos)]
     .map((k) => ({ x: k % 1000, y: Math.floor(k / 1000) }))
     .filter((p) => board.tiles[p.y * board.width + p.x] !== "door")
-  const { units, groups } = enemies(r, board, taken, reachable, team[0].pos)
-  let aim = goal(r, board, reachable)
+  const { units, groups } = enemies(r, board, taken, reachable, team[0].pos, site?.kind === "yard" ? site.at : null)
+  let aim = goal(r, board, reachable, kind, site)
   for (let turns = r.between(0, 3); turns > 0; turns--) {
     const from = board
     const turn = (p: Point): Point => from.turned(p)
@@ -153,4 +151,13 @@ export function mission(seed: number): Game {
   game.goal = aim
   game.rng = state.rng
   return game
+}
+
+/** Where the map builds the mission's site: a yard far on the aliens' side for Kill all, a hill near the squad for Defend. */
+function place(r: Dice, kind: Goal["kind"]): Site | null {
+  const y = r.between(6, SIZE.height - 7)
+  if (kind === "kill")
+    return { kind: "yard", at: { x: r.between(Math.floor(SIZE.width * 0.75), Math.floor(SIZE.width * 0.8)), y } }
+  if (kind === "defend") return { kind: "hill", at: { x: Math.floor(SIZE.width * 0.28), y } }
+  return null
 }
