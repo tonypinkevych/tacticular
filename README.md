@@ -1,6 +1,6 @@
 # Tacticular
 
-A chess-like, turn-based tactics game in the browser, played as a short roguelike run. You lead a squad of 3
+A chess-like, turn-based tactics game in the browser, played as a short roguelike run. You lead a squad of up to 4
 against alien war bands on random maps with fog of war. Position, information and timing win; brute force
 loses.
 
@@ -12,12 +12,13 @@ loses.
 - A unit at half HP or less is wounded: it attacks shaken and cannot dash.
 - Aliens show whom they will shoot next. Hover an alien to see where it can go next turn.
 - Soldiers start concealed. Enemies patrol, hear noise and investigate. An alarm rises each round; at 4, 7
-  and 10 the aliens get help.
-- Missions: kill the Warchief, take the intel and leave, free a captive, bomb a relay, or hold a beacon.
+  and 10 the aliens get help. A "?" marks where the squad heard an alien it cannot see.
+- Missions: kill the Warchief and then leave or kill the rest, take the intel and leave, free a captive, bomb a
+  relay, or hold a beacon for 8 rounds against growing waves.
 
 ## The run
 
-Pick 3 of 7 soldiers. Cross a chart of missions to the fortress and kill the Warchief there. HP carries from
+Pick 3 of 7 soldiers; up to 4 go on a mission, and the roster holds 5. Cross a chart of missions to the fortress and kill the Warchief there. HP carries from
 mission to mission; a won mission gives a heal, a recruit or training, and changes the fortress. The run ends
 when no soldier is left.
 
@@ -38,7 +39,7 @@ pnpm build      # type-check and build to dist/
 - Use the panel for abilities, items, Overwatch, Hunker, Reload and End turn.
 - Point at a tile to see where the soldier can move, the path, its cover and who flanks it there. Point at an
   alien to see the hit chance.
-- `Tab` selects the next soldier. `Esc` or a right click cancels. `Z` shows where aliens spot or fire.
+- `Tab` selects the next soldier, or with an attack or a skill armed, its next target. `Esc` or a right click cancels. `Z` shows where aliens spot or fire.
 - Drag or use the arrow keys to move the camera; the wheel zooms.
 - The EN/RU switch changes the language. The game remembers your choice.
 
