@@ -42,6 +42,8 @@ describe("reactions", () => {
     expect(hits(g3)).toHaveLength(1)
     expect(hits(g3)[0].params.reaction).toBe(true)
     expect(find(g3, "w").stance).toBe("none")
+    const shot = g3.log.find((e) => e.key === "log.overwatch")
+    expect(shot?.params).toEqual({ unit: "w", target: "e", x: 5, y: 2 })
   })
   test("leaving a melee unit's reach provokes a free attack", () => {
     const g0 = setup(open(12, 3), [squad("v", "rogue", { x: 5, y: 1 }), enemy("e", "orc", { x: 6, y: 1 })])

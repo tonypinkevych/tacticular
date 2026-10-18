@@ -119,6 +119,7 @@ export class Orders {
         if (w.melee ? !adjacent(x.pos, u.pos) : !sight.sees(x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
         if (u.kind === "assassin" && u.concealed) continue
         if (!x.has("killzone")) x.stance = "none"
+        game.log.push({ key: "log.overwatch", params: { unit: x.id, target: u.id, x: step.x, y: step.y } })
         combat.attack(x, u, { reaction: true, risky })
       }
       for (const x of threats) {

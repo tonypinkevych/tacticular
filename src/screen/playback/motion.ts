@@ -4,7 +4,7 @@ import { key, type Point, same } from "../../map/point"
 import type { Entry, Game } from "../../mission/game"
 import type { Frame } from "../../mission/match"
 import type { Unit } from "../../units/unit"
-import { type Cue, cues } from "./cues"
+import { type Cue, cues, fire } from "./cues"
 
 export const SPEEDS = [1, 2, 4, 0] as const
 
@@ -42,7 +42,19 @@ interface Clip {
   start: number
   length: number
   path: Point[]
+  stops: Stop[]
   visible: boolean
+}
+
+/** An overwatch shot during a walk: the step it hits, the watcher's tile, and the log entries it adds. */
+interface Stop {
+  step: number
+  from: Point
+  to: Point
+  style: Style
+  entries: Entry[]
+  fired: boolean
+  landed: boolean
 }
 
 const TILE_MS = 110
@@ -63,6 +75,21 @@ function walkPath(before: Game, frame: Frame): Point[] {
   const path = r.path(goal)
   const stop = path.findIndex((p) => same(p, after.pos))
   return stop >= 0 ? path.slice(0, stop + 1) : [...path, after.pos]
+}
+
+/** The overwatch shots of a walk, in order, each with the log entries up to the next one. */
+function stops(before: Game, frame: Frame, path: Point[]): Stop[] {
+  const added = frame.game.log.slice(before.log.length)
+  const marks = added.flatMap((e, i) => (e.key === "log.overwatch" ? [i] : []))
+  return marks.flatMap((m, k) => {
+    const e = added[m]
+    const step = path.findIndex((p) => p.x === e.params.x && p.y === e.params.y)
+    const watcher = before.units.find((u) => u.id === e.params.unit)
+    if (step < 0 || !watcher) return []
+    const entries = added.slice(m + 1, marks[k + 1] ?? added.length)
+    const style: Style = watcher.arms().melee ? "melee" : "bolt"
+    return [{ step, from: watcher.pos, to: path[step], style, entries, fired: false, landed: false }]
+  })
 }
 
 const step = (a: Point, b: Point): number => Math.hypot(b.x - a.x, b.y - a.y)
@@ -146,15 +173,20 @@ function deed(before: Game, frame: Frame): string | null {
 /** Log entries that hurt a target by a set amount. */
 const HURTS = ["log.hit", "log.lash", "log.burn", "log.shrapnel", "log.slam", "log.fall", "log.fire", "log.mine"]
 
-/** Floating texts for the log entries a step added. */
-export function floats(before: Game, after: Game, now: number): Float[] {
+/** Floating texts for the log entries a step added, or for some of them. */
+export function floats(
+  before: Game,
+  after: Game,
+  now: number,
+  entries: Entry[] = after.log.slice(before.log.length),
+): Float[] {
   const out: Float[] = []
   const pos = (id: unknown): Point | null => after.units.find((u) => u.id === id)?.pos ?? null
   const add = (e: Entry, text: string, color: string, who = e.params.target, hit = false) => {
     const at = pos(who)
     if (at) out.push({ text, color, at, born: now, hit })
   }
-  for (const e of after.log.slice(before.log.length)) {
+  for (const e of entries) {
     const p = e.params
     const spell = e.key === "log.fear" || e.key === "log.dread" || e.key === "log.dominate"
     if (HURTS.includes(e.key)) add(e, `−${p.dmg}`, "#ff6a5a", p.target, true)
@@ -218,7 +250,10 @@ export class Playback {
 
   private next(now: number, instant = false): void {
     if (this.clip) {
-      this.texts.push(...floats(this.clip.before, this.clip.frame.game, now))
+      const { before, frame } = this.clip
+      const landed = new Set(this.clip.stops.filter((s) => s.landed).flatMap((s) => s.entries))
+      const rest = frame.game.log.slice(before.log.length).filter((e) => !landed.has(e))
+      this.texts.push(...floats(before, frame.game, now, rest))
       if (!instant) this.sounds.push(...heard(cues(this.clip.before, this.clip.frame).end, this.clip.visible))
       this.shownGame = this.clip.frame.game
       this.clip = null
@@ -227,14 +262,16 @@ export class Playback {
     if (!item) return
     const { before, frame } = item
     const path = walkPath(before, frame)
+    const halts = stops(before, frame, path)
     const visible = shown(before, frame)
     const shotAt = target(before, frame)
     const scale = this.speed === 0 || instant || !visible ? 0 : 1 / this.speed
-    let length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? flight(before, frame) : 0) + STEP_MS)
+    const pause = halts.length * SHOT_MS
+    let length = scale * (span(before, frame, path) * TILE_MS + pause + (shotAt ? flight(before, frame) : 0) + STEP_MS)
     this.activity = before.phase === "enemy" ? (this.activity ?? now) : null
     if (this.activity !== null && frame.game.phase !== "enemy" && !instant && this.speed > 0)
       length = Math.max(length, ACTIVITY_MS / this.speed - (now - this.activity))
-    this.clip = { before, frame, start: now, length, path, visible }
+    this.clip = { before, frame, start: now, length, path, stops: halts, visible }
     const name = visible && !instant ? deed(before, frame) : null
     const u = name ? before.units.find((x) => x.id === actor(frame)) : undefined
     if (name && u) this.texts.push({ text: name, color: "#ff8a7a", at: u.pos, born: now })
@@ -253,14 +290,30 @@ export class Playback {
     const id = actor(c.frame)
     const t = c.length > 0 ? (now - c.start) / c.length : 1
     const walk = span(c.before, c.frame, c.path) * TILE_MS
-    const total = walk + (target(c.before, c.frame) ? flight(c.before, c.frame) : 0) + STEP_MS
-    const walkEnd = walk / total
+    const pause = c.stops.length * SHOT_MS
+    const total = walk + pause + (target(c.before, c.frame) ? flight(c.before, c.frame) : 0) + STEP_MS
+    const walkEnd = (walk + pause) / total
+    const elapsed = t * total
+    let walked = elapsed
+    let shot: Still["shot"] = null
+    for (const [k, s] of c.stops.entries()) {
+      const arrive = span(c.before, c.frame, c.path.slice(0, s.step + 1)) * TILE_MS + k * SHOT_MS
+      walked = elapsed - k * SHOT_MS
+      if (elapsed < arrive) break
+      this.fire(c, s, now)
+      if (elapsed < arrive + SHOT_MS) {
+        walked = arrive - k * SHOT_MS
+        shot = { from: s.from, to: s.to, progress: (elapsed - arrive) / SHOT_MS, style: s.style }
+        break
+      }
+      this.land(c, s, now)
+      walked = elapsed - (k + 1) * SHOT_MS
+    }
     let mover: Still["mover"] = null
     if (id && c.path.length > 0) {
       const u = c.before.units.find((x) => x.id === id)!
-      mover = { id, at: along([u.pos, ...c.path], Math.min(1, t / walkEnd)) }
+      mover = { id, at: along([u.pos, ...c.path], walk > 0 ? Math.min(1, walked / walk) : 1) }
     }
-    let shot: Still["shot"] = null
     const to = target(c.before, c.frame)
     if (id && to && t >= walkEnd) {
       const from = mover?.at ?? c.before.units.find((x) => x.id === id)!.pos
@@ -270,5 +323,23 @@ export class Playback {
     const u = id ? c.before.units.find((x) => x.id === id) : undefined
     const focus = u && c.visible && u.allegiance() === "enemy" ? (mover?.at ?? u.pos) : null
     return { game: c.before, mover, shot, focus }
+  }
+
+  /** Shows an overwatch shot as it is fired: its sound and a text over the watcher. */
+  private fire(c: Clip, s: Stop, now: number): void {
+    if (s.fired) return
+    s.fired = true
+    const watcher = c.before.units.find((u) => same(u.pos, s.from))
+    if (c.visible && watcher) this.sounds.push(fire(c.before, watcher.id))
+    this.texts.push({ text: t("action.overwatch"), color: "#ffb02e", at: s.from, born: now })
+  }
+
+  /** Shows what an overwatch shot did, at the tile where it hit the walker. */
+  private land(c: Clip, s: Stop, now: number): void {
+    if (s.landed) return
+    s.landed = true
+    const end = c.path[c.path.length - 1]
+    for (const f of floats(c.before, c.frame.game, now, s.entries))
+      this.texts.push(same(f.at, end) ? { ...f, at: s.to } : f)
   }
 }

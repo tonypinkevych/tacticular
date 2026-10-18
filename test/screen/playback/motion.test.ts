@@ -58,6 +58,25 @@ describe("enemy turn playback", () => {
   })
 })
 
+describe("overwatch", () => {
+  const g0 = setup(open(12, 3), [squad("w", "warden", { x: 0, y: 0 }), enemy("e", "orc", { x: 7, y: 2 })])
+  const before = g0.apply({ type: "overwatch", unit: "w" }).apply({ type: "endTurn" })
+  const action = { type: "move", unit: "e", to: { x: 3, y: 2 } } as const
+  const frame: Frame = { action, game: before.apply(action) }
+
+  test("the walk stops where the shot is fired, the shot flies from the watcher, and its result shows then", () => {
+    const p = new Playback(1, before)
+    p.add(before, [frame])
+    p.at(0)
+    const still = p.at(300)
+    expect(still.mover?.at).toEqual({ x: 5, y: 2 })
+    expect(still.shot).toMatchObject({ from: { x: 0, y: 0 }, to: { x: 5, y: 2 } })
+    expect(p.texts.map((f) => [f.text, f.at])).toEqual([["Overwatch", { x: 0, y: 0 }]])
+    p.at(700)
+    expect(p.texts.some((f) => f.text !== "Overwatch" && f.at.x === 5 && f.at.y === 2)).toBe(true)
+  })
+})
+
 describe("floats", () => {
   const w = squad("w", "warden", { x: 0, y: 1 })
   const e = enemy("e", "orc", { x: 5, y: 1 })

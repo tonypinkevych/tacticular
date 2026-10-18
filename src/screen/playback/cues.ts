@@ -36,6 +36,12 @@ const WEAPON_CUES: Partial<Record<WeaponId, Cue>> = {
 
 const HURTS = ["log.hit", "log.lash", "log.burn", "log.shrapnel", "log.slam", "log.fall", "log.fire", "log.mine"]
 
+/** The sound of a unit's weapon. */
+export function fire(game: Game, id: string): Cue {
+  const w = game.unit(id).weapon
+  return WEAPON_CUES[w] ?? (WEAPONS[w].melee ? "melee" : "alien")
+}
+
 /** The sounds of one step of play: the action's own sounds at its start, and its results at its end. */
 export function cues(before: Game, frame: Frame): { start: Cue[]; end: Cue[] } {
   const a = frame.action
@@ -43,10 +49,7 @@ export function cues(before: Game, frame: Frame): { start: Cue[]; end: Cue[] } {
   const start: Cue[] = []
   if (a.type === "move") start.push("step")
   if (a.type === "ability") start.push("ability")
-  if (a.type === "attack") {
-    const w = before.unit(a.unit).weapon
-    start.push(WEAPON_CUES[w] ?? (WEAPONS[w].melee ? "melee" : "alien"))
-  }
+  if (a.type === "attack") start.push(fire(before, a.unit))
   const end: Cue[] = []
   const add = (c: Cue) => {
     if (!end.includes(c)) end.push(c)
