@@ -120,7 +120,7 @@ export class Orders {
 
   canTarget(u: Unit, t: Unit): boolean {
     const { sight, units } = this.game
-    if (!t.alive() || !u.foe(t)) return false
+    if (!t.alive() || !(u.foe(t) || (t.has("dominated") && t.side !== u.allegiance()))) return false
     if (t.kind === "assassin" && t.concealed && distance(u.pos, t.pos) > 3) return false
     if (sight.sees(u, t.pos)) return true
     return u.kind === "ranger" && units.some((a) => a.alive() && a !== u && !a.foe(u) && sight.sees(a, t.pos))

@@ -177,3 +177,12 @@ describe("mission end", () => {
     throw new Error("no hit")
   })
 })
+
+describe("a controlled alien", () => {
+  test("a soldier can shoot an alien the squad controls", () => {
+    const e = enemy("e", "orc", { x: 3, y: 1 })
+    e.give({ id: "dominated", rounds: 2 })
+    const g = setup(open(8, 3), [squad("w", "vanguard", { x: 0, y: 1 }), e])
+    expect(hits(g.apply({ type: "attack", unit: "w", target: "e" }))).toHaveLength(1)
+  })
+})

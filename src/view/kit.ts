@@ -315,7 +315,7 @@ export class Kit {
     const target = game.units.find((x) => x.id === aimed.target)
     if (!target?.alive()) return null
     const [kind, id] = aimed.slot.split(":")
-    if (kind === "weapon" && target.allegiance() !== u.allegiance()) {
+    if (kind === "weapon") {
       return { kind: "attack", label: t(`weapon.${id}`), target, odds: game.combat.odds(u, target, id as WeaponId) }
     }
     if (aimed.slot === "ability:charge" && aimed.at) {

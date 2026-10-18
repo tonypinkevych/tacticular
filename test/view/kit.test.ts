@@ -35,6 +35,14 @@ describe("a controlled alien", () => {
     const armed = { slot: `ability:${id}`, target: null, at: null }
     expect(new Kit(g, c).retarget(armed, e.pos).target).toBe("e")
   })
+  test("takes a soldier's shot by hover, but is not its default target", () => {
+    const f = enemy("f", "orc", { x: 6, y: 1 })
+    const h = setup(open(8, 3), [squad("v", "vanguard", { x: 0, y: 1 }), e.clone(), f])
+    const v = h.units[0]
+    const shot = { slot: "weapon:shotgun", target: null, at: null }
+    expect(new Kit(h, v).retarget(shot, e.pos).target).toBe("e")
+    expect(new Kit(h, v).target("weapon:shotgun")).toBe("f")
+  })
   test("takes Guard", () => {
     expect(new Kit(g, w).retarget({ slot: "ability:guard", target: null, at: null }, e.pos).target).toBe("e")
   })

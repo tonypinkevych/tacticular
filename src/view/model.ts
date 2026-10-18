@@ -3,7 +3,7 @@ import { type Lang, locale, t } from "../i18n/strings"
 import type { Game } from "../rules/game"
 import { Illegal } from "../rules/orders"
 import { AROUND, type Point, same } from "../rules/point"
-import type { AbilityId, Action } from "../rules/types"
+import type { Action } from "../rules/types"
 import type { Unit } from "../rules/unit"
 import type { Session } from "../save/session"
 import { type Armed, Kit, type Slot } from "./kit"
@@ -11,10 +11,6 @@ import { Playback, SPEEDS, type Speed } from "./motion"
 import { Sound } from "./sound"
 
 const SPEED_KEY = "tacticular.speed"
-
-/** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
-const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard"]
-const ANY: AbilityId[] = ["swap"]
 
 /** True in the squad phase when no soldier the player controls has AP left. */
 export function spent(game: Game): boolean {
@@ -209,10 +205,7 @@ export class Model {
     const current = this.armed()
     const slot = current && kit ? kit.slots().find((s) => s.id === current.slot) : undefined
     if (kit && u && current && slot) {
-      const friendly = FRIENDLY.includes(current.slot.slice(8) as AbilityId)
-      const ally =
-        here && (current.slot === "ability:rouse" ? here.side === u.side : here.allegiance() === u.allegiance())
-      if (slot.aim === "unit" && here && (ally === friendly || ANY.includes(current.slot.slice(8) as AbilityId))) {
+      if (slot.aim === "unit" && here && kit.retarget({ ...current, target: null }, p).target === here.id) {
         if (current.target === here.id) this.act(kit.action(kit.aim(current, this.hover()))!)
         else this.setArmed({ ...current, target: here.id, at: null })
         return
