@@ -41,6 +41,7 @@ export interface Profile {
   weapon: WeaponId
   sidearm: WeaponId | null
   abilities: AbilityId[]
+  ultimate: AbilityId | null
   axes: number
 }
 
@@ -55,6 +56,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "shotgun",
     sidearm: null,
     abilities: ["shove", "charge", "breach"],
+    ultimate: "rampage",
     axes: 0,
   },
   ranger: {
@@ -67,6 +69,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "longbow",
     sidearm: null,
     abilities: ["grapple", "guard", "steady"],
+    ultimate: "killzone",
     axes: 0,
   },
   warden: {
@@ -79,6 +82,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "repeater",
     sidearm: null,
     abilities: ["rocket", "volley", "brace"],
+    ultimate: "saturation",
     axes: 0,
   },
   cleric: {
@@ -91,6 +95,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "crossbow",
     sidearm: null,
     abilities: ["smoke", "rally", "heal"],
+    ultimate: "hospital",
     axes: 0,
   },
   rogue: {
@@ -103,6 +108,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "dagger",
     sidearm: null,
     abilities: ["hook", "tag", "vanish"],
+    ultimate: "ghost",
     axes: 0,
   },
   mage: {
@@ -115,6 +121,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "bolt",
     sidearm: null,
     abilities: ["swap", "fear", "blink"],
+    ultimate: "dominate",
     axes: 0,
   },
   engineer: {
@@ -127,6 +134,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "crossbow",
     sidearm: null,
     abilities: ["barricade", "drone", "mine"],
+    ultimate: "turret",
     axes: 0,
   },
   drone: {
@@ -139,6 +147,20 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "none",
     sidearm: null,
     abilities: [],
+    ultimate: null,
+    axes: 0,
+  },
+  turret: {
+    hp: 4,
+    aim: 3,
+    defense: 12,
+    mobility: 0,
+    vision: 6,
+    will: 0,
+    weapon: "repeater",
+    sidearm: null,
+    abilities: [],
+    ultimate: null,
     axes: 0,
   },
   orc: {
@@ -151,6 +173,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "heavyCrossbow",
     sidearm: null,
     abilities: [],
+    ultimate: null,
     axes: 0,
   },
   bomber: {
@@ -163,6 +186,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "dagger",
     sidearm: null,
     abilities: ["mark", "blast"],
+    ultimate: null,
     axes: 0,
   },
   ogre: {
@@ -175,6 +199,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "club",
     sidearm: null,
     abilities: ["mark", "charge"],
+    ultimate: null,
     axes: 0,
   },
   shieldwall: {
@@ -187,6 +212,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "spear",
     sidearm: null,
     abilities: [],
+    ultimate: null,
     axes: 0,
   },
   assassin: {
@@ -199,6 +225,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "blades",
     sidearm: null,
     abilities: [],
+    ultimate: null,
     axes: 0,
   },
   warchief: {
@@ -211,6 +238,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "greataxe",
     sidearm: null,
     abilities: ["rally"],
+    ultimate: null,
     axes: 0,
   },
   whisperer: {
@@ -223,6 +251,7 @@ export const PROFILES: Record<Kind, Profile> = {
     weapon: "lash",
     sidearm: null,
     abilities: ["dread", "dominate", "ward"],
+    ultimate: null,
     axes: 0,
   },
 }
@@ -266,7 +295,16 @@ export const ABILITIES: Record<AbilityId, AbilityRule> = {
   barricade: { cooldown: 3, endsTurn: false },
   drone: { cooldown: 4, endsTurn: false },
   mine: { cooldown: 3, endsTurn: false },
+  rampage: { cooldown: 0, endsTurn: true },
+  killzone: { cooldown: 0, endsTurn: true },
+  saturation: { cooldown: 0, endsTurn: true },
+  hospital: { cooldown: 0, endsTurn: false },
+  ghost: { cooldown: 0, endsTurn: false, free: true },
+  turret: { cooldown: 0, endsTurn: false },
 }
+
+/** Ultimate meter: a hit adds 1, a kill 2 more; the ultimate needs it full. */
+export const ULT = 4
 
 /** How far a Grenadier blast is heard. */
 export const BLAST_NOISE = 10
@@ -288,6 +326,8 @@ export const RANGE = {
   tag: 7,
   swap: 5,
   mine: 3,
+  saturation: 6,
+  hospital: 3,
 }
 
 /** How far a Rocket is heard. */

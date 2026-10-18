@@ -40,6 +40,7 @@ export function makeUnit(
     stance: "none",
     statuses: [],
     cooldowns: {},
+    ult: 0,
     axes: p.axes,
     concealed: side === "squad" || kind === "assassin",
     alert: "unaware",
@@ -52,12 +53,12 @@ export function makeUnit(
 export const alive = (u: Unit): boolean => u.hp > 0
 
 /** A squad member that is a soldier, not a gadget. */
-export const soldier = (u: Unit): boolean => u.side === "squad" && u.kind !== "drone"
+export const soldier = (u: Unit): boolean => u.side === "squad" && u.kind !== "drone" && u.kind !== "turret"
 
 export const has = (u: Unit, id: StatusId): boolean => u.statuses.some((s) => s.id === id)
 
-/** The side a unit fights for now: a Dominated soldier fights for the enemy. */
-export const sideOf = (u: Unit): Side => (has(u, "dominated") ? "enemy" : u.side)
+/** The side a unit fights for now: a Dominated unit fights for the other side. */
+export const sideOf = (u: Unit): Side => (has(u, "dominated") ? (u.side === "squad" ? "enemy" : "squad") : u.side)
 
 export const foes = (a: Unit, b: Unit): boolean => sideOf(a) !== sideOf(b)
 

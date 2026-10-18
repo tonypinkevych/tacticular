@@ -35,7 +35,7 @@ export type Side = "squad" | "enemy"
 export type ClassId = "vanguard" | "ranger" | "warden" | "cleric" | "rogue" | "mage" | "engineer"
 
 /** Squad units an Engineer deploys; they are not soldiers. */
-export type Gadget = "drone"
+export type Gadget = "drone" | "turret"
 
 export type EnemyKind = "orc" | "bomber" | "ogre" | "shieldwall" | "assassin" | "warchief" | "whisperer"
 
@@ -107,6 +107,12 @@ export type AbilityId =
   | "barricade"
   | "drone"
   | "mine"
+  | "rampage"
+  | "killzone"
+  | "saturation"
+  | "hospital"
+  | "ghost"
+  | "turret"
 
 export type StatusId =
   | "suppressed"
@@ -121,6 +127,8 @@ export type StatusId =
   | "steady"
   | "plated"
   | "braced"
+  | "killzone"
+  | "deployed"
 
 export interface Status {
   id: StatusId
@@ -156,6 +164,7 @@ export interface Unit {
   stance: Stance
   statuses: Status[]
   cooldowns: Partial<Record<AbilityId, number>>
+  ult: number
   axes: number
   concealed: boolean
   alert: Alert

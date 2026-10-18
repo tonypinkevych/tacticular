@@ -1,6 +1,6 @@
 import { attack, canReach, hurt, push } from "./combat"
 import { breakCover, inCover } from "./cover"
-import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, ROCKET_NOISE, WEAPONS } from "./data"
+import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, ROCKET_NOISE, ULT, WEAPONS } from "./data"
 import { d20, EDGE, failChance, rollDice } from "./dice"
 import { ignite, scorch } from "./fire"
 import {
@@ -21,7 +21,7 @@ import {
 import { endPhase } from "./round"
 import { lineOfSight, sees } from "./sight"
 import { attacked, noise, observe, scan, seen, stepped } from "./stealth"
-import type { AbilityId, Action, Game, Point, Unit, WeaponId } from "./types"
+import type { AbilityId, Action, Game, Point, StatusId, Unit, WeaponId } from "./types"
 import { addStatus, alive, foes, has, makeUnit, removeStatus, sideOf, soldier, unit } from "./units"
 
 export class Illegal extends Error {}
@@ -104,7 +104,7 @@ export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
       const w = WEAPONS[x.weapon]
       if (w.melee ? !adjacent(x.pos, u.pos) : !sees(game, x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
       if (u.kind === "assassin" && u.concealed) continue
-      x.stance = "none"
+      if (!has(x, "killzone")) x.stance = "none"
       attack(game, x, u, x.weapon, { reaction: true, risky })
     }
     const pin = u.statuses.find((s) => s.id === "suppressed")
@@ -185,8 +185,14 @@ function strike(game: Game, u: Unit, t: Unit, weaponId: WeaponId): void {
 }
 
 function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Point): void {
-  check(PROFILES[u.kind].abilities.includes(id) || (id === "rouse" && u.side === "squad"), "ability")
+  const p = PROFILES[u.kind]
+  const ultimate = p.ultimate === id
+  check(p.abilities.includes(id) || ultimate || (id === "rouse" && u.side === "squad"), "ability")
   check(!u.cooldowns[id], "cooldown")
+  if (ultimate) {
+    check(u.ult >= ULT, "ult")
+    u.ult = 0
+  }
   const t = targetId ? unit(game, targetId) : undefined
   switch (id) {
     case "charge": {
@@ -250,7 +256,7 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
     case "dread":
     case "dominate": {
       check(!!t && canTarget(game, u, t) && distance(u.pos, t.pos) <= RANGE[id], "target")
-      if (id === "dominate") check(t!.side === "squad", "target")
+      if (id === "dominate") check(foes(u, t!), "target")
       const edge = t!.stance === "hunker" ? 1 : 0
       const roll = d20(game)
       const dc = 10 + u.will
@@ -401,6 +407,65 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
       game.log.push({ key: "log.plant", params: { unit: u.id } })
       break
     }
+    case "rampage": {
+      check(!!t && canTarget(game, u, t), "target")
+      let next: Unit | undefined = t
+      for (let i = 0; i < 3 && next && alive(u); i++) {
+        const spot = same(next.pos, u.pos) ? undefined : landings(game, u, next)[0]
+        if (!spot) break
+        if (!same(spot, u.pos)) walk(game, u, reach(game, u, u.mobility).path(spot))
+        if (!alive(u) || !alive(next)) break
+        attack(game, u, next, u.weapon)
+        attacked(game, u, next, u.weapon)
+        if (alive(next)) break
+        next = game.units
+          .filter((x) => canTarget(game, u, x) && landings(game, u, x).length > 0)
+          .sort((a, b) => distance(u.pos, a.pos) - distance(u.pos, b.pos))[0]
+      }
+      game.log.push({ key: "log.rampage", params: { unit: u.id } })
+      break
+    }
+    case "killzone": {
+      check(u.ammo > 0, "ammo")
+      u.stance = "overwatch"
+      addStatus(u, { id: "killzone", rounds: 1 })
+      game.log.push({ key: "log.killzone", params: { unit: u.id } })
+      break
+    }
+    case "saturation": {
+      check(!!at && !same(at, u.pos), "place")
+      saturate(game, u, at!)
+      break
+    }
+    case "hospital": {
+      for (const x of game.units) {
+        if (x.side !== u.side || distance(u.pos, x.pos) > RANGE.hospital || (!alive(x) && x.down === 0)) continue
+        x.hp = Math.min(x.maxHp, x.hp + 3)
+        x.down = 0
+        x.statuses = x.statuses.filter((s) => !BAD.includes(s.id))
+      }
+      game.log.push({ key: "log.hospital", params: { unit: u.id } })
+      break
+    }
+    case "ghost": {
+      u.concealed = true
+      u.ap += 1
+      game.log.push({ key: "log.ghost", params: { unit: u.id } })
+      break
+    }
+    case "turret": {
+      check(!!at && adjacent(u.pos, at) && walkable(tileAt(game, at)) && !unitAt(game, at!), "place")
+      const id = `${u.id}-turret`
+      game.units = game.units.filter((x) => x.id !== id)
+      const turret = makeUnit(id, "turret", "squad", at!, "turret")
+      turret.ap = 0
+      turret.concealed = false
+      turret.stance = "overwatch"
+      addStatus(turret, { id: "deployed", rounds: 3 })
+      game.units.push(turret)
+      game.log.push({ key: "log.turret", params: { unit: u.id } })
+      break
+    }
     case "blast": {
       check(!!at && inside(game.board, at) && distance(u.pos, at) <= RANGE.blast, "range")
       check(lineOfSight(game, u.pos, at!, false), "place")
@@ -412,6 +477,28 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
   u.cooldowns[id] = ABILITIES[id].cooldown || undefined
   if (ABILITIES[id].endsTurn) u.ap = 0
   else if (!ABILITIES[id].free) u.ap -= 1
+}
+
+/** Statuses a Field hospital clears. */
+const BAD: StatusId[] = ["suppressed", "frightened", "shaken", "burning", "staggered", "exposed"]
+
+/** Saturation fire: 2 damage to every other unit in a 90° cone up to 6 tiles toward a point, and all cover in it breaks. */
+function saturate(game: Game, u: Unit, at: Point): void {
+  const aim = Math.atan2(at.y - u.pos.y, at.x - u.pos.x)
+  const cone = (p: Point) => {
+    if (same(p, u.pos) || distance(u.pos, p) > RANGE.saturation) return false
+    const turn = Math.abs(Math.atan2(p.y - u.pos.y, p.x - u.pos.x) - aim)
+    return Math.min(turn, 2 * Math.PI - turn) <= Math.PI / 4 + 1e-9
+  }
+  game.log.push({ key: "log.saturation", params: { unit: u.id } })
+  const hits = game.units.filter((x) => x !== u && alive(x) && cone(x.pos))
+  for (const p of area(u.pos, RANGE.saturation)) if (inside(game.board, p) && cone(p)) breakCover(game, p)
+  for (const x of hits) {
+    game.log.push({ key: "log.shrapnel", params: { target: x.id, dmg: 2 } })
+    hurt(game, x, 2)
+  }
+  noise(game, u.pos, WEAPONS[u.weapon].noise, u)
+  for (const x of hits) if (foes(u, x)) attacked(game, u, x, u.weapon)
 }
 
 /** A Rocket: 2 damage to everyone in 3×3, pushes them out from the center, sets grass and trees on fire and breaks cover. */

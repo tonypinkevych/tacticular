@@ -1,10 +1,11 @@
 import { hurt } from "./combat"
+import { WEAPONS } from "./data"
 import { reinforce } from "./drop"
 import { spread } from "./fire"
 import { distance, same } from "./grid"
 import { calm, horn, observe, visibleToSquad } from "./stealth"
 import type { Game, Side, Unit } from "./types"
-import { addStatus, alive, sideOf } from "./units"
+import { addStatus, alive, has, sideOf } from "./units"
 
 /** Ends the active side's phase; the enemy phase ends the round. */
 export function endPhase(game: Game): void {
@@ -33,6 +34,11 @@ export function startPhase(game: Game, side: Side): void {
     u.moved = false
     u.stance = "none"
     if (u.kind === "warden") addStatus(u, { id: "plated", rounds: 1 })
+    if (u.kind === "turret") {
+      u.ap = 0
+      u.stance = "overwatch"
+      u.ammo = WEAPONS[u.weapon].ammo ?? 0
+    }
     advance(u)
   }
   observe(game)
@@ -88,6 +94,11 @@ function endRound(game: Game): void {
     }
   }
   spread(game)
+  for (const u of game.units) {
+    if (u.kind !== "turret" || !alive(u) || has(u, "deployed")) continue
+    u.hp = 0
+    game.log.push({ key: "log.dies", params: { unit: u.id } })
+  }
   game.zones = game.zones.map((z) => ({ ...z, rounds: z.rounds - 1 })).filter((z) => z.rounds > 0)
   reinforce(game)
   hold(game)

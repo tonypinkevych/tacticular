@@ -1,5 +1,5 @@
 import { breakCover, coverAgainst, coverTile } from "./cover"
-import { WEAPONS } from "./data"
+import { ULT, WEAPONS } from "./data"
 import { chance, d20, EDGE, failChance, rollDice } from "./dice"
 import { scorch } from "./fire"
 import { adjacent, climb, distance, same, tileAt, unitAt, up, walkable } from "./grid"
@@ -141,7 +141,7 @@ export function canReach(attacker: Unit, target: Unit, weapon: Weapon): boolean 
   return weapon.melee ? adjacent(attacker.pos, target.pos) : true
 }
 
-/** Rolls an attack, logs it in full and applies the damage. */
+/** Rolls an attack, logs it in full and applies the damage; a soldier's hit fills its ultimate meter. */
 export function attack(
   game: Game,
   attacker: Unit,
@@ -206,6 +206,7 @@ export function attack(
     if (p) breakCover(game, p)
   }
   const killed = hurt(game, target, dmg)
+  if (soldier(attacker)) attacker.ult = Math.min(ULT, attacker.ult + (killed ? 3 : 1))
   if (w.push && !killed) push(game, attacker.pos, target, attacker.id)
 }
 
