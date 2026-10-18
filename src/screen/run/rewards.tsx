@@ -2,8 +2,9 @@ import { For } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Reward } from "../../run/run"
 import type { Expedition } from "../expedition"
+import { Soldier } from "./soldier"
 
-/** The pick of 3 rewards after a won mission. */
+/** The pick of 3 rewards after a won mission, over the squad as it stands. */
 export function Rewards(props: { expedition: Expedition }) {
   const x = props.expedition
   const name = (id: string) => x.run().roster.find((s) => s.id === id)?.name ?? id
@@ -25,6 +26,9 @@ export function Rewards(props: { expedition: Expedition }) {
             </button>
           )}
         </For>
+      </div>
+      <div class="soldiers">
+        <For each={x.run().roster}>{(s) => <Soldier soldier={s} />}</For>
       </div>
     </section>
   )
