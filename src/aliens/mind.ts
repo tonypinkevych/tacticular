@@ -50,7 +50,10 @@ export class Mind {
     return new Set(walk.flatMap((k) => [k, ...AROUND.map((d) => key(plus(pointOf(k), d)))]))
   }
 
-  /** One move along the walking path to a goal, or to the reachable tile nearest it; a dash when given the range. */
+  /**
+   * One move along the walking path to a goal, or to the reachable tile nearest it; a dash when given the range. It
+   * stops before tiles a known soldier on overwatch covers, and walks, not dashes, when it already stands at them.
+   */
   toward(u: Unit, target: Point, range = u.mobility): Action | null {
     const game = this.game
     const r = game.reach(u, 400, u.allegiance())
@@ -63,9 +66,25 @@ export class Mind {
         if (d < best) [best, goal] = [d, p]
       }
     }
-    const path = r.path(goal).filter((p) => (r.cost.get(key(p)) ?? Infinity) <= range)
+    let path = r.path(goal).filter((p) => (r.cost.get(key(p)) ?? Infinity) <= range)
+    const watched = this.watched(u)
+    const cut = path.findIndex((p) => watched.has(key(p)))
+    if (cut > 0) path = path.slice(0, cut)
+    else if (cut === 0) path = path.filter((p) => (r.cost.get(key(p)) ?? Infinity) <= u.mobility)
     const to = path.reverse().find((p) => !game.unitAt(p))
     return to ? { type: "move", unit: u.id, to } : null
+  }
+
+  /** Tiles a foe the unit's side knows about would fire on from overwatch. */
+  private watched(u: Unit): Set<number> {
+    const game = this.game
+    const out = new Set<number>()
+    for (const f of this.known(u)) {
+      if (f.stance !== "overwatch") continue
+      const w = f.arms()
+      for (const k of game.sight.tiles(f)) if (distance(f.pos, pointOf(k)) <= (w.melee ? 1 : w.max)) out.add(k)
+    }
+    return out
   }
 
   private jitter(u: Unit, p: Point): number {
@@ -206,11 +225,28 @@ export class Mind {
     return this.toward(u, goal)
   }
 
-  /** The soldier an alien aims at for its next phase: the one it would attack now, or null. */
+  /**
+   * The soldier an alien aims at for its next phase and the tile within one move it will fire from: the best tile
+   * to stand on that gives a shot, or null when no tile does.
+   */
   aim(u: Unit): Action | null {
+    const game = this.game
     if (!u.alive() || u.allegiance() !== "enemy" || (u.intent && u.intent.type !== "shot")) return null
-    const best = this.bestAttack(u, this.known(u))?.action
-    return best?.type === "attack" ? { type: "aim", unit: u.id, target: best.target } : null
+    const known = this.known(u)
+    const tiles = [u.pos, ...[...game.reach(u, u.mobility).cost.keys()].map(pointOf).filter((p) => !game.unitAt(p))]
+    let best: { at: Point; target: string; value: number } | null = null
+    for (const p of tiles) {
+      const from = u.pos
+      u.pos = p
+      const attack = this.bestAttack(u, known)?.action
+      u.pos = from
+      if (attack?.type !== "attack") continue
+      const value = this.tileValue(u, p, known)
+      if (!best || value > best.value) best = { at: p, target: attack.target, value }
+    }
+    if (!best) return null
+    const aim = { type: "aim" as const, unit: u.id, target: best.target }
+    return same(best.at, u.pos) ? aim : { ...aim, from: best.at }
   }
 
   /** Special moves of the enemy types: telegraphs, then the strike they promised. */
@@ -218,6 +254,10 @@ export class Mind {
     const game = this.game
     if (u.intent?.type === "shot") {
       const t = game.units.find((x) => x.id === (u.intent as { target: string }).target)
+      const from = u.intent.from
+      const free = from && !game.unitAt(from) && !game.fire.burning(from)
+      if (t?.alive() && from && free && !u.moved && game.reach(u, u.mobility).cost.has(key(from)))
+        return { action: { type: "move", unit: u.id, to: from }, value: 100 }
       if (t?.alive() && game.orders.canTarget(u, t) && canReach(u, t, WEAPONS[u.weapon])) {
         if (WEAPONS[u.weapon].ammo !== null && u.ammo <= 0)
           return { action: { type: "reload", unit: u.id }, value: 100 }

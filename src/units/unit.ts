@@ -31,7 +31,7 @@ export type Intent =
   | { type: "charge"; target: string }
   | { type: "bomb"; at: Point }
   | { type: "psi"; target: string }
-  | { type: "shot"; target: string }
+  | { type: "shot"; target: string; from?: Point }
 
 /** Ultimate meter: a hit adds 1, a kill 2 more; the ultimate needs it full. */
 export const ULT = 4

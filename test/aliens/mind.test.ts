@@ -26,7 +26,55 @@ describe("enemy AI", () => {
   test("an alien aims at the soldier it would attack", () => {
     const g = enemyTurn(setup(open(10, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 5, y: 1 })]))
     find(g, "w").concealed = false
-    expect(new Mind(g).aim(find(g, "e"))).toEqual({ type: "aim", unit: "e", target: "w" })
+    expect(new Mind(g).aim(find(g, "e"))).toMatchObject({ type: "aim", unit: "e", target: "w" })
+  })
+  test("an alien marks a tile within one move with a better shot than where it stands", () => {
+    const rows = open(16, 7)
+    rows[3] = ".:.............."
+    const g = enemyTurn(setup(rows, [squad("w", "warden", { x: 0, y: 3 }), enemy("e", "orc", { x: 5, y: 3 })]))
+    find(g, "w").concealed = false
+    const e = find(g, "e")
+    const aim = new Mind(g).aim(e)
+    expect(aim).toMatchObject({ type: "aim", target: "w" })
+    const from = (aim as unknown as { from: { x: number; y: number } }).from
+    expect(g.reach(e, e.mobility).cost.has(key(from))).toBe(true)
+    const w = find(g, "w")
+    expect(g.combat.odds(e.at(from), w).chance).toBeGreaterThan(g.combat.odds(e, w).chance)
+  })
+  test("an alien with a firing tile walks there first, then shoots", () => {
+    const g = enemyTurn(setup(open(16, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 10, y: 1 })]))
+    find(g, "w").concealed = false
+    find(g, "e").intent = { type: "shot", target: "w", from: { x: 6, y: 1 } }
+    const move = new Mind(g).decide(find(g, "e"))
+    expect(move).toEqual({ type: "move", unit: "e", to: { x: 6, y: 1 } })
+    const there = g.apply(move!)
+    expect(new Mind(there).decide(find(there, "e"))).toMatchObject({ type: "attack", target: "w" })
+  })
+  test("an alien whose firing tile is taken fires from where it stands when it can", () => {
+    const g = enemyTurn(
+      setup(open(16, 3), [
+        squad("w", "warden", { x: 0, y: 1 }),
+        squad("b", "warden", { x: 4, y: 1 }),
+        enemy("e", "orc", { x: 6, y: 1 }),
+      ]),
+    )
+    for (const id of ["w", "b"]) find(g, id).concealed = false
+    find(g, "e").intent = { type: "shot", target: "w", from: { x: 4, y: 1 } }
+    expect(new Mind(g).decide(find(g, "e"))).toMatchObject({ type: "attack", target: "w" })
+  })
+  test("a walking alien stops before the tiles a known soldier on overwatch covers", () => {
+    const g = enemyTurn(
+      setup(open(20, 3), [
+        squad("w", "warden", { x: 0, y: 1 }),
+        enemy("e", "orc", { x: 12, y: 1 }),
+        enemy("s", "orc", { x: 5, y: 0 }),
+      ]),
+    )
+    find(g, "w").concealed = false
+    find(g, "w").stance = "overwatch"
+    const e = find(g, "e")
+    const step = new Mind(g).toward(e, { x: 1, y: 1 }, e.stride())
+    expect(step).toMatchObject({ type: "move", to: { x: 7 } })
   })
   test("an alien that sees no soldier aims at nobody", () => {
     const g = enemyTurn(setup(open(30, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 29, y: 1 })]))

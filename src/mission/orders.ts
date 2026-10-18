@@ -12,7 +12,7 @@ export type Action =
   | { type: "door"; unit: string; at: Point }
   | { type: "overwatch"; unit: string }
   | { type: "hunker"; unit: string }
-  | { type: "aim"; unit: string; target: string }
+  | { type: "aim"; unit: string; target: string; from?: Point }
   | { type: "shoot"; unit: string; at: Point }
   | { type: "use"; unit: string }
   | { type: "endTurn" }
@@ -42,7 +42,7 @@ export class Orders {
     check(u.alive(), "dead")
     check(u.allegiance() === game.phase || game.reactions.includes(u.id), "not your turn")
     if (action.type === "aim") {
-      this.aim(u, game.unit(action.target))
+      this.aim(u, game.unit(action.target), action.from)
       return
     }
     check(u.ap > 0, "no AP")
@@ -237,11 +237,12 @@ export class Orders {
     }
   }
 
-  /** An alien marks the soldier it will shoot in its next phase, for no AP. */
-  private aim(u: Unit, t: Unit): void {
+  /** An alien marks the soldier it will shoot in its next phase, and the tile within one move it will fire from, for no AP. */
+  private aim(u: Unit, t: Unit, from?: Point): void {
     check(u.allegiance() === "enemy" && (!u.intent || u.intent.type === "shot"), "aim")
-    check(this.canTarget(u, t), "target")
-    u.intent = { type: "shot", target: t.id }
+    check(this.canTarget(from ? u.at(from) : u, t), "target")
+    if (from) check(this.game.reach(u, u.mobility).cost.has(key(from)), "place")
+    u.intent = { type: "shot", target: t.id, ...(from ? { from: { ...from } } : {}) }
   }
 
   private strike(u: Unit, t: Unit): void {

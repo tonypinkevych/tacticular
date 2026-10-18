@@ -8,6 +8,6 @@ describe("telegraphed shots", () => {
     find(g, "e").alert = "engaged"
     const after = new Match(g).play({ type: "endTurn" }).at(-1)!.game
     expect(after.phase).toBe("squad")
-    expect(find(after, "e").intent).toEqual({ type: "shot", target: "w" })
+    expect(find(after, "e").intent).toMatchObject({ type: "shot", target: "w" })
   })
 })
