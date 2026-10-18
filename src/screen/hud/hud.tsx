@@ -112,6 +112,22 @@ function Help(props: { model: Model }) {
   )
 }
 
+/** The end of a mission in a run, once its last step has played: won or failed, and Continue. */
+function Ending(props: { model: Model }) {
+  const m = props.model
+  const phase = () => m.shown().phase
+  return (
+    <Show when={m.expedition && (phase() === "won" || phase() === "lost")}>
+      <div id="ending" class="card">
+        <h2>{phase() === "won" ? t("run.missionWon") : t("run.missionLost")}</h2>
+        <button type="button" class="primary" onClick={() => m.expedition?.finish()}>
+          {t("run.continue")}
+        </button>
+      </div>
+    </Show>
+  )
+}
+
 /** The whole screen; it renders again from scratch when the language changes. */
 export function App(props: { model: Model }): JSX.Element {
   const m = props.model
@@ -137,6 +153,7 @@ export function App(props: { model: Model }): JSX.Element {
         <Show when={m.logOpen()}>
           <Panel model={m} />
         </Show>
+        <Ending model={m} />
       </main>
     </Show>
   )

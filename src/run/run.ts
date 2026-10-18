@@ -111,7 +111,7 @@ export class Run {
     const node = this.chart.node(this.at ?? 0)
     const base: Conditions = {
       squad: this.deployed.map((id) => this.roster.find((s) => s.id === id)!),
-      groups: 3 + Math.floor(t / 3),
+      groups: 2 + Math.floor(t / 2),
       size: t >= 6 ? 3 : 2,
       alarm: Math.min(3, Math.floor(t / 2)),
     }
@@ -121,7 +121,8 @@ export class Run {
     return {
       ...base,
       goal: "warchief",
-      groups: (base.groups ?? 0) - (this.done.includes("captain") ? 1 : 0),
+      groups: 4 - (this.done.includes("captain") ? 1 : 0),
+      size: 2,
       pad: !this.done.includes("relay"),
       explored: this.done.includes("intel"),
     }

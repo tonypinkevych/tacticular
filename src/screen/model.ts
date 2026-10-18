@@ -5,6 +5,7 @@ import type { Game } from "../mission/game"
 import { type Action, Illegal } from "../mission/orders"
 import type { Session } from "../save/session"
 import type { Unit } from "../units/unit"
+import type { Expedition } from "./expedition"
 import { type Armed, Kit, type Slot } from "./hud/kit"
 import { Playback, SPEEDS, type Speed } from "./playback/motion"
 import { Sound } from "./playback/sound"
@@ -60,6 +61,7 @@ export class Model {
   constructor(
     readonly session: Session,
     private readonly store: Storage,
+    readonly expedition: Expedition | null = null,
   ) {
     const saved = Number(this.read(SPEED_KEY) ?? 1)
     this.playback = new Playback((SPEEDS as readonly number[]).includes(saved) ? (saved as Speed) : 1, session.game)
@@ -82,8 +84,8 @@ export class Model {
   }
 
   /** The model with the first soldier selected. */
-  static open(session: Session, store: Storage): Model {
-    const m = new Model(session, store)
+  static open(session: Session, store: Storage, expedition: Expedition | null = null): Model {
+    const m = new Model(session, store, expedition)
     m.selectNext(false)
     return m
   }
@@ -334,10 +336,14 @@ export class Model {
     })
   }
 
-  /** Starts a new mission on the second press. */
+  /** Starts a new run, or a new mission outside a run, on the second press. */
   newMission(): void {
     if (!this.confirmNew()) {
       this.setConfirmNew(true)
+      return
+    }
+    if (this.expedition) {
+      this.expedition.restart()
       return
     }
     this.session.start(Math.floor(Math.random() * 2 ** 31))

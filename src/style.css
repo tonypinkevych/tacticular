@@ -660,3 +660,157 @@ main.extended .more-mark {
 .contact.aimed {
   outline: 1px solid #efe4cc;
 }
+
+.run {
+  max-width: 760px;
+  margin: 48px auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+.run h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.run h3 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.run .primary,
+#ending .primary {
+  align-self: center;
+  padding: 8px 28px;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.run button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.soldiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.soldier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.soldier.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.soldier .who {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.soldier .name,
+.reward .name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.soldier .hp {
+  color: var(--good);
+}
+.soldier .skills {
+  flex-basis: 100%;
+}
+.soldier {
+  flex-wrap: wrap;
+}
+.chart {
+  position: relative;
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.chart .edge {
+  stroke: var(--line-hi);
+  stroke-width: 2;
+}
+.chart .node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 120px;
+  padding: 6px 8px;
+  font-size: 10px;
+  background: var(--bg);
+  border: 2px solid var(--line-hi);
+  color: var(--muted);
+}
+.chart .node:not(.open) {
+  cursor: default;
+}
+.chart .node.open {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.chart .node.open:hover {
+  background: var(--well);
+}
+.chart .node.here {
+  background: var(--accent);
+  color: var(--bg);
+}
+.chart .node.fortress {
+  border-color: var(--bad);
+}
+.chart .node.captain {
+  border-style: dashed;
+}
+.run .info {
+  margin: 0;
+  min-height: 1.4em;
+}
+.rewards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+.reward {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.reward:hover,
+.soldier:hover {
+  border-color: var(--line-hi);
+}
+#ending {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: 20px 32px;
+}
+#ending h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
