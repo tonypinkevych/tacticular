@@ -126,7 +126,7 @@ export class Run {
       groups: 4 - (this.done.includes("captain") ? 1 : 0),
       size: 2,
       pad: !this.done.includes("relay"),
-      explored: this.done.includes("intel"),
+      scouted: this.done.includes("intel"),
     }
   }
 

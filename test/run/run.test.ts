@@ -66,11 +66,11 @@ describe("fortress", () => {
     return run.conditions()
   }
   test("is a Warchief mission with a pad and fog", () => {
-    expect(at([])).toMatchObject({ goal: "warchief", pad: true, explored: false })
+    expect(at([])).toMatchObject({ goal: "warchief", pad: true, scouted: false })
   })
-  test("has no pad after the relay, an explored map after intel, one group fewer after the captain", () => {
+  test("has no pad after the relay, scouted groups after intel, one group fewer after the captain", () => {
     const base = at([]).groups ?? 0
-    expect(at(["relay", "intel", "captain"])).toMatchObject({ pad: false, explored: true, groups: base - 1 })
+    expect(at(["relay", "intel", "captain"])).toMatchObject({ pad: false, scouted: true, groups: base - 1 })
   })
 })
 

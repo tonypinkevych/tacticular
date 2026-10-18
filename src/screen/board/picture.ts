@@ -83,14 +83,19 @@ export class Picture {
     return board.inside(p) && explored[p.y * board.width + p.x]
   }
 
+  /** A tile's lit color; a tile the squad never saw is dark, so the layout shows but nothing on it. */
+  private shade(tile: Tile, p: Point): Rgb {
+    const c = this.light.shade(TERRAIN[tile], p)
+    return this.explored(p) ? c : mix(c, BLACK, 0.25)
+  }
+
   private ground(p: Point): void {
-    if (!this.explored(p)) return
     const { game, houses } = this.scene
     const tile = game.tile(p)
     if (TALL.includes(tile) || this.burning(p)) return
     if (houses.roofed(p, this.standing)) return
     const a = this.px.projection.anchor(p)
-    const c = this.light.shade(TERRAIN[tile], p)
+    const c = this.shade(tile, p)
     const r = hash(p.x, p.y, 1)
     const t = this.t
     if (tile === "water") {
@@ -101,16 +106,15 @@ export class Picture {
       if (r < 0.6) this.px.glyph(Math.sin(t / 900 + r * 9) > 0.7 ? TILES.grass2 : TILES.grass, a.x, a.y, c)
     } else if (tile === "mud" || tile === "ridge" || tile === "bridge") this.px.glyph(TILES[tile], a.x, a.y, c)
     else if (r < 0.5 && !this.marks.covers(p)) this.px.glyph(TILES.dot, a.x, a.y, c)
-    if (game.zones.some((z) => z.kind === "mine" && z.tiles.some((m) => same(m, p))))
+    if (this.explored(p) && game.zones.some((z) => z.kind === "mine" && z.tiles.some((m) => same(m, p))))
       this.px.glyph(TILES.mine, a.x, a.y, mix(ALIEN, c, 0.2))
   }
 
   private object(p: Point): void {
-    if (!this.explored(p)) return
     const { game, houses } = this.scene
     const tile = game.tile(p)
     const a = this.px.projection.anchor(p)
-    const c = this.light.shade(TERRAIN[tile], p)
+    const c = this.shade(tile, p)
     const open = houses.open(p, this.standing)
     const alpha = this.faded.has(key(p)) ? 0.28 : open ? 0.4 : 1
     const r = hash(p.x, p.y, 1)
@@ -125,8 +129,7 @@ export class Picture {
       this.px.glyph([[], [], [], ...TILES.tree.slice(3)], a.x, a.y, c, alpha)
     } else if (tile === "ladder" || tile === "rock" || tile === "low" || tile === "high" || tile === "barrel")
       this.px.glyph(TILES[tile], a.x, a.y, c, alpha)
-    if (houses.roofed(p, this.standing))
-      this.px.glyph(TILES.roof, a.x, a.y, mix(this.light.shade(TERRAIN.roof, p), WHITE, 0.1))
+    if (houses.roofed(p, this.standing)) this.px.glyph(TILES.roof, a.x, a.y, mix(this.shade("roof", p), WHITE, 0.1))
     if (this.burning(p)) {
       const f = Math.floor(this.t / 110 + r * 3) % 3
       FIRE[f].forEach((row, j) => {
@@ -197,7 +200,7 @@ export class Picture {
   }
 
   private burning(p: Point): boolean {
-    return this.scene.game.fire.burning(p)
+    return this.explored(p) && this.scene.game.fire.burning(p)
   }
 
   /** The tracer of a shot, the muzzle flash and the sparks of the hit. */

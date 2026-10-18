@@ -205,8 +205,12 @@ describe("conditions", () => {
   test("set where the alarm starts", () => {
     expect(mission(1, { alarm: 3 }).alarm).toBe(3)
   })
-  test("an explored map shows every tile", () => {
-    expect(mission(1, { explored: true }).explored.every(Boolean)).toBe(true)
+  test("a scouted mission starts with a heard noise on each alien group", () => {
+    const g = mission(1, { scouted: true })
+    for (const group of g.groups) {
+      const lead = g.units.find((u) => u.group === group.id)!
+      expect(g.noises).toContainEqual({ at: lead.pos, radius: 0, round: 1 })
+    }
   })
   test("no conditions give the same mission as before", () => {
     expect(mission(5, {}).units.map((u) => u.pos)).toEqual(mission(5).units.map((u) => u.pos))

@@ -173,7 +173,8 @@ export interface Conditions {
   /** The most aliens in a group; the Warchief's group has 3. */
   size?: number
   pad?: boolean
-  explored?: boolean
+  /** Each alien group starts marked by a heard noise. */
+  scouted?: boolean
   alarm?: number
 }
 
@@ -233,7 +234,11 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
   game.goal = aim
   game.pad = pad?.at ?? null
   game.rng = state.rng
-  if (conditions.explored) game.explored.fill(true)
+  if (conditions.scouted)
+    for (const g of groups) {
+      const lead = game.units.find((u) => u.group === g.id)
+      if (lead) game.noises.push({ at: { ...lead.pos }, radius: 0, round: 1 })
+    }
   game.alarm = conditions.alarm ?? 0
   return game
 }
