@@ -27,6 +27,14 @@ describe("detection", () => {
     expect(find(g.apply({ type: "move", unit: "g", to: { x: 5, y: 1 } }), "g").concealed).toBe(true)
     expect(find(g.apply({ type: "move", unit: "g", to: { x: 6, y: 1 } }), "g").concealed).toBe(false)
   })
+  test("the tiles where an alien would spot a concealed soldier are those within its detection radius", () => {
+    const e = enemy("e", "orc", { x: 10, y: 1 }, "unaware")
+    const g = setup(open(20, 3), [squad("g", "warden", { x: 4, y: 1 }), squad("r", "rogue", { x: 3, y: 1 }), e])
+    const spots = [...g.stealth.spots(find(g, "e"), find(g, "g"))].map((k) => k % 1000)
+    expect(Math.min(...spots)).toBe(8)
+    expect(Math.max(...spots)).toBe(12)
+    expect(g.stealth.spots(find(g, "e"), find(g, "r")).size).toBe(0)
+  })
   test("a first reveal in the player phase queues the group's reveal reaction", () => {
     const g = setup(open(20, 3), [
       squad("g", "warden", { x: 4, y: 1 }),

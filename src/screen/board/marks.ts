@@ -11,6 +11,8 @@ import type { Scene } from "./scene"
 
 const BORDER = rgb("#94806e")
 
+const ZONE = 0.06
+
 /** The information marks of a frame: ranges, paths, zones and rings under the units; cover, aim and moods over them. */
 export class Marks {
   private readonly dots = new Map<number, Rgb>()
@@ -35,7 +37,7 @@ export class Marks {
     this.reach()
     this.threat()
     this.goal()
-    if (this.scene.zones) this.zones()
+    if (this.scene.zones || this.scene.selected?.concealed) this.zones()
     for (const [k, c] of this.dots) {
       const g = this.px.projection.ground(pointOf(k))
       this.px.dot(g.x - 1, g.y, c, 0.55, 2)
@@ -125,9 +127,8 @@ export class Marks {
     const own = game.units.filter((u) => u.alive() && u.side === "squad").map((u) => key(u.pos))
     const close = new Set([...near, ...own.filter((k) => touches(near, k))])
     const wide = new Set([...far, ...own.filter((k) => !close.has(k) && touches(far, k))])
-    const seen = (keys: Set<number>) => new Set([...keys].filter((k) => this.explored(pointOf(k))))
-    this.px.fill(new Set([...seen(wide)].filter((k) => !close.has(k))), DASH, 0.045)
-    this.px.fill(seen(close), MOVE, 0.06)
+    this.zone(new Set([...wide].filter((k) => !close.has(k))), DASH)
+    this.zone(close, MOVE)
   }
 
   /** Where the alien under the cursor can walk, or strike in melee, next turn. */
@@ -135,8 +136,12 @@ export class Marks {
     const { hover, game } = this.scene
     const e = hover ? this.aliens().find((u) => same(u.pos, hover)) : undefined
     if (!e) return
-    const zone = [...new Mind(game).threat(e)].filter((k) => this.explored(pointOf(k)))
-    this.px.outline(new Set(zone), ALIEN, 0.5, 5)
+    this.zone(new Mind(game).threat(e), ALIEN)
+  }
+
+  /** A faint fill over the explored tiles of a zone; every tile zone is drawn this way, each in its own color. */
+  private zone(keys: Set<number>, color: Rgb): void {
+    this.px.fill(new Set([...keys].filter((k) => this.explored(pointOf(k)))), color, ZONE)
   }
 
   /** The evac zone, the beacon, the terminal or relay, the captive and the next alien landing. */
@@ -164,19 +169,20 @@ export class Marks {
     }
   }
 
-  /** Dots on every tile a visible alien would spot a soldier on, or fire on from overwatch. */
+  /** Where each visible alien would spot the selected concealed soldier, or else any soldier, or fire from overwatch. */
   private zones(): void {
-    const { game } = this.scene
+    const { game, selected } = this.scene
+    const out = new Set<number>()
     for (const e of this.aliens()) {
+      if (selected?.concealed) {
+        for (const k of game.stealth.spots(e, selected)) out.add(k)
+        continue
+      }
       const radius =
         e.stance === "overwatch" ? e.vision : e.alert === "unaware" ? DETECTION.unaware : DETECTION.investigating
-      for (const k of game.sight.tiles(e)) {
-        const p = pointOf(k)
-        if (distance(e.pos, p) > radius || this.dots.has(k) || !this.explored(p)) continue
-        const g = this.px.projection.ground(p)
-        this.px.dot(g.x, g.y + 1, ALIEN, 0.45)
-      }
+      for (const k of game.sight.tiles(e)) if (distance(e.pos, pointOf(k)) <= radius) out.add(k)
     }
+    this.zone(out, ALIEN)
   }
 
   /** The path to the cursor and the cursor's tile, while a move is planned; the area of an armed action. */

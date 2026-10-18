@@ -1,5 +1,5 @@
 import { WEAPONS, type WeaponId } from "../combat/weapons"
-import { distance, type Point } from "../map/point"
+import { distance, type Point, pointOf } from "../map/point"
 import type { Game } from "../mission/game"
 import type { Unit } from "../units/unit"
 
@@ -43,11 +43,22 @@ export class Stealth {
     )
   }
 
-  /** Detection radius of an enemy against a concealed soldier; -1 means it cannot detect it at all. Grass hides a soldier from all but next tiles. */
-  detection(e: Unit, s: Unit): number {
+  /** Detection radius of an enemy against a concealed soldier on a tile, its own by default; -1 means it cannot detect it at all. Grass hides a soldier from all but next tiles. */
+  detection(e: Unit, s: Unit, at: Point = s.pos): number {
     if (s.kind === "rogue" && e.alert === "unaware") return -1
     const radius = s.kind === "rogue" ? DETECTION.rogue : DETECTION[e.alert === "unaware" ? "unaware" : "investigating"]
-    return this.game.tile(s.pos) === "grass" ? Math.min(1, radius) : radius
+    return this.game.tile(at) === "grass" ? Math.min(1, radius) : radius
+  }
+
+  /** The tiles where an alien would spot a concealed soldier. */
+  spots(e: Unit, s: Unit): Set<number> {
+    const out = new Set<number>()
+    for (const k of this.game.sight.tiles(e)) {
+      const p = pointOf(k)
+      const radius = Math.min(this.detection(e, s, p), e.vision)
+      if (radius >= 0 && distance(e.pos, p) <= radius) out.add(k)
+    }
+    return out
   }
 
   /** Turns a group Engaged; in the player phase a first reveal queues its reveal reaction. */
