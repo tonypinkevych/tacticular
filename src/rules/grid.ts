@@ -8,12 +8,9 @@ export function inside(board: Board, p: Point): boolean {
   return p.x >= 0 && p.y >= 0 && p.x < board.width && p.y < board.height
 }
 
-/** Tile at a point, with Bulwark barriers counted as high cover; outside the board is wall. */
+/** Tile at a point; outside the board is wall. */
 export function tileAt(game: Game, p: Point): Tile {
   if (!inside(game.board, p)) return "wall"
-  for (const zone of game.zones) {
-    if (zone.kind === "bulwark" && zone.tiles.some((t) => same(t, p))) return "high"
-  }
   return game.board.tiles[p.y * game.board.width + p.x]
 }
 

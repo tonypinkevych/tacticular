@@ -36,10 +36,23 @@ export interface Armed {
   at: Point | null
 }
 
-const UNIT_ABILITIES: AbilityId[] = ["charge", "volley", "heal", "ward", "fear", "rouse", "shove", "spot", "rally"]
-const TILE_ABILITIES: AbilityId[] = ["bulwark", "blink"]
-/** Abilities that target an ally; every other unit-target action targets a foe. */
-const FRIENDLY: AbilityId[] = ["heal", "ward", "rally", "rouse"]
+const UNIT_ABILITIES: AbilityId[] = [
+  "charge",
+  "volley",
+  "heal",
+  "fear",
+  "rouse",
+  "shove",
+  "rally",
+  "guard",
+  "hook",
+  "tag",
+  "swap",
+]
+const TILE_ABILITIES: AbilityId[] = ["blink", "breach", "grapple", "rocket", "smoke", "barricade", "drone", "mine"]
+/** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
+const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard"]
+const ANY: AbilityId[] = ["swap"]
 const SPEED_KEY = "tacticular.speed"
 
 const dice = (w: WeaponId): string => {
@@ -114,15 +127,29 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
       return new Set(reach(game, u, u.mobility).cost.keys())
     case "heal":
     case "rouse":
-    case "bulwark":
     case "shove":
+    case "breach":
+    case "barricade":
+    case "drone":
       return around()
-    case "spot":
-      return seen
+    case "tag":
+      return within(1, RANGE.tag)
+    case "guard":
+      return within(1, RANGE.guard)
+    case "hook":
+      return within(1, RANGE.hook)
+    case "swap":
+      return within(1, RANGE.swap)
+    case "rocket":
+      return within(0, RANGE.rocket)
+    case "smoke":
+      return within(0, RANGE.smoke)
+    case "mine":
+      return within(1, RANGE.mine)
+    case "grapple":
+      return new Set([...within(1, RANGE.grapple)].filter((k) => ["roof", "ridge"].includes(tileAt(game, point(k)))))
     case "rally":
       return within(1, RANGE.rally)
-    case "ward":
-      return within(0, RANGE.ward)
     case "fear":
       return within(0, RANGE.fear)
     case "volley":
@@ -152,7 +179,7 @@ function defaultTarget(game: Game, u: Unit, slot: string): string | null {
     )
     return near.sort((x, y) => x.hp / x.maxHp - y.hp / y.maxHp)[0]?.id ?? null
   }
-  if (a === "ward") return friends.sort((x, y) => x.hp - y.hp)[0]?.id ?? null
+  if (a === "guard") return friends.filter((x) => x !== u).sort((x, y) => x.hp - y.hp)[0]?.id ?? null
   if (a === "rally") {
     const near = friends.filter((x) => x !== u && distance(u.pos, x.pos) <= RANGE.rally && x.ap < 3)
     return near.sort((x, y) => x.ap - y.ap)[0]?.id ?? null
@@ -202,15 +229,17 @@ export function retarget(game: Game, u: Unit, armed: Armed, hover: Point | null)
   const t = hover && unitAim ? unitAt(game, hover) : undefined
   if (!t || !alive(t) || t.id === armed.target) return armed
   const friendly = FRIENDLY.includes(id as AbilityId)
-  const ok = friendly
-    ? (id === "rouse" ? t.side === u.side && has(t, "dominated") : sideOf(t) === sideOf(u)) &&
-      range(game, u, armed.slot).has(key(t.pos))
-    : canTarget(game, u, t) &&
-      (kind === "weapon"
-        ? canReach(u, t, WEAPONS[id as WeaponId])
-        : id === "charge"
-          ? landings(game, u, t).length > 0
-          : id === "spot" || range(game, u, armed.slot).has(key(t.pos)))
+  const ok = ANY.includes(id as AbilityId)
+    ? t !== u && range(game, u, armed.slot).has(key(t.pos))
+    : friendly
+      ? (id === "rouse" ? t.side === u.side && has(t, "dominated") : sideOf(t) === sideOf(u)) &&
+        range(game, u, armed.slot).has(key(t.pos))
+      : canTarget(game, u, t) &&
+        (kind === "weapon"
+          ? canReach(u, t, WEAPONS[id as WeaponId])
+          : id === "charge"
+            ? landings(game, u, t).length > 0
+            : id === "spot" || range(game, u, armed.slot).has(key(t.pos)))
   return ok ? { ...armed, target: t.id, at: null } : armed
 }
 
@@ -358,7 +387,7 @@ export function createModel(session: Session, store: Storage) {
     if (u && current && slot) {
       const friendly = FRIENDLY.includes(current.slot.slice(8) as AbilityId)
       const ally = here && (current.slot === "ability:rouse" ? here.side === u.side : sideOf(here) === sideOf(u))
-      if (slot.aim === "unit" && here && ally === friendly) {
+      if (slot.aim === "unit" && here && (ally === friendly || ANY.includes(current.slot.slice(8) as AbilityId))) {
         if (current.target === here.id) act(action(u, aimFor(g, u, current, hover()))!)
         else setArmed({ ...current, target: here.id, at: null })
         return

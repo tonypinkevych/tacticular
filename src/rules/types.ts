@@ -32,11 +32,14 @@ export interface Board {
 
 export type Side = "squad" | "enemy"
 
-export type ClassId = "vanguard" | "ranger" | "warden" | "cleric" | "rogue" | "mage"
+export type ClassId = "vanguard" | "ranger" | "warden" | "cleric" | "rogue" | "mage" | "engineer"
+
+/** Squad units an Engineer deploys; they are not soldiers. */
+export type Gadget = "drone"
 
 export type EnemyKind = "orc" | "bomber" | "ogre" | "shieldwall" | "assassin" | "warchief" | "whisperer"
 
-export type Kind = ClassId | EnemyKind
+export type Kind = ClassId | EnemyKind | Gadget
 
 export interface Dice {
   count: number
@@ -60,6 +63,7 @@ export type WeaponId =
   | "greataxe"
   | "javelin"
   | "lash"
+  | "none"
 
 export interface Weapon {
   id: WeaponId
@@ -78,7 +82,6 @@ export interface Weapon {
 export type AbilityId =
   | "charge"
   | "volley"
-  | "bulwark"
   | "heal"
   | "ward"
   | "vanish"
@@ -89,9 +92,21 @@ export type AbilityId =
   | "dominate"
   | "mark"
   | "shove"
-  | "spot"
   | "rally"
   | "blast"
+  | "breach"
+  | "grapple"
+  | "guard"
+  | "steady"
+  | "rocket"
+  | "brace"
+  | "smoke"
+  | "hook"
+  | "tag"
+  | "swap"
+  | "barricade"
+  | "drone"
+  | "mine"
 
 export type StatusId =
   | "suppressed"
@@ -102,6 +117,10 @@ export type StatusId =
   | "ward"
   | "exposed"
   | "staggered"
+  | "guarded"
+  | "steady"
+  | "plated"
+  | "braced"
 
 export interface Status {
   id: StatusId
@@ -146,7 +165,7 @@ export interface Unit {
 }
 
 export interface Zone {
-  kind: "smoke" | "bulwark" | "fire"
+  kind: "smoke" | "fire" | "mine"
   tiles: Point[]
   rounds: number
 }

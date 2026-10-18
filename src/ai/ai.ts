@@ -42,6 +42,7 @@ function bestAttack(game: Game, u: Unit, targets: Unit[]): Choice | null {
   for (const t of targets) {
     if (!canTarget(game, u, t)) continue
     for (const w of weapons(u)) {
+      if (w === "none") continue
       const weapon = WEAPONS[w]
       if (!canReach(u, t, weapon)) continue
       if (weapon.twoAp && (u.ap < 2 || u.moved)) continue

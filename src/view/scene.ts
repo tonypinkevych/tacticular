@@ -243,6 +243,10 @@ function badges(ctx: CanvasRenderingContext2D, s: number, u: Unit, at: Point = u
           ward: "",
           exposed: "X",
           staggered: "≈",
+          guarded: "G",
+          steady: "",
+          plated: "",
+          braced: "▼",
         })[st.id],
     ),
   ]

@@ -1,9 +1,8 @@
-import { describe, expect, test } from "vitest"
 import { apply } from "../src/rules/actions"
 import { push } from "../src/rules/combat"
 import { breakCover, coverAgainst } from "../src/rules/cover"
-import { key, reach, tileAt } from "../src/rules/grid"
 import { burning } from "../src/rules/fire"
+import { key, reach, tileAt } from "../src/rules/grid"
 import { map } from "../src/rules/mission"
 import { clear } from "../src/rules/sight"
 import type { Biome, Game } from "../src/rules/types"
@@ -101,7 +100,7 @@ describe("push", () => {
     const g = setup([".#..."], [v, e])
     e.pos = { x: 2, y: 0 }
     v.pos = { x: 3, y: 0 }
-    push(g, find(g, "v"), find(g, "e"))
+    push(g, find(g, "v").pos, find(g, "e"))
     expect(find(g, "e").hp).toBe(e.maxHp - 2)
     expect(find(g, "e").pos).toEqual({ x: 2, y: 0 })
   })
@@ -109,7 +108,7 @@ describe("push", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 1, y: 0 })
     const g = setup(["RR.."], [v, e])
-    push(g, find(g, "v"), find(g, "e"))
+    push(g, find(g, "v").pos, find(g, "e"))
     expect(find(g, "e").pos).toEqual({ x: 2, y: 0 })
     expect(find(g, "e").hp).toBe(e.maxHp - 2)
   })
@@ -118,7 +117,7 @@ describe("push", () => {
     const e = enemy("e", "orc", { x: 1, y: 0 })
     const g = setup(["...."], [v, e])
     g.zones.push({ kind: "fire", tiles: [{ x: 2, y: 0 }], rounds: 2 })
-    push(g, find(g, "v"), find(g, "e"))
+    push(g, find(g, "v").pos, find(g, "e"))
     expect(find(g, "e").hp).toBe(e.maxHp - 1)
   })
 })

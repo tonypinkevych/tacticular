@@ -1,14 +1,28 @@
 import { attack, canReach, hurt, push } from "./combat"
 import { breakCover, inCover } from "./cover"
-import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, WEAPONS } from "./data"
+import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, ROCKET_NOISE, WEAPONS } from "./data"
 import { d20, EDGE, failChance, rollDice } from "./dice"
 import { ignite, scorch } from "./fire"
-import { AROUND, adjacent, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid"
+import {
+  AROUND,
+  adjacent,
+  area,
+  climb,
+  distance,
+  inside,
+  key,
+  plus,
+  reach,
+  same,
+  tileAt,
+  unitAt,
+  walkable,
+} from "./grid"
 import { endPhase } from "./round"
 import { lineOfSight, sees } from "./sight"
 import { attacked, noise, observe, scan, seen, stepped } from "./stealth"
 import type { AbilityId, Action, Game, Point, Unit, WeaponId } from "./types"
-import { addStatus, alive, foes, has, removeStatus, sideOf, unit } from "./units"
+import { addStatus, alive, foes, has, makeUnit, removeStatus, sideOf, soldier, unit } from "./units"
 
 export class Illegal extends Error {}
 
@@ -58,7 +72,7 @@ export function apply(game: Game, action: Action): Game {
 }
 
 /**
- * Steps tile by tile; each step can trigger overwatch, suppression fire and zone of control.
+ * Steps tile by tile; each step can trigger fire, a mine, a Guard, overwatch, suppression fire and zone of control.
  * Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it vaults.
  */
 export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
@@ -76,11 +90,14 @@ export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
         adjacent(x.pos, u.pos) &&
         !adjacent(x.pos, step),
     )
+    const from = u.pos
     u.pos = { ...step }
     if (tileAt(game, step) === "door") game.board.tiles[step.y * game.board.width + step.x] = "open"
     scorch(game, u)
     if (!alive(u)) return
+    if (sideOf(u) === "enemy" && trip(game, u, from)) return
     stepped(game, u)
+    guard(game, u, risky)
     for (const x of game.units) {
       if (!alive(u)) return
       if (!alive(x) || !foes(x, u) || x.stance !== "overwatch" || has(x, "staggered")) continue
@@ -100,6 +117,28 @@ export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
       if (alive(u) && alive(x)) attack(game, x, u, x.weapon)
     }
     if (!alive(u)) return
+  }
+}
+
+/** A mine under an alien goes off: 2 damage, a push onward and a stop; returns true when it went off. */
+function trip(game: Game, u: Unit, from: Point): boolean {
+  const mine = game.zones.find((z) => z.kind === "mine" && z.tiles.some((t) => same(t, u.pos)))
+  if (!mine) return false
+  game.zones = game.zones.filter((z) => z !== mine)
+  game.log.push({ key: "log.mine", params: { target: u.id, dmg: 2 } })
+  if (!hurt(game, u, 2)) push(game, from, u)
+  return true
+}
+
+/** A Sniper fires at the first foe that steps next to the ally it guards. */
+function guard(game: Game, u: Unit, risky: boolean): void {
+  for (const x of game.units) {
+    const g = x.statuses.find((s) => s.id === "guarded")
+    if (!g || !alive(x) || !alive(u) || !foes(x, u) || !adjacent(x.pos, u.pos)) continue
+    removeStatus(x, "guarded")
+    const sniper = game.units.find((s) => s.id === g.source)
+    if (!sniper || !alive(sniper) || !sees(game, sniper, u.pos) || sniper.ammo <= 0) continue
+    attack(game, sniper, u, sniper.weapon, { reaction: true, risky })
   }
 }
 
@@ -133,7 +172,7 @@ export function canTarget(game: Game, u: Unit, t: Unit): boolean {
 
 function strike(game: Game, u: Unit, t: Unit, weaponId: WeaponId): void {
   const p = PROFILES[u.kind]
-  check(weaponId === u.weapon || weaponId === p.sidearm, "weapon")
+  check((weaponId === u.weapon || weaponId === p.sidearm) && weaponId !== "none", "weapon")
   const w = WEAPONS[weaponId]
   check(canTarget(game, u, t), "target")
   check(canReach(u, t, w), "reach")
@@ -146,7 +185,7 @@ function strike(game: Game, u: Unit, t: Unit, weaponId: WeaponId): void {
 }
 
 function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Point): void {
-  check(PROFILES[u.kind].abilities.includes(id), "ability")
+  check(PROFILES[u.kind].abilities.includes(id) || (id === "rouse" && u.side === "squad"), "ability")
   check(!u.cooldowns[id], "cooldown")
   const t = targetId ? unit(game, targetId) : undefined
   switch (id) {
@@ -167,15 +206,9 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
     }
     case "shove": {
       check(!!t && foes(u, t) && adjacent(u.pos, t.pos), "target")
-      push(game, u, t!)
+      push(game, u.pos, t!, u.id)
       game.log.push({ key: "log.shove", params: { unit: u.id, target: t!.id } })
       attacked(game, u, t!, u.weapon)
-      break
-    }
-    case "spot": {
-      check(!!t && canTarget(game, u, t), "target")
-      addStatus(t!, { id: "exposed", rounds: 1, source: u.id })
-      game.log.push({ key: "log.spot", params: { unit: u.id, target: t!.id } })
       break
     }
     case "rally": {
@@ -191,27 +224,6 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
       addStatus(t!, { id: "suppressed", rounds: 99, source: u.id })
       game.log.push({ key: "log.volley", params: { unit: u.id, target: t!.id } })
       noise(game, u.pos, WEAPONS[u.weapon].noise, u)
-      break
-    }
-    case "bulwark": {
-      check(!!at && adjacent(at, u.pos), "place")
-      const d = { x: at!.x - u.pos.x, y: at!.y - u.pos.y }
-      const side =
-        d.x !== 0 && d.y !== 0
-          ? [
-              { x: d.x, y: 0 },
-              { x: 0, y: d.y },
-            ]
-          : [
-              { x: d.y, y: d.x },
-              { x: -d.y, y: -d.x },
-            ]
-      const tiles = [at!, plus(at!, side[0]), plus(at!, side[1])].filter(
-        (p) => walkable(tileAt(game, p)) && !unitAt(game, p),
-      )
-      check(tiles.length > 0, "place")
-      game.zones.push({ kind: "bulwark", tiles, rounds: 2 })
-      game.log.push({ key: "log.bulwark", params: { unit: u.id } })
       break
     }
     case "heal": {
@@ -290,6 +302,105 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
       game.log.push({ key: "log.mark", params: { unit: u.id } })
       break
     }
+    case "breach": {
+      check(!!at && adjacent(u.pos, at) && (tileAt(game, at) === "door" || tileAt(game, at) === "open"), "place")
+      game.board.tiles[at!.y * game.board.width + at!.x] = "open"
+      game.log.push({ key: "log.breach", params: { unit: u.id } })
+      for (const x of game.units) {
+        if (alive(x) && foes(u, x) && adjacent(x.pos, at!)) addStatus(x, { id: "staggered", rounds: 1, source: u.id })
+      }
+      noise(game, at!, 6, u)
+      break
+    }
+    case "grapple": {
+      check(!!at && (tileAt(game, at) === "roof" || tileAt(game, at) === "ridge") && !unitAt(game, at), "place")
+      check(distance(u.pos, at!) <= RANGE.grapple && lineOfSight(game, u.pos, at!, false), "range")
+      u.pos = { ...at! }
+      game.log.push({ key: "log.grapple", params: { unit: u.id } })
+      stepped(game, u)
+      break
+    }
+    case "guard": {
+      check(!!t && t !== u && !foes(u, t) && distance(u.pos, t.pos) <= RANGE.guard && sees(game, u, t.pos), "target")
+      addStatus(t!, { id: "guarded", rounds: 1, source: u.id })
+      game.log.push({ key: "log.guard", params: { unit: u.id, target: t!.id } })
+      break
+    }
+    case "steady": {
+      check(!u.moved, "moved")
+      addStatus(u, { id: "steady", rounds: 1 })
+      game.log.push({ key: "log.steady", params: { unit: u.id } })
+      break
+    }
+    case "rocket": {
+      check(!!at && distance(u.pos, at) <= RANGE.rocket && lineOfSight(game, u.pos, at!, false), "range")
+      rocket(game, u, at!)
+      break
+    }
+    case "brace": {
+      check(WEAPONS[u.weapon].ammo === null || u.ammo > 0, "ammo")
+      u.stance = "overwatch"
+      addStatus(u, { id: "braced", rounds: 1 })
+      game.log.push({ key: "log.brace", params: { unit: u.id } })
+      break
+    }
+    case "smoke": {
+      check(!!at && distance(u.pos, at) <= RANGE.smoke && lineOfSight(game, u.pos, at!, false), "range")
+      game.zones.push({ kind: "smoke", tiles: area(at!, 1).filter((p) => inside(game.board, p)), rounds: 2 })
+      game.log.push({ key: "log.smoke", params: { unit: u.id } })
+      break
+    }
+    case "hook": {
+      check(!!t && canTarget(game, u, t) && distance(u.pos, t.pos) <= RANGE.hook, "target")
+      for (let i = 0; i < 2; i++) {
+        const next = { x: t!.pos.x + Math.sign(u.pos.x - t!.pos.x), y: t!.pos.y + Math.sign(u.pos.y - t!.pos.y) }
+        const ok = walkable(tileAt(game, next)) && climb(tileAt(game, t!.pos), tileAt(game, next))
+        if (!ok || unitAt(game, next)) break
+        t!.pos = next
+      }
+      game.log.push({ key: "log.hook", params: { unit: u.id, target: t!.id } })
+      scorch(game, t!)
+      attacked(game, u, t!, "dagger")
+      break
+    }
+    case "tag": {
+      check(!!t && canTarget(game, u, t) && distance(u.pos, t.pos) <= RANGE.tag, "target")
+      addStatus(t!, { id: "exposed", rounds: 2, source: u.id })
+      game.log.push({ key: "log.tag", params: { unit: u.id, target: t!.id } })
+      break
+    }
+    case "swap": {
+      check(!!t && t !== u && alive(t) && distance(u.pos, t.pos) <= RANGE.swap && sees(game, u, t.pos), "target")
+      const here = u.pos
+      u.pos = t!.pos
+      t!.pos = here
+      game.log.push({ key: "log.swap", params: { unit: u.id, target: t!.id } })
+      if (foes(u, t!)) attacked(game, u, t!, u.weapon)
+      stepped(game, u)
+      break
+    }
+    case "barricade": {
+      check(!!at && adjacent(u.pos, at) && tileAt(game, at) !== "roof" && walkable(tileAt(game, at)), "place")
+      check(!unitAt(game, at!), "place")
+      game.board.tiles[at!.y * game.board.width + at!.x] = "high"
+      game.log.push({ key: "log.barricade", params: { unit: u.id } })
+      break
+    }
+    case "drone": {
+      check(!!at && adjacent(u.pos, at) && walkable(tileAt(game, at)) && !unitAt(game, at!), "place")
+      const id = `${u.id}-drone`
+      game.units = game.units.filter((x) => x.id !== id)
+      game.units.push(makeUnit(id, "drone", "squad", at!, "drone"))
+      game.log.push({ key: "log.drone", params: { unit: u.id } })
+      break
+    }
+    case "mine": {
+      check(!!at && distance(u.pos, at) <= RANGE.mine && lineOfSight(game, u.pos, at!, false), "range")
+      check(walkable(tileAt(game, at!)) && !unitAt(game, at!), "place")
+      game.zones.push({ kind: "mine", tiles: [{ ...at! }], rounds: 99 })
+      game.log.push({ key: "log.plant", params: { unit: u.id } })
+      break
+    }
     case "blast": {
       check(!!at && inside(game.board, at) && distance(u.pos, at) <= RANGE.blast, "range")
       check(lineOfSight(game, u.pos, at!, false), "place")
@@ -300,7 +411,23 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
   }
   u.cooldowns[id] = ABILITIES[id].cooldown || undefined
   if (ABILITIES[id].endsTurn) u.ap = 0
-  else u.ap -= 1
+  else if (!ABILITIES[id].free) u.ap -= 1
+}
+
+/** A Rocket: 2 damage to everyone in 3×3, pushes them out from the center, sets grass and trees on fire and breaks cover. */
+function rocket(game: Game, u: Unit, at: Point): void {
+  game.log.push({ key: "log.rocket", params: { unit: u.id } })
+  const hits = area(at, 1)
+    .map((p) => unitAt(game, p))
+    .filter((x): x is Unit => !!x && alive(x))
+  for (const p of area(at, 1)) if (inside(game.board, p) && !ignite(game, p)) breakCover(game, p)
+  for (const x of hits) {
+    game.log.push({ key: "log.shrapnel", params: { target: x.id, dmg: 2 } })
+    if (hurt(game, x, 2) || same(x.pos, at)) continue
+    push(game, at, x, u.id)
+  }
+  noise(game, at, ROCKET_NOISE, u)
+  for (const x of hits) if (foes(u, x)) attacked(game, u, x, u.weapon)
 }
 
 /** A Grenadier blast: sure damage to everyone in 3×3; it sets them burning, sets grass and trees on fire and breaks cover. */
@@ -347,7 +474,7 @@ function hunker(game: Game, u: Unit): void {
 
 /** Checks the end of the mission after each action. */
 export function settle(game: Game): void {
-  const standing = game.units.filter((u) => alive(u) && u.side === "squad")
+  const standing = game.units.filter((u) => alive(u) && soldier(u))
   const goal = game.goal
   if (!game.units.some((u) => alive(u) && u.side === "enemy")) game.phase = "won"
   else if (standing.length === 0) game.phase = "lost"

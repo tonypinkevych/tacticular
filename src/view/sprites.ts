@@ -74,6 +74,8 @@ export const UNIT_CELLS: Record<Kind, Cell> = {
   cleric: [3, 0],
   rogue: [4, 0],
   mage: [5, 0],
+  engineer: [2, 0],
+  drone: [12, 0],
   orc: [6, 0],
   bomber: [7, 0],
   ogre: [8, 0],

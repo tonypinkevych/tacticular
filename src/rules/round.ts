@@ -4,7 +4,7 @@ import { spread } from "./fire"
 import { distance, same } from "./grid"
 import { calm, horn, observe, visibleToSquad } from "./stealth"
 import type { Game, Side, Unit } from "./types"
-import { alive, sideOf } from "./units"
+import { addStatus, alive, sideOf } from "./units"
 
 /** Ends the active side's phase; the enemy phase ends the round. */
 export function endPhase(game: Game): void {
@@ -32,6 +32,7 @@ export function startPhase(game: Game, side: Side): void {
     u.ap = 2
     u.moved = false
     u.stance = "none"
+    if (u.kind === "warden") addStatus(u, { id: "plated", rounds: 1 })
     advance(u)
   }
   observe(game)

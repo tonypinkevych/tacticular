@@ -51,6 +51,9 @@ export function makeUnit(
 
 export const alive = (u: Unit): boolean => u.hp > 0
 
+/** A squad member that is a soldier, not a gadget. */
+export const soldier = (u: Unit): boolean => u.side === "squad" && u.kind !== "drone"
+
 export const has = (u: Unit, id: StatusId): boolean => u.statuses.some((s) => s.id === id)
 
 /** The side a unit fights for now: a Dominated soldier fights for the enemy. */

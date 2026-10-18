@@ -3,8 +3,8 @@ import { WEAPONS } from "./data"
 import { chance, d20, EDGE, failChance, rollDice } from "./dice"
 import { scorch } from "./fire"
 import { adjacent, climb, distance, same, tileAt, unitAt, up, walkable } from "./grid"
-import type { Game, Unit, Weapon, WeaponId } from "./types"
-import { addStatus, alive, foes, groupAim, has, sideOf, wallOf } from "./units"
+import type { Game, Point, Unit, Weapon, WeaponId } from "./types"
+import { addStatus, alive, foes, groupAim, has, removeStatus, sideOf, soldier, wallOf } from "./units"
 
 /** Advantages that let the Scout's Sneak Attack add 2 damage. */
 const SNEAK: Reason[] = ["flanked", "unaware", "exposed", "staggered", "pincer"]
@@ -32,6 +32,8 @@ export type Reason =
   | "frightened"
   | "shaken"
   | "range"
+  | "point"
+  | "steady"
 
 export interface Odds {
   weapon: Weapon
@@ -95,11 +97,13 @@ export function odds(
   if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
   if (surprised(game, attacker)) dis.push("surprised")
   if (inSmoke(game, target)) dis.push("smoke")
-  if (target.stance === "hunker") dis.push("hunkered")
+  if (target.stance === "hunker" || has(target, "braced")) dis.push("hunkered")
   for (const s of ["suppressed", "frightened", "shaken"] as const) if (has(attacker, s)) dis.push(s)
   const range = distance(attacker.pos, target.pos)
   if (!weapon.melee && range > weapon.max) dis.push("range")
   if (!weapon.melee && range < weapon.min) dis.push("close")
+  if (attacker.kind === "vanguard" && !weapon.melee && range <= 2) adv.push("point")
+  if (has(attacker, "steady")) adv.push("steady")
   const edge = Math.max(-2, Math.min(2, adv.length - dis.length))
   const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
   if (groupAim(game, attacker)) aimParts.push({ key: "warchief", value: groupAim(game, attacker) })
@@ -147,6 +151,7 @@ export function attack(
 ): void {
   const o = odds(game, attacker, target, weaponId, shot)
   const w = o.weapon
+  removeStatus(attacker, "steady")
   if (w.ammo !== null && weaponId === attacker.weapon) attacker.ammo -= 1
   if (weaponId === "axes") attacker.axes -= 1
   if (w.saveHalf) {
@@ -201,18 +206,18 @@ export function attack(
     if (p) breakCover(game, p)
   }
   const killed = hurt(game, target, dmg)
-  if (w.push && !killed) push(game, attacker, target)
+  if (w.push && !killed) push(game, attacker.pos, target, attacker.id)
 }
 
 /**
  * Pushes a target 1 tile away and staggers it. A push into anything solid or a unit does 2 damage instead of a
  * move; a push off a roof does 2 damage; a push into fire burns.
  */
-export function push(game: Game, from: Unit, target: Unit): void {
-  addStatus(target, { id: "staggered", rounds: 1, source: from.id })
+export function push(game: Game, from: Point, target: Unit, source?: string): void {
+  addStatus(target, { id: "staggered", rounds: 1, source })
   const to = {
-    x: target.pos.x + Math.sign(target.pos.x - from.pos.x),
-    y: target.pos.y + Math.sign(target.pos.y - from.pos.y),
+    x: target.pos.x + Math.sign(target.pos.x - from.x),
+    y: target.pos.y + Math.sign(target.pos.y - from.y),
   }
   const here = tileAt(game, target.pos)
   const there = tileAt(game, to)
@@ -230,15 +235,23 @@ export function push(game: Game, from: Unit, target: Unit): void {
   scorch(game, target)
 }
 
-/** Applies damage and the effects of a fall; returns true when the target falls. A soldier goes down for 2 rounds. */
+/**
+ * Applies damage and the effects of a fall; returns true when the target falls. Heavy plating takes 1 off the first
+ * hit each round. A soldier goes down for 2 rounds, 3 while a Medic stands.
+ */
 export function hurt(game: Game, target: Unit, dmg: number): boolean {
+  if (has(target, "plated") && dmg > 0) {
+    removeStatus(target, "plated")
+    dmg -= 1
+  }
   target.hp = Math.max(0, target.hp - dmg)
   if (target.hp > 0) return false
   target.stance = "none"
   target.intent = null
   target.statuses = []
-  if (target.side === "squad") target.down = 2
-  game.log.push({ key: target.side === "squad" ? "log.down" : "log.dies", params: { unit: target.id } })
+  const medic = game.units.some((u) => alive(u) && u.kind === "cleric" && u.side === "squad")
+  if (soldier(target)) target.down = medic ? 3 : 2
+  game.log.push({ key: soldier(target) ? "log.down" : "log.dies", params: { unit: target.id } })
   if (target.kind === "warchief" && target.group) {
     for (const u of game.units) {
       if (alive(u) && u.group === target.group) addStatus(u, { id: "shaken", rounds: 1 })

@@ -36,10 +36,10 @@ describe("cooperation statuses", () => {
   test("Mark exposes a target: no cover and advantage, for 1 AP", () => {
     const rows = open(8, 12)
     rows[7] = "...:...."
-    const r = squad("r", "ranger", { x: 3, y: 0 })
+    const r = squad("r", "rogue", { x: 4, y: 2 })
     const w = squad("w", "warden", { x: 3, y: 2 })
     const e = enemy("e", "orc", { x: 3, y: 8 })
-    const g = apply(setup(rows, [r, w, e]), { type: "ability", unit: "r", ability: "spot", target: "e" })
+    const g = apply(setup(rows, [r, w, e]), { type: "ability", unit: "r", ability: "tag", target: "e" })
     expect(find(g, "r").ap).toBe(1)
     const o = odds(g, find(g, "w"), find(g, "e"))
     expect(o.cover).toBe(0)

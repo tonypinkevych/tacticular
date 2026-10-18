@@ -106,11 +106,6 @@ describe("abilities and items", () => {
     expect(tileAt(a, { x: 2, y: 1 })).toBe("floor")
     expect(tileAt(a, { x: 3, y: 1 })).toBe("low")
   })
-  test("bulwark makes high cover tiles for 2 rounds", () => {
-    const g = setup(open(6, 6), [squad("w", "warden", { x: 2, y: 3 }), enemy("e", "orc", { x: 5, y: 0 })])
-    const a = apply(g, { type: "ability", unit: "w", ability: "bulwark", at: { x: 2, y: 2 } })
-    expect([1, 2, 3].map((x) => tileAt(a, { x, y: 2 }))).toEqual(["high", "high", "high"])
-  })
   test("a failed Dominate save turns a soldier to the enemy side", () => {
     let g = setup(
       open(8, 3),

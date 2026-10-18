@@ -1,4 +1,3 @@
-import { describe, expect, test } from "vitest"
 import { decide } from "../src/ai/ai"
 import { apply } from "../src/rules/actions"
 import { DETECTION, HORN, PROFILES, WEAPONS } from "../src/rules/data"
