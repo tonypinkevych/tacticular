@@ -1,3 +1,4 @@
+import { distance } from "../../src/map/point"
 import type { Game } from "../../src/mission/game"
 import { enemy, find, open, reseed, setup, squad } from "../fixture"
 
@@ -73,13 +74,22 @@ describe("heard steps", () => {
     find(g, "e").ap = 2
     return g.apply({ type: "move", unit: "e", to })
   }
-  const walled = ["....................", "####################", "...................."]
+  const walled = [".".repeat(30), "#".repeat(30), ".".repeat(30)]
 
-  test("an alien no soldier sees leaves a noise where it stops near a soldier", () => {
-    expect(walk(walled, { x: 2, y: 2 }, { x: 3, y: 2 }).noises).toEqual([{ at: { x: 3, y: 2 }, radius: 0, round: 1 }])
+  test("an alien no soldier sees leaves a noise up to 2 tiles from where it stops within 12 of a soldier", () => {
+    const noises = walk(walled, { x: 9, y: 2 }, { x: 10, y: 2 }).noises
+    expect(noises).toHaveLength(1)
+    expect(noises[0]).toMatchObject({ radius: 0, round: 1 })
+    expect(distance(noises[0].at, { x: 10, y: 2 })).toBeLessThanOrEqual(2)
   })
   test("an unseen alien that stops far from every soldier leaves no noise", () => {
-    expect(walk(walled, { x: 12, y: 2 }, { x: 13, y: 2 }).noises).toEqual([])
+    expect(walk(walled, { x: 20, y: 2 }, { x: 21, y: 2 }).noises).toEqual([])
+  })
+  test("an alien near a noise heard this round leaves no second one", () => {
+    const g = walk(walled, { x: 9, y: 2 }, { x: 10, y: 2 })
+    g.units.push(enemy("f", "orc", { x: 11, y: 2 }, "unaware"))
+    find(g, "f").ap = 2
+    expect(g.apply({ type: "move", unit: "f", to: { x: 12, y: 2 } }).noises).toHaveLength(1)
   })
   test("an alien a soldier sees leaves no noise", () => {
     expect(walk(open(20, 3), { x: 2, y: 2 }, { x: 3, y: 2 }).noises).toEqual([])

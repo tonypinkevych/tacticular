@@ -26,7 +26,7 @@ export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 1 }
 export const SEARCH = 3
 
 /** How far a soldier hears an alien it does not see walk. */
-export const STEPS = 5
+export const STEPS = 12
 
 /** How far an alarm calls other alien groups. */
 export const HORN = 6
@@ -126,12 +126,22 @@ export class Stealth {
     }
   }
 
-  /** Records a silent noise where an alien no soldier sees stops within hearing of a soldier. */
+  /**
+   * Records a silent noise up to 2 tiles from where an alien no soldier sees stops within hearing of a soldier,
+   * unless a noise heard this round is already near it.
+   */
   hear(u: Unit): void {
     const game = this.game
     if (u.allegiance() !== "enemy" || this.visible(u)) return
-    if (this.eyes().some((s) => distance(s.pos, u.pos) <= STEPS))
-      game.noises.push({ at: { ...u.pos }, radius: 0, round: game.round })
+    if (!this.eyes().some((s) => distance(s.pos, u.pos) <= STEPS)) return
+    if (game.noises.some((n) => n.radius === 0 && n.round === game.round && distance(n.at, u.pos) <= 4)) return
+    const around: Point[] = []
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const p = { x: u.pos.x + dx, y: u.pos.y + dy }
+        if (game.board.inside(p) && distance(p, u.pos) <= 2) around.push(p)
+      }
+    game.noises.push({ at: game.dice.pick(around), radius: 0, round: game.round })
   }
 
   /** True when any foe sees the unit. */
