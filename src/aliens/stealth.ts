@@ -18,6 +18,8 @@ export interface Noise {
   at: Point
   radius: number
   round: number
+  /** The squad made it; a loud round raises the alarm. */
+  loud?: boolean
 }
 
 export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 3 }
@@ -125,8 +127,9 @@ export class Stealth {
    */
   noise(at: Point, radius: number, source: Unit | null): void {
     if (radius <= 0) return
-    this.game.noises.push({ at: { ...at }, radius, round: this.game.round })
-    if (source && source.side === "squad") source.concealed = false
+    const loud = source?.side === "squad"
+    this.game.noises.push({ at: { ...at }, radius, round: this.game.round, ...(loud ? { loud } : {}) })
+    if (source && loud) source.concealed = false
     for (const e of this.hostiles()) {
       if (distance(e.pos, at) > radius) continue
       if (e.alert !== "engaged") this.investigate(e.group, at)

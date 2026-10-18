@@ -238,16 +238,19 @@ describe("alarm", () => {
       g.turn.end()
     }
   }
-  test("rises by 1 at each round end", () => {
+  test("rises by 1 at the end of each even round, and by 1 more in a round with a loud squad noise", () => {
     const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
-    ends(g, 3)
+    ends(g, 4)
+    expect(g.alarm).toBe(2)
+    g.stealth.noise({ x: 0, y: 5 }, 8, find(g, "s"))
+    ends(g, 1)
     expect(g.alarm).toBe(3)
   })
   test("at 4, 7 and 10, 2 aliens land on the pad, shown the round before", () => {
     const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
     g.pad = { x: 18, y: 2 }
     const enemies = () => g.units.filter((u) => u.side === "enemy").length
-    ends(g, 2)
+    g.alarm = 3
     expect(g.reinforcements.coming()).toBeNull()
     ends(g, 1)
     expect(g.reinforcements.coming()).toEqual({ x: 18, y: 2 })
@@ -255,11 +258,19 @@ describe("alarm", () => {
     ends(g, 1)
     expect(enemies()).toBe(3)
     expect(g.log.some((x) => x.key === "log.drop")).toBe(true)
-    ends(g, 8)
-    expect(enemies()).toBe(7)
     expect(g.units.filter((u) => u.group?.startsWith("d")).every((u) => distance(u.pos, { x: 18, y: 2 }) <= 2)).toBe(
       true,
     )
+  })
+  test("a loud round that jumps over a step still brings the help", () => {
+    const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
+    g.pad = { x: 18, y: 2 }
+    g.alarm = 6
+    g.round = 2
+    g.stealth.noise({ x: 0, y: 5 }, 8, find(g, "s"))
+    ends(g, 1)
+    expect(g.alarm).toBe(8)
+    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(3)
   })
   test("with no pad, at 4 the nearest calm group hunts the squad", () => {
     const g = setup(open(24, 10), [
@@ -267,7 +278,9 @@ describe("alarm", () => {
       enemy("e", "orc", { x: 10, y: 5 }, "unaware", "g1"),
       enemy("f", "orc", { x: 22, y: 5 }, "unaware", "g2"),
     ])
-    ends(g, 4)
+    g.alarm = 3
+    g.round = 2
+    ends(g, 1)
     expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(2)
     expect(find(g, "e").alert).toBe("investigating")
     expect(g.groups.find((x) => x.id === "g1")?.target).toEqual({ x: 0, y: 5 })
