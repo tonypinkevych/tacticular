@@ -192,7 +192,7 @@ describe("objectives", () => {
         expect(g.goal.rounds).toBe(6)
       }
     }
-    expect([...kinds].sort()).toEqual(["defend", "evac", "kill"])
+    expect([...kinds].sort()).toEqual(["defend", "evac", "warchief"])
   })
   test("Evac is won when every standing soldier is in the zone", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })

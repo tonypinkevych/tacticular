@@ -4,7 +4,7 @@ import type { Board } from "../map/board"
 import { area, distance, key, type Point } from "../map/point"
 import { flood, map, SIZE, type Site } from "../map/terrain"
 import { CLASSES, type EnemyKind } from "../units/profiles"
-import { Unit } from "../units/unit"
+import { type Recruit, Unit } from "../units/unit"
 import { Game, type Goal } from "./game"
 
 const NAMES = [
@@ -34,18 +34,24 @@ const NAMES = [
   "Ruiz",
 ]
 
-function squad(r: Dice, board: Board, taken: Set<number>): Unit[] {
+/** The run's soldiers, or 3 random ones, at the west edge. */
+function squad(r: Dice, board: Board, taken: Set<number>, recruits?: Recruit[]): Unit[] {
   const classes = r.shuffle(CLASSES).slice(0, 3)
   const names = r.shuffle(NAMES)
   const mid = Math.floor(board.height / 2)
   const spots = [-2, 0, 2].map((dy) => free(board, { x: 1, y: mid + dy }, taken))
-  return classes.map((kind, i) =>
-    Unit.of(`s${i + 1}`, kind, "squad", spots[i], names[i], null, {
-      hp: r.between(-1, 1),
-      aim: r.between(-1, 1),
-      will: r.between(-1, 1),
-    }),
-  )
+  const random = classes.map((kind, i) => ({
+    id: `s${i + 1}`,
+    kind,
+    name: names[i],
+    spread: { hp: r.between(-1, 1), aim: r.between(-1, 1), will: r.between(-1, 1) },
+    hp: Infinity,
+  }))
+  return (recruits ?? random).map((s, i) => {
+    const u = Unit.of(s.id, s.kind, "squad", spots[i], s.name, null, s.spread)
+    u.hp = Math.min(u.maxHp, s.hp)
+    return u
+  })
 }
 
 export function free(board: Board, near: Point, taken: Set<number>): Point {
@@ -82,8 +88,9 @@ function enemies(
   reachable: Point[],
   landing: Point,
   lead: Point | null,
+  count: number,
+  size: number,
 ): { units: Unit[]; groups: Group[] } {
-  const count = 4
   const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.65))
   const anchors: Point[] = lead ? [lead] : []
   for (let tries = 0; anchors.length < count && tries < 400; tries++) {
@@ -95,7 +102,7 @@ function enemies(
   anchors.forEach((anchor, g) => {
     const id = `g${g + 1}`
     groups.push({ id, revealed: false, target: null, landing: { ...landing } })
-    const kinds = composition(r, lead && g === 0 ? 3 : r.between(1, 2))
+    const kinds = composition(r, lead && g === 0 ? 3 : r.between(1, size))
     const route = [anchor, r.pick(field), r.pick(field)]
     for (const kind of kinds) {
       const u = Unit.of(`e${units.length + 1}`, kind, "enemy", free(board, anchor, taken), kind, id)
@@ -112,7 +119,7 @@ function raid(units: Unit[], groups: Group[], beacon: Point): void {
   for (const u of units) u.alert = "engaged"
 }
 
-/** Kill all, Evac (a zone at the far edge) or Defend (the beacon on the hill the map was built with). */
+/** Kill the Warchief, Evac (a zone at the far edge) or Defend (the beacon on the hill the map was built with). */
 function goal(r: Dice, board: Board, reachable: Point[], kind: Goal["kind"], site: Site | null): Goal {
   const floor = (p: Point) => board.tiles[p.y * board.width + p.x] === "floor"
   const open = reachable.filter(floor)
@@ -124,31 +131,54 @@ function goal(r: Dice, board: Board, reachable: Point[], kind: Goal["kind"], sit
     return { kind, tiles }
   }
   if (kind === "defend" && site) return { kind, at: site.at, rounds: 6 }
-  return { kind: "kill" }
+  return kind === "warchief" ? { kind } : { kind: "kill" }
 }
 
-/** A new random mission from a seed: map, squad of 3 at one edge and 4 enemy groups toward the opposite edge. */
-export function mission(seed: number): Game {
+/** What a run asks of a mission; whatever it leaves out is rolled from the seed. */
+export interface Conditions {
+  goal?: "warchief" | "evac" | "defend"
+  squad?: Recruit[]
+  groups?: number
+  /** The most aliens in a group; the Warchief's group has 3. */
+  size?: number
+  pad?: boolean
+  explored?: boolean
+}
+
+/** A new mission from a seed: map, squad at one edge and alien groups toward the opposite edge. */
+export function mission(seed: number, conditions: Conditions = {}): Game {
   const state = { rng: seed }
   const r = new Dice(state)
-  const kind = r.pick(["kill", "evac", "defend"] as const)
+  const rolled = r.pick(["warchief", "evac", "defend"] as const)
+  const kind = conditions.goal ?? rolled
   const site = place(r, kind)
   const rows = Array.from({ length: SIZE.height - 8 }, (_, i) => i + 4).filter(
     (y) => !site || Math.abs(y - site.at.y) >= 8,
   )
+  const landing = r.random() < 0.35
   const pad: Site | null =
-    r.random() < 0.35 ? { kind: "pad", at: { x: Math.floor(SIZE.width * 0.86), y: r.pick(rows) } } : null
+    (conditions.pad ?? landing) ? { kind: "pad", at: { x: Math.floor(SIZE.width * 0.86), y: r.pick(rows) } } : null
   let board = map(
     r,
     undefined,
     [site, pad].filter((s): s is Site => !!s),
   )
   const taken = new Set<number>()
-  const team = squad(r, board, taken)
+  const team = squad(r, board, taken, conditions.squad)
   const reachable = [...flood(board, team[0].pos)]
     .map((k) => ({ x: k % 1000, y: Math.floor(k / 1000) }))
     .filter((p) => board.tiles[p.y * board.width + p.x] !== "door")
-  const { units, groups } = enemies(r, board, taken, reachable, team[0].pos, site?.kind === "yard" ? site.at : null)
+  const lead = site?.kind === "yard" ? site.at : null
+  const { units, groups } = enemies(
+    r,
+    board,
+    taken,
+    reachable,
+    team[0].pos,
+    lead,
+    conditions.groups ?? 4,
+    conditions.size ?? 2,
+  )
   let aim = goal(r, board, reachable, kind, site)
   for (let turns = r.between(0, 3); turns > 0; turns--) {
     const from = board
@@ -168,13 +198,14 @@ export function mission(seed: number): Game {
   game.goal = aim
   game.pad = pad?.at ?? null
   game.rng = state.rng
+  if (conditions.explored) game.explored.fill(true)
   return game
 }
 
-/** Where the map builds the mission's site: a yard far on the aliens' side for Kill all, a hill near the squad for Defend. */
+/** Where the map builds the mission's site: a yard far on the aliens' side for the Warchief, a hill near the squad for Defend. */
 function place(r: Dice, kind: Goal["kind"]): Site | null {
   const y = r.between(6, SIZE.height - 7)
-  if (kind === "kill")
+  if (kind === "warchief")
     return { kind: "yard", at: { x: r.between(Math.floor(SIZE.width * 0.75), Math.floor(SIZE.width * 0.8)), y } }
   if (kind === "defend") return { kind: "hill", at: { x: Math.floor(SIZE.width * 0.28), y } }
   return null

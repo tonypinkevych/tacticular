@@ -176,6 +176,24 @@ describe("mission end", () => {
     }
     throw new Error("no hit")
   })
+  test("in a Warchief mission, killing the Warchief wins while other aliens stand", () => {
+    const g = setup(open(8, 3), [
+      squad("v", "vanguard", { x: 0, y: 0 }),
+      enemy("w", "warchief", { x: 1, y: 0 }),
+      enemy("e", "orc", { x: 7, y: 2 }),
+    ])
+    g.goal = { kind: "warchief" }
+    find(g, "w").hp = 1
+    for (let seed = 1; seed < 20; seed++) {
+      const a = reseed(g, seed).apply({ type: "attack", unit: "v", target: "w" })
+      if (find(a, "w").hp === 0) {
+        expect(a.phase).toBe("won")
+        expect(a.log.some((x) => x.key === "log.retreat")).toBe(true)
+        return
+      }
+    }
+    throw new Error("no hit")
+  })
 })
 
 describe("a controlled alien", () => {

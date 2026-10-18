@@ -92,8 +92,8 @@ describe("maps for each mission", () => {
       }
       return false
     })
-  test("in Kill all, a Warchief starts inside a walled yard", () => {
-    const kills = games.filter((g) => g.goal.kind === "kill")
+  test("in a Warchief mission, a Warchief starts inside a walled yard", () => {
+    const kills = games.filter((g) => g.goal.kind === "warchief")
     expect(kills.length).toBeGreaterThan(10)
     for (const g of kills) {
       const chief = g.units.find((u) => u.kind === "warchief")
@@ -135,5 +135,26 @@ describe("biomes", () => {
     expect(avg("forest", "tree")).toBeGreaterThan(avg("town", "tree"))
     expect(avg("town", "wall")).toBeGreaterThan(avg("forest", "wall"))
     expect(avg("village", "wall")).toBeGreaterThan(avg("forest", "wall"))
+  })
+})
+
+describe("conditions", () => {
+  const recruit = { id: "s1", kind: "mage" as const, name: "Voss", spread: { hp: 1, aim: 0, will: 0 }, hp: 3 }
+  test("set the goal, the squad, the alien groups and their size, and the pad", () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const g = mission(seed, { goal: "defend", squad: [recruit], groups: 2, size: 1, pad: true })
+      expect(g.goal.kind).toBe("defend")
+      expect(g.groups).toHaveLength(2)
+      for (const group of g.groups) expect(g.units.filter((u) => u.group === group.id)).toHaveLength(1)
+      expect(g.pad).not.toBeNull()
+      const squad = g.units.filter((u) => u.side === "squad")
+      expect(squad.map((u) => [u.id, u.kind, u.name, u.hp, u.maxHp])).toEqual([["s1", "mage", "Voss", 3, 7]])
+    }
+  })
+  test("an explored map shows every tile", () => {
+    expect(mission(1, { explored: true }).explored.every(Boolean)).toBe(true)
+  })
+  test("no conditions give the same mission as before", () => {
+    expect(mission(5, {}).units.map((u) => u.pos)).toEqual(mission(5).units.map((u) => u.pos))
   })
 })

@@ -4,6 +4,7 @@ const en = {
   "ui.title": "Tacticular",
   "ui.round": "Round {round}",
   "ui.goal.kill": "Kill all aliens",
+  "ui.goal.warchief": "Kill the Warchief",
   "ui.goal.evac": "Evac: all soldiers to the green zone",
   "ui.goal.defend": "Hold the beacon: {left} rounds",
   "ui.drop": "Drop in {left}",
@@ -247,6 +248,7 @@ const en = {
   "log.horn": "Alarm! All aliens alerted",
   "log.drop": "Alien drop: {count} more landed",
   "log.beacon": "Aliens took the beacon",
+  "log.retreat": "The Warchief is dead; the aliens retreat",
 
   "illegal.over": "The mission is over.",
   "illegal.dead": "This unit is dead.",
@@ -274,6 +276,7 @@ const ru: Record<Key, string> = {
   "ui.title": "Tacticular",
   "ui.round": "Раунд {round}",
   "ui.goal.kill": "Уничтожить всех пришельцев",
+  "ui.goal.warchief": "Убить вождя",
   "ui.goal.evac": "Эвакуация: все бойцы в зелёную зону",
   "ui.goal.defend": "Удержать маяк: {left} р.",
   "ui.drop": "Высадка через {left}",
@@ -517,6 +520,7 @@ const ru: Record<Key, string> = {
   "log.horn": "Тревога! Все пришельцы подняты",
   "log.drop": "Высадка: ещё {count} пришельца",
   "log.beacon": "Пришельцы захватили маяк",
+  "log.retreat": "Вождь убит, пришельцы отступают",
 
   "illegal.over": "Миссия окончена.",
   "illegal.dead": "Этот боец мёртв.",

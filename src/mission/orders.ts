@@ -137,12 +137,14 @@ export class Orders {
     return u.kind === "ranger" && units.some((a) => a.alive() && a !== u && !a.foe(u) && sight.sees(a, t.pos))
   }
 
-  /** Checks the end of the mission after each action. */
+  /** Checks the end of the mission after each action: the Warchief's death wins a Warchief mission. */
   settle(): void {
     const game = this.game
     const standing = game.units.filter((u) => u.alive() && u.soldier())
     const goal = game.goal
-    if (!game.units.some((u) => u.alive() && u.side === "enemy")) game.phase = "won"
+    const chief = goal.kind === "warchief" && !game.units.some((u) => u.alive() && u.kind === "warchief")
+    if (chief) game.log.push({ key: "log.retreat", params: {} })
+    if (chief || !game.units.some((u) => u.alive() && u.side === "enemy")) game.phase = "won"
     else if (standing.length === 0) game.phase = "lost"
     else if (goal.kind === "evac" && standing.every((u) => goal.tiles.some((p) => same(p, u.pos)))) game.phase = "won"
   }

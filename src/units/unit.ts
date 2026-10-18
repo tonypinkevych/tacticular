@@ -2,7 +2,7 @@ import type { AbilityId } from "../combat/abilities"
 import { WEAPONS, type Weapon, type WeaponId } from "../combat/weapons"
 import type { Point } from "../map/point"
 import { climb, passable, type Tile } from "../map/tile"
-import { type Kind, PROFILES } from "./profiles"
+import { type ClassId, type Kind, PROFILES } from "./profiles"
 
 export type Side = "squad" | "enemy"
 
@@ -32,6 +32,15 @@ export interface Spread {
   hp: number
   aim: number
   will: number
+}
+
+/** A soldier of a run's roster, as a mission takes it in. */
+export interface Recruit {
+  id: string
+  kind: ClassId
+  name: string
+  spread: Spread
+  hp: number
 }
 
 /** The saved fields of a unit. */
