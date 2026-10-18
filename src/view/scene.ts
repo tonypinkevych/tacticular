@@ -489,16 +489,6 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
     ctx.lineWidth = 1
   }
-  for (const g of game.ghosts) {
-    const u = game.units.find((x) => x.id === g.unit)
-    if (!u || enemies.includes(u)) continue
-    figure(ctx, sc, { ...u, pos: g.at, concealed: false }, 0.35)
-    ctx.fillStyle = "#fff"
-    ctx.font = `${Math.floor(s * 0.3)}px system-ui`
-    ctx.textAlign = "left"
-    ctx.textBaseline = "top"
-    ctx.fillText(`R${g.round}`, g.at.x * s + 2, g.at.y * s + 1)
-  }
   for (const n of game.noises) {
     if (n.round < game.round - 1 || seen.has(key(n.at))) continue
     ctx.fillStyle = "rgba(255,220,80,0.9)"

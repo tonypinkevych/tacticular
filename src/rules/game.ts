@@ -19,7 +19,6 @@ export function newGame({ seed, board, units, groups = [] }: Setup): Game {
     zones: [],
     groups,
     explored: new Array(board.width * board.height).fill(false),
-    ghosts: [],
     noises: [],
     reactions: [],
     log: [],

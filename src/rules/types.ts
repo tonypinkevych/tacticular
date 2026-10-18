@@ -87,8 +87,7 @@ export type AbilityId =
   | "shove"
   | "spot"
   | "rally"
-
-export type ItemId = "flask" | "smoke" | "stone"
+  | "blast"
 
 export type StatusId =
   | "suppressed"
@@ -134,7 +133,6 @@ export interface Unit {
   stance: Stance
   statuses: Status[]
   cooldowns: Partial<Record<AbilityId, number>>
-  items: Record<ItemId, number>
   axes: number
   concealed: boolean
   alert: Alert
@@ -159,12 +157,6 @@ export interface Group {
 export interface Noise {
   at: Point
   radius: number
-  round: number
-}
-
-export interface Ghost {
-  unit: string
-  at: Point
   round: number
 }
 
@@ -194,7 +186,6 @@ export interface Game {
   zones: Zone[]
   groups: Group[]
   explored: boolean[]
-  ghosts: Ghost[]
   noises: Noise[]
   reactions: string[]
   log: Entry[]
@@ -207,7 +198,6 @@ export type Action =
   | { type: "move"; unit: string; to: Point }
   | { type: "attack"; unit: string; target: string; weapon?: WeaponId }
   | { type: "ability"; unit: string; ability: AbilityId; target?: string; at?: Point }
-  | { type: "item"; unit: string; item: ItemId; at: Point }
   | { type: "reload"; unit: string }
   | { type: "door"; unit: string; at: Point }
   | { type: "overwatch"; unit: string }

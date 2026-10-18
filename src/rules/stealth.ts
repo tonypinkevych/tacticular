@@ -67,17 +67,11 @@ export function scan(game: Game): void {
   }
 }
 
-/** Updates the player's fog: explored tiles and last known enemy positions. */
+/** Updates the player's fog: the tiles the squad has explored. */
 export function observe(game: Game): void {
   const w = game.board.width
   for (const s of eyes(game)) {
     for (const k of visibleTiles(game, s)) game.explored[Math.floor(k / 1000) * w + (k % 1000)] = true
-  }
-  game.ghosts = game.ghosts.filter((g) => game.units.some((u) => u.id === g.unit && alive(u)))
-  for (const e of hostiles(game)) {
-    if (!visibleToSquad(game, e)) continue
-    game.ghosts = game.ghosts.filter((g) => g.unit !== e.id)
-    game.ghosts.push({ unit: e.id, at: { ...e.pos }, round: game.round })
   }
 }
 
@@ -125,12 +119,11 @@ export function horn(game: Game): void {
     const callers = members(game, g.id).filter((u) => u.alert === "engaged")
     if (callers.length === 0 || !g.target || g.alarmed) continue
     g.alarmed = true
-    const range = callers.some((u) => u.kind === "warchief") ? HORN.warchief : HORN.range
     game.log.push({ key: "log.horn", params: { group: g.id } })
-    game.noises.push({ at: { ...callers[0].pos }, radius: range, round: game.round })
+    game.noises.push({ at: { ...callers[0].pos }, radius: HORN, round: game.round })
     for (const other of game.groups) {
       if (other === g) continue
-      const near = members(game, other.id).some((u) => callers.some((c) => distance(c.pos, u.pos) <= range))
+      const near = members(game, other.id).some((u) => callers.some((c) => distance(c.pos, u.pos) <= HORN))
       if (near) investigate(game, other.id, g.target)
     }
   }

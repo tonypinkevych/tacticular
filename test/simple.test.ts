@@ -47,9 +47,9 @@ describe("damage", () => {
 })
 
 describe("shotgun and close range", () => {
-  test("the Assault carries a shotgun with range 1–4", () => {
+  test("the Assault carries a shotgun with range 1–3", () => {
     expect(PROFILES.vanguard.weapon).toBe("shotgun")
-    expect(WEAPONS.shotgun).toMatchObject({ min: 1, max: 4, melee: false })
+    expect(WEAPONS.shotgun).toMatchObject({ min: 1, max: 3, melee: false })
   })
   test("only the sniper is too close at 1 tile", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
@@ -71,11 +71,11 @@ describe("alarm", () => {
     horn(g)
     expect(g.log.filter((x) => x.key === "log.horn")).toHaveLength(1)
   })
-  test("it calls groups within 10 tiles only", () => {
+  test("it calls groups within 6 tiles only", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 1, y: 0 })
-    const near = enemy("n", "orc", { x: 11, y: 0 }, "unaware", "g2")
-    const far = enemy("f", "orc", { x: 13, y: 1 }, "unaware", "g3")
+    const near = enemy("n", "orc", { x: 7, y: 0 }, "unaware", "g2")
+    const far = enemy("f", "orc", { x: 9, y: 1 }, "unaware", "g3")
     const g = setup(open(16, 2), [s, e, near, far])
     g.groups[0].target = { x: 0, y: 0 }
     horn(g)
@@ -92,6 +92,6 @@ describe("AI friendly fire", () => {
     const g = setup(open(8, 3), [s, b, o])
     b.intent = { type: "bomb", at: { x: 0, y: 0 } }
     const a = decide(g, b)
-    expect(a?.type === "item" && a.item === "flask").toBe(false)
+    expect(a?.type === "ability" && a.ability === "blast").toBe(false)
   })
 })

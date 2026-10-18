@@ -11,29 +11,29 @@ const kill = (g: Game, unit: string, target: string): Game => {
 }
 
 describe("detection", () => {
-  test("a concealed soldier is detected within 4 tiles of an unaware enemy", () => {
-    const g = setup(open(20, 3), [squad("g", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 10, y: 1 }, "unaware")])
-    const far = apply(g, { type: "move", unit: "g", to: { x: 5, y: 1 } })
+  test("a concealed soldier is detected within 2 tiles of an unaware enemy", () => {
+    const g = setup(open(20, 3), [squad("g", "warden", { x: 4, y: 1 }), enemy("e", "orc", { x: 10, y: 1 }, "unaware")])
+    const far = apply(g, { type: "move", unit: "g", to: { x: 7, y: 1 } })
     expect(find(far, "g").concealed).toBe(true)
-    const near = apply(far, { type: "move", unit: "g", to: { x: 6, y: 1 } })
+    const near = apply(far, { type: "move", unit: "g", to: { x: 8, y: 1 } })
     expect(find(near, "g").concealed).toBe(false)
     expect(find(near, "e").alert).toBe("engaged")
   })
-  test("an investigating enemy detects within 6 tiles", () => {
+  test("an investigating enemy detects within 4 tiles", () => {
     const g = setup(open(20, 3), [
       squad("g", "warden", { x: 0, y: 1 }),
       enemy("e", "orc", { x: 10, y: 1 }, "investigating"),
     ])
-    expect(find(apply(g, { type: "move", unit: "g", to: { x: 3, y: 1 } }), "g").concealed).toBe(true)
-    expect(find(apply(g, { type: "move", unit: "g", to: { x: 4, y: 1 } }), "g").concealed).toBe(false)
+    expect(find(apply(g, { type: "move", unit: "g", to: { x: 5, y: 1 } }), "g").concealed).toBe(true)
+    expect(find(apply(g, { type: "move", unit: "g", to: { x: 6, y: 1 } }), "g").concealed).toBe(false)
   })
   test("a first reveal in the player phase queues the group's reveal reaction", () => {
     const g = setup(open(20, 3), [
-      squad("g", "warden", { x: 0, y: 1 }),
+      squad("g", "warden", { x: 4, y: 1 }),
       enemy("a", "orc", { x: 10, y: 1 }, "unaware"),
       enemy("b", "orc", { x: 11, y: 1 }, "unaware"),
     ])
-    const a = apply(g, { type: "move", unit: "g", to: { x: 6, y: 1 } })
+    const a = apply(g, { type: "move", unit: "g", to: { x: 8, y: 1 } })
     expect(a.reactions.sort()).toEqual(["a", "b"])
   })
 })
@@ -64,21 +64,14 @@ describe("noise and silent kills", () => {
     expect(find(a, "c").alert).toBe("unaware")
     expect(["investigating", "engaged"]).toContain(find(a, "b").alert)
   })
-  test("a stone pulls a group without breaking concealment", () => {
-    const g = setup(open(20, 3), [squad("g", "rogue", { x: 0, y: 1 }), enemy("e", "orc", { x: 10, y: 1 }, "unaware")])
-    const a = apply(g, { type: "item", unit: "g", item: "stone", at: { x: 6, y: 1 } })
-    expect(find(a, "e").alert).toBe("investigating")
-    expect(a.groups[0].target).toEqual({ x: 6, y: 1 })
-    expect(find(a, "g").concealed).toBe(true)
-  })
 })
 
 describe("horn", () => {
   const base = () =>
     setup(open(24, 3), [
       squad("r", "ranger", { x: 0, y: 1 }),
-      enemy("a", "orc", { x: 8, y: 1 }, "engaged", "g1"),
-      enemy("b", "orc", { x: 16, y: 1 }, "unaware", "g2"),
+      enemy("a", "orc", { x: 6, y: 1 }, "engaged", "g1"),
+      enemy("b", "orc", { x: 11, y: 1 }, "unaware", "g2"),
     ])
   test("an Engaged group alive at round end calls groups in range", () => {
     let g = base()
@@ -98,10 +91,9 @@ describe("horn", () => {
 })
 
 describe("fog", () => {
-  test("the squad explores what it sees and keeps ghosts of enemies it saw", () => {
-    const g = setup(open(30, 3), [squad("v", "vanguard", { x: 0, y: 1 }), enemy("e", "orc", { x: 7, y: 1 }, "unaware")])
-    expect(g.explored[1 * 30 + 8]).toBe(true)
+  test("the squad explores what it sees", () => {
+    const g = setup(open(30, 3), [squad("v", "vanguard", { x: 0, y: 1 })])
+    expect(g.explored[1 * 30 + 6]).toBe(true)
     expect(g.explored[1 * 30 + 20]).toBe(false)
-    expect(g.ghosts).toEqual([{ unit: "e", at: { x: 7, y: 1 }, round: 1 }])
   })
 })

@@ -35,8 +35,8 @@ describe("enemy AI", () => {
     const g = setup(open(20, 5), [
       squad("g", "warden", { x: 0, y: 2 }),
       squad("h", "warden", { x: 0, y: 4 }),
-      enemy("a", "orc", { x: 10, y: 2 }, "unaware"),
-      enemy("b", "orc", { x: 11, y: 3 }, "unaware"),
+      enemy("a", "orc", { x: 8, y: 2 }, "unaware"),
+      enemy("b", "orc", { x: 9, y: 3 }, "unaware"),
     ])
     const a = play(g, { type: "move", unit: "g", to: { x: 6, y: 2 } })
     expect(a.reactions).toEqual([])

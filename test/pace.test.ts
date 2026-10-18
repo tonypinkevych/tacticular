@@ -1,9 +1,8 @@
 import { decide } from "../src/ai/ai"
 import { odds } from "../src/rules/combat"
 import { coverAgainst } from "../src/rules/cover"
-import { HORN, WEAPONS } from "../src/rules/data"
+import { WEAPONS } from "../src/rules/data"
 import { chance } from "../src/rules/dice"
-import { mission } from "../src/rules/mission"
 import { slots, spent } from "../src/view/model"
 import { enemy, open, setup, squad } from "./fixture"
 
@@ -58,7 +57,7 @@ describe("team AI", () => {
     a.concealed = false
     b.concealed = false
     b.hp = b.maxHp - 3
-    const e = enemy("e", "orc", { x: 6, y: 2 })
+    const e = enemy("e", "orc", { x: 5, y: 2 })
     const g = setup(open(8, 5), [a, b, e])
     e.ap = 1
     expect(decide(g, e)).toMatchObject({ type: "attack", target: "b" })
@@ -66,9 +65,10 @@ describe("team AI", () => {
   test("an alien moves to a tile that flanks a soldier in cover", () => {
     const rows = open(11, 11)
     rows[4] = ".....:....."
+    rows[5] = "..:........"
     const s = squad("s", "warden", { x: 5, y: 5 })
     s.concealed = false
-    const e = enemy("e", "orc", { x: 0, y: 0 })
+    const e = enemy("e", "orc", { x: 1, y: 1 })
     const g = setup(rows, [s, e])
     e.ap = 2
     const a = decide(g, e)
@@ -82,13 +82,5 @@ describe("team AI", () => {
     g.groups[0].target = { x: 28, y: 1 }
     e.ap = 2
     expect(decide(g, e)?.type).toBe("move")
-  })
-})
-
-describe("pacing", () => {
-  test("maps are 26 by 16 and a commander's alarm reaches 12 tiles", () => {
-    const b = mission(1).board
-    expect([b.width, b.height]).toEqual([26, 16])
-    expect(HORN.warchief).toBe(12)
   })
 })

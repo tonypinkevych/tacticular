@@ -28,16 +28,14 @@ export function simulate(game: Game, rounds = 30): Game {
   return g
 }
 
-/** Squad policy with no enemy in sight: walk to the nearest ghost, else to the nearest unexplored tile. */
+/** Squad policy with no enemy in sight: walk to the nearest unexplored tile. */
 function explore(game: Game, u: Unit): Action | null {
   if (u.moved && u.ap < 2) return null
-  const ghosts = game.ghosts.map((g) => g.at)
   const w = game.board.width
   const open = reach(game, u, 400).cost
   const fog = game.explored.flatMap((seen, i) =>
     seen || !open.has(key({ x: i % w, y: Math.floor(i / w) })) ? [] : [{ x: i % w, y: Math.floor(i / w) }],
   )
-  const goals = ghosts.length > 0 ? ghosts : fog
-  const goal = goals.sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
+  const goal = fog.sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
   return goal ? toward(game, u, goal) : null
 }

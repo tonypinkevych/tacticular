@@ -40,7 +40,6 @@ export function makeUnit(
     stance: "none",
     statuses: [],
     cooldowns: {},
-    items: { ...p.items },
     axes: p.axes,
     concealed: side === "squad" || kind === "assassin",
     alert: "unaware",

@@ -1,12 +1,12 @@
 import { attack, canReach, hurt, push } from "./combat"
 import { breakCover, inCover } from "./cover"
-import { ABILITIES, NOISE, PROFILES, RANGE, WEAPONS } from "./data"
+import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, WEAPONS } from "./data"
 import { d20, EDGE, failChance, rollDice } from "./dice"
 import { AROUND, adjacent, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid"
 import { endPhase } from "./round"
 import { lineOfSight, sees } from "./sight"
 import { attacked, noise, observe, scan, seen, stepped } from "./stealth"
-import type { AbilityId, Action, Game, ItemId, Point, Unit, WeaponId } from "./types"
+import type { AbilityId, Action, Game, Point, Unit, WeaponId } from "./types"
 import { addStatus, alive, foes, has, removeStatus, sideOf, unit } from "./units"
 
 export class Illegal extends Error {}
@@ -36,9 +36,6 @@ export function apply(game: Game, action: Action): Game {
       break
     case "ability":
       ability(next, u, action.ability, action.target, action.at)
-      break
-    case "item":
-      item(next, u, action.item, action.at)
       break
     case "reload":
       reload(u)
@@ -284,10 +281,17 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
         check(!!t && canTarget(game, u, t), "target")
         u.intent = { type: "charge", target: t!.id }
       } else {
-        check(!!at && distance(u.pos, at) <= RANGE.flask, "place")
+        check(!!at && distance(u.pos, at) <= RANGE.blast, "place")
         u.intent = { type: "bomb", at: { ...at! } }
       }
       game.log.push({ key: "log.mark", params: { unit: u.id } })
+      break
+    }
+    case "blast": {
+      check(!!at && inside(game.board, at) && distance(u.pos, at) <= RANGE.blast, "range")
+      check(lineOfSight(game, u.pos, at!, false), "place")
+      u.intent = null
+      blast(game, u, at!)
       break
     }
   }
@@ -296,44 +300,18 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
   else u.ap -= 1
 }
 
-function item(game: Game, u: Unit, id: ItemId, at: Point): void {
-  check(u.items[id] > 0, "item")
-  check(inside(game.board, at) && lineOfSight(game, u.pos, at, false), "place")
-  const range = id === "stone" ? RANGE.stone : RANGE.flask
-  check(distance(u.pos, at) <= range, "range")
-  u.items[id] -= 1
-  if (id === "stone") {
-    game.log.push({ key: "log.stone", params: { unit: u.id } })
-    noise(game, at, NOISE.stone, null)
-    u.ap -= 1
-    return
-  }
-  const tiles = area(at, 1).filter((p) => inside(game.board, p))
-  if (id === "smoke") {
-    game.zones.push({ kind: "smoke", tiles, rounds: 2 })
-    game.log.push({ key: "log.smoke", params: { unit: u.id } })
-    u.ap -= 1
-    return
-  }
-  u.intent = null
-  throwFlask(game, u, at)
-  u.ap = 0
-}
-
-/** A fire flask: sure damage to everyone in 3×3, and it burns away cover. */
-export function throwFlask(game: Game, u: Unit, at: Point): void {
-  const bomber = u.kind === "bomber"
+/** A Grenadier blast: sure damage to everyone in 3×3, it sets them burning and burns away cover. */
+export function blast(game: Game, u: Unit, at: Point): void {
   game.log.push({ key: "log.flask", params: { unit: u.id } })
   for (const p of area(at, 1)) {
     if (!inside(game.board, p)) continue
     breakCover(game, p)
     const hit = unitAt(game, p)
     if (!hit) continue
-    game.log.push({ key: "log.burn", params: { target: hit.id, dmg: bomber ? 3 : 4 } })
-    const dead = hurt(game, hit, bomber ? 3 : 4)
-    if (bomber && !dead) addStatus(hit, { id: "burning", rounds: 2 })
+    game.log.push({ key: "log.burn", params: { target: hit.id, dmg: 3 } })
+    if (!hurt(game, hit, 3)) addStatus(hit, { id: "burning", rounds: 2 })
   }
-  noise(game, at, NOISE.flask, u)
+  noise(game, at, BLAST_NOISE, u)
 }
 
 function reload(u: Unit): void {

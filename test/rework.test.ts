@@ -93,12 +93,12 @@ describe("stealthy Rogue", () => {
     const a = apply(g, { type: "move", unit: "g", to: { x: 5, y: 1 } })
     expect(find(a, "g").concealed).toBe(true)
   })
-  test("investigating enemies detect a concealed Rogue within 2 tiles", () => {
+  test("investigating enemies detect a concealed Rogue within 1 tile", () => {
     const g = setup(open(12, 3), [
       squad("g", "rogue", { x: 0, y: 1 }),
       enemy("e", "orc", { x: 6, y: 1 }, "investigating"),
     ])
-    expect(find(apply(g, { type: "move", unit: "g", to: { x: 3, y: 1 } }), "g").concealed).toBe(true)
-    expect(find(apply(g, { type: "move", unit: "g", to: { x: 4, y: 1 } }), "g").concealed).toBe(false)
+    expect(find(apply(g, { type: "move", unit: "g", to: { x: 4, y: 1 } }), "g").concealed).toBe(true)
+    expect(find(apply(g, { type: "move", unit: "g", to: { x: 5, y: 1 } }), "g").concealed).toBe(false)
   })
 })

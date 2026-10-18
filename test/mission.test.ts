@@ -28,10 +28,10 @@ describe("mission", () => {
       })
     }
   })
-  test("the squad has 4 distinct classes within the random spread", () => {
+  test("the squad has 3 distinct classes within the random spread", () => {
     for (const seed of seeds) {
       const squad = mission(seed).units.filter((u) => u.side === "squad")
-      expect(new Set(squad.map((u) => u.kind)).size).toBe(4)
+      expect(new Set(squad.map((u) => u.kind)).size).toBe(3)
       for (const u of squad) {
         expect(Math.abs(u.maxHp - PROFILES[u.kind].hp)).toBeLessThanOrEqual(2)
         expect(Math.abs(u.aim - PROFILES[u.kind].aim)).toBeLessThanOrEqual(1)
@@ -39,15 +39,11 @@ describe("mission", () => {
       }
     }
   })
-  test("3-4 groups of 2-4; a Warchief in groups of 3+; at most one special", () => {
+  test("a Warchief in groups of 3; at most one special", () => {
     for (const seed of seeds) {
       const g = mission(seed)
-      expect(g.groups.length).toBeGreaterThanOrEqual(3)
-      expect(g.groups.length).toBeLessThanOrEqual(4)
       for (const group of g.groups) {
         const kinds = g.units.filter((u) => u.group === group.id).map((u) => u.kind)
-        expect(kinds.length).toBeGreaterThanOrEqual(2)
-        expect(kinds.length).toBeLessThanOrEqual(4)
         if (kinds.length >= 3) expect(kinds).toContain("warchief")
         expect(kinds.filter((k) => ["ogre", "assassin", "whisperer"].includes(k)).length).toBeLessThanOrEqual(1)
       }

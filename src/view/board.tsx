@@ -1,6 +1,6 @@
 import { createEffect, on, onCleanup, onMount } from "solid-js"
 import { canTarget } from "../rules/actions"
-import { area, inside, key, reach } from "../rules/grid"
+import { inside, key, reach } from "../rules/grid"
 import { visibleToSquad } from "../rules/stealth"
 import type { Point } from "../rules/types"
 import { sideOf } from "../rules/units"
@@ -139,9 +139,7 @@ export function Board(props: { model: Model }) {
         if (armed.slot === "ability:charge" && armed.at) {
           ghost = { unit: u, at: armed.at }
           path = reach(g, u, u.mobility).path(armed.at)
-        } else if (armed.at && armed.slot.startsWith("item:"))
-          spot = armed.slot === "item:stone" ? [armed.at] : area(armed.at, 1)
-        else if (armed.at && slot?.aim === "tile") spot = [armed.at]
+        } else if (armed.at && slot?.aim === "tile") spot = [armed.at]
       } else if (hover) {
         const r = reach(g, u, u.mobility * u.ap)
         for (const [k, c] of r.cost) {

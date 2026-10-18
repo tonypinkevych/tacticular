@@ -7,7 +7,7 @@ import { failChance } from "../rules/dice"
 import { AROUND, adjacent, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
 import { visibleTiles } from "../rules/sight"
 import { visibleToSquad } from "../rules/stealth"
-import type { AbilityId, Action, Game, ItemId, Point, Unit, WeaponId } from "../rules/types"
+import type { AbilityId, Action, Game, Point, Unit, WeaponId } from "../rules/types"
 import { alive, has, sideOf } from "../rules/units"
 import type { Session } from "../save/session"
 import { Playback, SPEEDS, type Speed } from "./motion"
@@ -80,18 +80,6 @@ export function slots(game: Game, u: Unit): Slot[] {
       aim: UNIT_ABILITIES.includes(a) ? "unit" : TILE_ABILITIES.includes(a) ? "tile" : "none",
     })
   }
-  for (const it of ["flask", "smoke", "stone"] as ItemId[]) {
-    const n = u.items[it]
-    if (n <= 0) continue
-    out.push({
-      id: `item:${it}`,
-      label: t(`item.${it}`),
-      info: t(`info.${it}`),
-      badge: Number.isFinite(n) ? `×${n}` : "",
-      disabled: none,
-      aim: "tile",
-    })
-  }
   for (const id of ["overwatch", "hunker", "reload"] as const) {
     if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
     out.push({ id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" })
@@ -119,7 +107,6 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
     const w = WEAPONS[id as WeaponId]
     return w.melee ? around() : within(w.min, w.max)
   }
-  if (kind === "item") return within(0, id === "stone" ? RANGE.stone : RANGE.flask)
   if (kind === "overwatch") return seen
   if (kind !== "ability") return new Set()
   switch (id as AbilityId) {
@@ -182,7 +169,6 @@ export function action(u: Unit, armed: Armed): Action | null {
   const [kind, id] = armed.slot.split(":")
   if (kind === "weapon")
     return armed.target ? { type: "attack", unit: u.id, target: armed.target, weapon: id as WeaponId } : null
-  if (kind === "item") return armed.at ? { type: "item", unit: u.id, item: id as ItemId, at: armed.at } : null
   if (kind === "ability") {
     const a = id as AbilityId
     if (a === "charge" && armed.target)
@@ -204,7 +190,7 @@ export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): 
     const at = hover && spots.some((p) => same(p, hover)) ? hover : (armed.at ?? spots[0] ?? null)
     return { ...armed, at }
   }
-  const tile = armed.slot.startsWith("item:") || TILE_ABILITIES.includes(armed.slot.slice(8) as AbilityId)
+  const tile = TILE_ABILITIES.includes(armed.slot.slice(8) as AbilityId)
   if (!tile) return armed
   return { ...armed, at: hover && range(game, u, armed.slot).has(key(hover)) ? hover : armed.at }
 }

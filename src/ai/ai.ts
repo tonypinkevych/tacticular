@@ -58,16 +58,19 @@ function bestAttack(game: Game, u: Unit, targets: Unit[]): Choice | null {
   return best
 }
 
-/** How good a tile is to stand on: cover against known foes, attacks it opens, danger it holds. */
+/** How good a tile is to stand on: cover against known foes, flanks it gives, attacks it opens, danger it holds. */
 function tileValue(game: Game, u: Unit, p: Point, foesKnown: Unit[]): number {
   const from = u.pos
   u.pos = p
   let value = jitter(game, u, p)
+  const w = WEAPONS[u.weapon]
+  const flanks = !w.melee && !w.ignoresCover
   for (const f of foesKnown) {
     const exposed = sees(game, f, p)
     if (!exposed) continue
     const cover = coverAgainst(game, p, f.pos)
     value += cover === 0 ? -4 : cover / 2
+    if (flanks && coverAgainst(game, f.pos, p) === 0) value += 2
     if (f.stance === "overwatch") value -= 3
   }
   const attack = bestAttack(game, u, foesKnown)
@@ -145,8 +148,8 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
       const x = unitAt(game, p)
       return x && alive(x) && !foes(u, x)
     })
-    if (!friendly && distance(u.pos, at) <= RANGE.flask && lineOfSight(game, u.pos, at, false)) {
-      return { action: { type: "item", unit: u.id, item: "flask", at }, value: 100 }
+    if (!friendly && distance(u.pos, at) <= RANGE.blast && lineOfSight(game, u.pos, at, false)) {
+      return { action: { type: "ability", unit: u.id, ability: "blast", at }, value: 100 }
     }
   }
   if (u.kind === "ogre" && !u.intent && ready(u, "mark") && (u.cooldowns.charge ?? 0) <= 1) {
@@ -161,7 +164,7 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
     let best: Choice | null = null
     for (const t of targets) {
       for (const c of area(t.pos, 1)) {
-        if (!inside(game.board, c) || distance(u.pos, c) > RANGE.flask || !lineOfSight(game, u.pos, c, false)) continue
+        if (!inside(game.board, c) || distance(u.pos, c) > RANGE.blast || !lineOfSight(game, u.pos, c, false)) continue
         const hit = area(c, 1)
           .map((p) => unitAt(game, p))
           .filter((x): x is Unit => !!x)

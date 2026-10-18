@@ -91,7 +91,7 @@ function target(before: Game, frame: Frame): Point | null {
     const t = before.units.find((x) => x.id === (a as { target: string }).target)
     return t ? t.pos : null
   }
-  if (a.type === "item" || (a.type === "ability" && a.at)) return (a as { at: Point }).at
+  if (a.type === "ability" && a.at) return a.at
   return null
 }
 
