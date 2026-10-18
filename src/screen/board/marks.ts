@@ -1,8 +1,10 @@
 import { Mind } from "../../aliens/mind"
 import { DETECTION } from "../../aliens/stealth"
 import { distance, key, ORTHOGONAL, type Point, plus, pointOf, same } from "../../map/point"
+import type { Game } from "../../mission/game"
 import type { Unit } from "../../units/unit"
 import { ALIEN, AMBER, BEACON, DASH, DOMINATED, EVAC, MOVE, type Rgb, rgb, SQUAD } from "./color"
+import { GOAL } from "./glyphs"
 import { height, tone } from "./picture"
 import type { Pixels } from "./pixels"
 import type { Scene } from "./scene"
@@ -67,6 +69,12 @@ export class Marks {
     if (aim) this.aim()
     this.moods()
     this.noises()
+    for (const p of goals(game)) {
+      const a = this.px.projection.anchor(p)
+      const bob = Math.round(Math.abs(Math.sin(this.t / 300)) * 2)
+      const up = game.unitAt(p)?.alive() ? 24 : 12
+      this.px.glyph(GOAL, a.x + 1, a.y - up - height(game.tile(p)) - bob, AMBER, 0.95)
+    }
     if (selected && !this.scene.mover) {
       this.bar(selected)
       const a = this.px.projection.anchor(selected.pos)
@@ -345,4 +353,20 @@ export class Marks {
     const ap = u.side === "squad" && u.allegiance() === "squad" ? u.ap : 0
     this.px.bar(a.x, a.y - 21 - height(game.tile(u.pos)), u.hp, u.maxHp, ap, tone(u), AMBER)
   }
+}
+
+/** The tiles of the mission's goals: the beacon, the terminal or relay, and the Warchief or captive once seen. */
+export function goals(game: Game): Point[] {
+  const g = game.goal
+  const at = (p: Point) => game.explored[p.y * game.board.width + p.x]
+  const out: Point[] = []
+  if (g.kind === "defend" || (g.kind === "intel" && !g.taken) || (g.kind === "relay" && g.planted === null))
+    out.push(g.at)
+  for (const u of game.units) {
+    if (!u.alive()) continue
+    const chief = g.kind === "warchief" && u.kind === "warchief" && game.stealth.visible(u)
+    const held = g.kind === "vip" && u.id === g.captive && u.has("captive") && at(u.pos)
+    if (chief || held) out.push(u.pos)
+  }
+  return out
 }

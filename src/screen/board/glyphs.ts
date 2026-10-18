@@ -47,6 +47,9 @@ export const TILES = {
   mine: g([".......", ".......", ".......", ".......", "..#.#..", "...#...", "..#.#..", ".......", "......."]),
 } as const
 
+/** The goal mark over a mission objective, 5×5. */
+export const GOAL: Glyph = g(["..#..", ".###.", "#####", ".###.", "..#.."])
+
 /** Three frames of a flame, 7×9. */
 export const FIRE: Glyph[] = [
   g([".......", "...#...", "..##...", "..###..", ".####..", ".##.##.", "#######", ".#####.", "......."]),
