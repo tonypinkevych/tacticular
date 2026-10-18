@@ -145,7 +145,8 @@ export class Marks {
       const a = this.px.projection.ground(at)
       this.px.dot(a.x - 1, a.y - 1, color, 0.9, 3, 3)
     }
-    if ("tiles" in g) this.px.outline(new Set(g.tiles.map(key)), EVAC, pulse, true)
+    if ("tiles" in g && (g.kind !== "warchief" || g.slain))
+      this.px.outline(new Set(g.tiles.map(key)), EVAC, pulse, true)
     if (g.kind === "defend") post(g.at, BEACON)
     if (g.kind === "intel" && !g.taken) post(g.at, AMBER)
     if (g.kind === "relay") post(g.at, g.planted === null ? AMBER : ALIEN)

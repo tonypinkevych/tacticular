@@ -30,7 +30,7 @@ export type Phase = "squad" | "enemy" | "won" | "lost"
 /** What wins the mission besides killing every alien. */
 export type Goal =
   | { kind: "kill" }
-  | { kind: "warchief" }
+  | { kind: "warchief"; tiles: Point[]; slain: boolean }
   | { kind: "evac"; tiles: Point[] }
   | { kind: "defend"; at: Point; rounds: number }
   | { kind: "intel"; at: Point; taken: boolean; tiles: Point[] }

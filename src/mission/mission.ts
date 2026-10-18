@@ -128,13 +128,13 @@ function raid(units: Unit[], groups: Group[], beacon: Point): void {
 function goal(r: Dice, board: Board, reachable: Point[], kind: Kind, site: Site | null, captive: Unit | null): Goal {
   if (kind === "defend" && site) return { kind, at: site.at, rounds: 6 }
   if (kind === "relay" && site) return { kind, at: site.at, planted: null }
-  if (kind === "warchief") return { kind }
   const floor = (p: Point) => board.tiles[p.y * board.width + p.x] === "floor"
   const open = reachable.filter(floor)
   const edge = open.filter((p) => p.x >= board.width - 2)
-  if (edge.length === 0) return { kind: "kill" }
+  if (edge.length === 0) return kind === "warchief" ? { kind, tiles: [], slain: false } : { kind: "kill" }
   const keys = new Set(open.map(key))
   const tiles = area(r.pick(edge), 1).filter((p) => keys.has(key(p)) && p.x >= board.width - 3)
+  if (kind === "warchief") return { kind, tiles, slain: false }
   if (kind === "intel" && site) return { kind, at: site.at, taken: false, tiles }
   if (kind === "vip" && captive) return { kind, captive: captive.id, tiles }
   return { kind: "evac", tiles }

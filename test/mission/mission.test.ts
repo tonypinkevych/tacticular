@@ -1,6 +1,6 @@
 import { Dice } from "../../src/combat/dice"
 import type { Biome } from "../../src/map/board"
-import { key } from "../../src/map/point"
+import { distance, key } from "../../src/map/point"
 import { map } from "../../src/map/terrain"
 import { walkable } from "../../src/map/tile"
 import { mission } from "../../src/mission/mission"
@@ -99,6 +99,14 @@ describe("maps for each mission", () => {
       const chief = g.units.find((u) => u.kind === "warchief")
       expect(chief, `seed ${g.seed}`).toBeDefined()
       expect(walled(g, chief!.pos), `seed ${g.seed}`).toBe(true)
+    }
+  })
+  test("a Warchief mission has an evac zone far from the squad", () => {
+    for (const g of games.filter((x) => x.goal.kind === "warchief")) {
+      const tiles = "tiles" in g.goal ? g.goal.tiles : []
+      expect(tiles.length, `seed ${g.seed}`).toBeGreaterThan(0)
+      const lead = g.units.find((u) => u.side === "squad")!.pos
+      for (const p of tiles) expect(distance(lead, p), `seed ${g.seed}`).toBeGreaterThan(g.board.width / 2)
     }
   })
   test("some maps have a landing pad for reinforcements, most do not", () => {

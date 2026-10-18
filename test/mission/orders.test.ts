@@ -176,23 +176,38 @@ describe("mission end", () => {
     }
     throw new Error("no hit")
   })
-  test("in a Warchief mission, killing the Warchief wins while other aliens stand", () => {
+  const chief = () => {
     const g = setup(open(8, 3), [
       squad("v", "vanguard", { x: 0, y: 0 }),
       enemy("w", "warchief", { x: 1, y: 0 }),
       enemy("e", "orc", { x: 7, y: 2 }),
     ])
-    g.goal = { kind: "warchief" }
+    g.goal = { kind: "warchief", tiles: [{ x: 3, y: 0 }], slain: false }
     find(g, "w").hp = 1
     for (let seed = 1; seed < 20; seed++) {
       const a = reseed(g, seed).apply({ type: "attack", unit: "v", target: "w" })
-      if (find(a, "w").hp === 0) {
-        expect(a.phase).toBe("won")
-        expect(a.log.some((x) => x.key === "log.retreat")).toBe(true)
-        return
-      }
+      if (find(a, "w").hp === 0) return a
     }
     throw new Error("no hit")
+  }
+  test("in a Warchief mission, killing the Warchief goes on while other aliens stand", () => {
+    const a = chief()
+    expect(a.phase).toBe("squad")
+    expect(a.goal).toMatchObject({ slain: true })
+    expect(a.log.filter((x) => x.key === "log.chief")).toHaveLength(1)
+  })
+  test("after the Warchief dies, the squad in the evac zone wins", () => {
+    const a = chief()
+    find(a, "v").ap = 2
+    expect(a.apply({ type: "move", unit: "v", to: { x: 3, y: 0 } }).phase).toBe("won")
+  })
+  test("before the Warchief dies, the evac zone does not win", () => {
+    const g = setup(open(8, 3), [
+      squad("v", "vanguard", { x: 0, y: 0 }),
+      enemy("w", "warchief", { x: 7, y: 2 }, "unaware"),
+    ])
+    g.goal = { kind: "warchief", tiles: [{ x: 2, y: 0 }], slain: false }
+    expect(g.apply({ type: "move", unit: "v", to: { x: 2, y: 0 } }).phase).toBe("squad")
   })
 })
 
