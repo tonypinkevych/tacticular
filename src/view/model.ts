@@ -176,6 +176,25 @@ export class Model {
     })
   }
 
+  /** Aims the weapon at a foe; a second call on the same foe fires. */
+  aimAt(id: string): void {
+    const kit = this.kit()
+    const weapon = kit?.slots().find((s) => s.group === "weapon")
+    if (!kit || !weapon || weapon.disabled) return
+    const current = this.armed()
+    if (current?.slot === weapon.id && current.target === id) {
+      const a = kit.action(current)
+      if (a) this.act(a)
+      return
+    }
+    const foe = this.game().units.find((u) => u.id === id)
+    batch(() => {
+      this.setArmed({ slot: weapon.id, target: id, at: null })
+      this.setMessage(t("ui.pressAgain", { key: weapon.key }))
+      if (foe) this.setLook(foe.pos)
+    })
+  }
+
   /** A click on the board: picks targets, selects soldiers, opens doors, or moves. */
   click(p: Point): void {
     const g = this.game()
@@ -274,7 +293,7 @@ export class Model {
     }
     const digit = e.code.startsWith("Digit") ? e.code.slice(5) : e.code.startsWith("Key") ? e.code.slice(3) : ""
     const kit = this.kit()
-    const slot = kit && digit ? kit.slots().find((s) => s.key === digit) : undefined
+    const slot = kit && digit ? kit.slotFor(digit) : undefined
     if (slot) {
       e.preventDefault()
       this.press(slot)

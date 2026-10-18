@@ -2,7 +2,7 @@ import { key, type Point, same } from "../rules/point"
 import type { Tile } from "../rules/tile"
 import type { Unit } from "../rules/unit"
 import { ALIEN, AMBER, BLACK, DOMINATED, EMBER, FLAME, mix, PSION, type Rgb, rgb, SMOKE, SQUAD, WHITE } from "./color"
-import { FIRE, type Glyph, TILES, textWidth, UNITS } from "./glyphs"
+import { FIRE, TILES, textWidth, UNITS } from "./glyphs"
 import { Light, TERRAIN } from "./light"
 import { Marks } from "./marks"
 import type { Pixels } from "./pixels"
@@ -114,10 +114,11 @@ export class Picture {
     const open = houses.open(p, this.standing)
     const alpha = this.faded.has(key(p)) ? 0.28 : open ? 0.4 : 1
     const r = hash(p.x, p.y, 1)
-    if (tile === "roof" || tile === "wall" || tile === "door" || tile === "open") {
-      const low: Glyph = tile === "roof" ? TILES.roof : tile === "wall" ? TILES.wall : TILES[tile]
-      this.px.glyph(low, a.x, a.y, c, alpha)
-      this.px.glyph(tile === "roof" ? TILES.roof : TILES.wall, a.x, a.y - LIFT, mix(c, WHITE, 0.1), alpha)
+    if (tile === "roof") {
+      this.px.glyph(TILES.roof, a.x, a.y, c, alpha)
+      this.px.glyph(TILES.roof, a.x, a.y - LIFT, mix(c, WHITE, 0.1), alpha)
+    } else if (tile === "wall" || tile === "door" || tile === "open") {
+      this.px.glyph(TILES[tile], a.x, a.y, c, alpha)
     } else if (tile === "tree") {
       const sway = Math.sin(this.t / 700 + r * 6) > 0.6 ? 1 : 0
       this.px.glyph(TILES.tree.slice(0, 3), a.x + sway, a.y - 6, c, alpha)
@@ -125,7 +126,7 @@ export class Picture {
     } else if (tile === "ladder" || tile === "rock" || tile === "low" || tile === "high")
       this.px.glyph(TILES[tile], a.x, a.y, c, alpha)
     if (houses.roofed(p, this.standing))
-      this.px.glyph(TILES.roof, a.x, a.y - LIFT, mix(this.light.shade(TERRAIN.roof, p), WHITE, 0.1))
+      this.px.glyph(TILES.roof, a.x, a.y, mix(this.light.shade(TERRAIN.roof, p), WHITE, 0.1))
     if (this.burning(p)) {
       const f = Math.floor(this.t / 110 + r * 3) % 3
       FIRE[f].forEach((row, j) => {
@@ -275,8 +276,9 @@ export class Picture {
       const a = this.px.projection.anchor(f.at)
       const y = a.y - 26 - height(game.tile(f.at)) - age * 10
       const color = rgb(f.color)
-      const w = textWidth(f.text)
-      if (w > 0) this.px.label(f.text, a.x - w / 2, y, color, 1 - age * age)
+      const text = f.text.toUpperCase()
+      const w = textWidth(text)
+      if (w > 0) this.px.label(text, a.x - w / 2, y, color, 1 - age * age)
       else this.text(f.text, a.x, y + 4, color, 1 - age * age)
     }
   }

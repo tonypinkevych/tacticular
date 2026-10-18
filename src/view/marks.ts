@@ -66,7 +66,12 @@ export class Marks {
     if (aim) this.aim()
     this.moods()
     this.noises()
-    if (selected && !this.scene.mover) this.bar(selected)
+    if (selected && !this.scene.mover) {
+      this.bar(selected)
+      const a = this.px.projection.anchor(selected.pos)
+      const bounce = Math.round(Math.abs(Math.sin(this.t / 260)) * 2)
+      this.px.label("v", a.x - 2, a.y - 34 - height(game.tile(selected.pos)) - bounce, AMBER, 0.95)
+    }
     const hovered = hover && game.unitAt(hover)
     if (hovered && hovered !== selected && hovered.id !== aim?.target.id && this.shown(hovered)) this.bar(hovered)
   }
@@ -141,16 +146,27 @@ export class Marks {
 
   /** The path to the cursor and the cursor's tile, while a move is planned; the area of an armed action. */
   private plan(): void {
-    const { path, hover, near, area } = this.scene
-    if (this.planning()) {
-      for (const p of path.slice(0, -1)) {
-        const g = this.px.projection.ground(p)
-        const c = this.danger.has(key(p)) ? ALIEN : SQUAD
-        this.px.dot(g.x - 2, g.y, c, 0.95, 4)
-        this.px.dot(g.x - 1, g.y + 1, c, 0.5, 2)
+    const { path, hover, near, area, selected, game } = this.scene
+    if (this.planning() && selected && hover) {
+      const points = [selected.pos, ...path].map((p) => this.px.projection.ground(p))
+      let walked = 0
+      for (let i = 1; i < points.length; i++) {
+        const [from, to] = [points[i - 1], points[i]]
+        const length = Math.hypot(to.x - from.x, to.y - from.y)
+        const c = this.danger.has(key(path[i - 1])) ? ALIEN : near.has(key(path[i - 1])) ? SQUAD : AMBER
+        for (let d = (2 - (walked % 2)) % 2; d <= length; d += 2) {
+          if (walked + d < 7 || (i === points.length - 1 && length - d < 5)) continue
+          this.px.dot(from.x + ((to.x - from.x) * d) / length, from.y + ((to.y - from.y) * d) / length, c, 0.85)
+        }
+        walked += length
       }
-      if (hover)
-        this.px.outline(new Set([key(hover)]), near.has(key(hover)) ? SQUAD : AMBER, 0.6 + 0.3 * Math.sin(this.t / 250))
+      const color = near.has(key(hover)) ? SQUAD : AMBER
+      const pulse = 0.6 + 0.3 * Math.sin(this.t / 250)
+      this.px.outline(new Set([key(hover)]), color, pulse, true)
+      const g = this.px.projection.ground(hover)
+      const lift = height(game.tile(hover))
+      this.px.dot(g.x - 2, g.y - lift, color, pulse, 5)
+      this.px.dot(g.x, g.y - 2 - lift, color, pulse, 1, 5)
     }
     if (area.length > 0) {
       const keys = new Set<number>()
@@ -172,13 +188,15 @@ export class Marks {
   private rings(): void {
     const { game, selected, targets, aim, mover } = this.scene
     const pulse = 0.6 + 0.35 * Math.sin(this.t / 300)
+    const blink = 0.5 + 0.45 * Math.abs(Math.sin(this.t / 250))
     for (const u of game.units) {
       if (!u.alive() || !this.shown(u) || mover?.id === u.id) continue
       const lift = height(game.tile(u.pos))
-      let a = u.side === "squad" ? 0.45 : 0.8
-      if (u === selected || u.id === selected?.id) a = pulse
-      if (targets.has(u.id) || u.id === aim?.target.id) a = 0.5 + 0.45 * Math.abs(Math.sin(this.t / 250))
-      this.px.ring(u.pos, tone(u), a, u.side === "squad" && u.concealed, lift)
+      const chosen = u.id === selected?.id
+      const target = targets.has(u.id) || u.id === aim?.target.id
+      const a = chosen ? pulse : target ? blink : u.side === "squad" ? (u.concealed ? 0.4 : 0.6) : 0.8
+      this.px.ring(u.pos, tone(u), a, true, lift)
+      if (u.id === aim?.target.id) this.px.reticle(u.pos, tone(u), blink, lift)
     }
   }
 

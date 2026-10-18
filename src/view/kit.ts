@@ -8,9 +8,11 @@ import { walkable } from "../rules/tile"
 import type { AbilityId, Action, WeaponId } from "../rules/types"
 import type { Unit } from "../rules/unit"
 
-/** Keys of the bar: weapons on digits, skills on Q W E, the ultimate on R, stances on T Y U. */
-const SKILL_KEYS = "QWE"
-const STANCE_KEYS = { reload: "T", overwatch: "Y", hunker: "U" } as const
+/** Keys of the bar: the weapon on 1, skills on 2 3 4, the ultimate on 5, stances on 6 7 8 with letter aliases. */
+const SKILL_KEYS = "234"
+const ULT_KEY = "5"
+const ROUSE_KEY = "9"
+const STANCE_KEYS = { reload: ["6", "R"], overwatch: ["7", "Y"], hunker: ["8", "H"] } as const
 
 /** What an action needs before it can be confirmed. */
 export type Aim = "unit" | "tile" | "none"
@@ -20,6 +22,8 @@ export interface Slot {
   id: string
   group: "weapon" | "skill" | "ult" | "stance"
   key: string
+  /** A second key that presses the slot. */
+  alias?: string
   label: string
   info: string
   badge: string
@@ -75,6 +79,13 @@ export type Forecast =
   | { kind: "attack"; label: string; target: Unit; odds: Odds }
   | { kind: "save"; label: string; target: Unit; will: number; dc: number; edge: number; chance: number }
 
+/** An alien a soldier can target: its hit chance in percent and whether it stands flanked. */
+export interface Contact {
+  unit: Unit
+  chance: number
+  flanked: boolean
+}
+
 /** The actions a soldier has in a game: its bar, the reach of each action, its targets and their odds. */
 export class Kit {
   constructor(
@@ -120,15 +131,34 @@ export class Kit {
       skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : "", cd > 0)
     })
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
-      skill("rouse", "skill", String(weapons.length + 1), "", false)
-    if (p.ultimate) skill(p.ultimate, "ult", "R", u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
+      skill("rouse", "skill", ROUSE_KEY, "", false)
+    if (p.ultimate) skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
     if (u.kind === "drone") return out
     for (const id of ["reload", "overwatch", "hunker"] as const) {
       if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
       const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" as const }
-      out.push({ ...s, group: "stance", key: STANCE_KEYS[id] })
+      out.push({ ...s, group: "stance", key: STANCE_KEYS[id][0], alias: STANCE_KEYS[id][1] })
     }
     return out
+  }
+
+  /** The foes the soldier could target from a tile, its own by default, best chance first. */
+  sights(from: Point = this.unit.pos): Contact[] {
+    const { game } = this
+    const viewer = this.unit.at(from)
+    return game.units
+      .filter((e) => e.allegiance() !== viewer.allegiance() && (e.side === "squad" || game.stealth.visible(e)))
+      .filter((e) => game.orders.canTarget(viewer, e))
+      .map((e) => {
+        const o = game.combat.odds(viewer, e)
+        return { unit: e, chance: Math.round(o.chance * 100), flanked: o.advantages.includes("flanked") }
+      })
+      .sort((a, b) => b.chance - a.chance)
+  }
+
+  /** The slot a key presses, by its key or its alias. */
+  slotFor(key: string): Slot | undefined {
+    return this.slots().find((s) => s.key === key || s.alias === key)
   }
 
   /** Tiles an armed action can reach, for the range outline on the board. */

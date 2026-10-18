@@ -23,3 +23,23 @@ describe("hover sets the armed target", () => {
     expect(new Kit(g, c).retarget(heal, { x: 5, y: 1 }).target).toBeNull()
   })
 })
+
+describe("sights", () => {
+  const w = squad("w", "warden", { x: 0, y: 1 })
+  const e = enemy("e", "orc", { x: 5, y: 1 })
+  const g = setup(["........", "........", "...#....", "........"], [w, e])
+
+  test("the foes a soldier can target, with the hit chance and whether they are flanked", () => {
+    const [s] = new Kit(g, w).sights()
+    expect(s.unit.id).toBe("e")
+    expect(s.chance).toBeGreaterThan(0)
+    expect(s.flanked).toBe(true)
+  })
+  test("from another tile it lists the known foes the soldier would see there", () => {
+    const far = enemy("f", "orc", { x: 6, y: 3 })
+    const spotter = squad("s", "rogue", { x: 7, y: 0 })
+    const walled = setup(["....#...", "....#...", "....#...", "........"], [w, far, spotter])
+    expect(new Kit(walled, w).sights()).toEqual([])
+    expect(new Kit(walled, w).sights({ x: 3, y: 3 }).map((s) => s.unit.id)).toEqual(["f"])
+  })
+})

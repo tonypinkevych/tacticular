@@ -624,3 +624,36 @@ main.extended .more-mark {
   text-transform: uppercase;
   color: var(--bad);
 }
+
+#contacts {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 4px 8px 0;
+}
+.contact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 40px;
+  padding: 4px 0 2px;
+  background: var(--well);
+  border: 1px solid #5a2a26;
+  color: #e8b0a8;
+  font: inherit;
+  font-size: 11px;
+  cursor: crosshair;
+}
+.contact .who {
+  width: 14px;
+  height: 18px;
+  image-rendering: pixelated;
+}
+.contact.flanked {
+  border-color: #ffb347;
+  color: #ffb347;
+}
+.contact.aimed {
+  outline: 1px solid #efe4cc;
+}

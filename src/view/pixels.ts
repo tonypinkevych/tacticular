@@ -130,6 +130,16 @@ export class Pixels {
       this.line(from[0], from[1], to[0], to[1], color, a, dotted)
   }
 
+  /** Short ticks at the four corners of a tile, pointing in: a target. */
+  reticle(at: { x: number; y: number }, color: Rgb, a: number, lift = 0): void {
+    const g = this.projection.ground(at)
+    const y = g.y - lift
+    this.line(g.x - 15, y, g.x - 10, y, color, a)
+    this.line(g.x + 10, y, g.x + 15, y, color, a)
+    this.dot(g.x, y - 8, color, a, 1, 3)
+    this.dot(g.x, y + 6, color, a, 1, 3)
+  }
+
   /** A cover shield, 3×4, from its top middle: level 2 is full cover, 1 is half. */
   shield(x: number, y: number, level: 1 | 2, color: Rgb, a = 1): void {
     SHIELDS[level].forEach((row, j) => {

@@ -4,6 +4,7 @@ import type { Part } from "../rules/combat"
 import { WEAPONS } from "../rules/data"
 import { chance, EDGE } from "../rules/dice"
 import type { Game } from "../rules/game"
+import { key } from "../rules/point"
 import type { Unit } from "../rules/unit"
 import { Board } from "./board"
 import { css } from "./color"
@@ -403,6 +404,42 @@ function Bar(props: { model: Model }) {
   )
 }
 
+/**
+ * The aliens the selected soldier can target, as XCOM shows them: hit chance, amber when flanked. While the
+ * cursor plans a move it shows who the soldier would see from there. Pointing shows the alien; a click aims.
+ */
+function Contacts(props: { model: Model }) {
+  const m = props.model
+  const list = () => {
+    const u = m.unit()
+    if (!u || m.game().phase !== "squad") return []
+    const g = m.game()
+    const h = m.hover()
+    const planned = h && u.ap > 0 && !m.armed() && g.reach(u, u.mobility * u.ap).cost.has(key(h)) ? h : u.pos
+    return new Kit(g, u).sights(planned)
+  }
+  return (
+    <Show when={list().length > 0}>
+      <div id="contacts">
+        <For each={list()}>
+          {(c) => (
+            <button
+              type="button"
+              class="contact"
+              classList={{ flanked: c.flanked, aimed: m.armed()?.target === c.unit.id }}
+              title={c.unit.name}
+              onClick={() => m.aimAt(c.unit.id)}
+            >
+              <Icon glyph={UNITS[c.unit.kind]} color={css(tone(c.unit))} class="who" />
+              <span class="chance">{c.chance}%</span>
+            </button>
+          )}
+        </For>
+      </div>
+    </Show>
+  )
+}
+
 /** The hovered or armed action's name and effect, or a message; hidden when there is nothing to say. */
 function Tip(props: { model: Model }) {
   const m = props.model
@@ -465,6 +502,7 @@ export function App(props: { model: Model }): JSX.Element {
         </div>
         <div id="dock">
           <Tip model={m} />
+          <Contacts model={m} />
           <Bar model={m} />
         </div>
         <Show when={m.logOpen()}>

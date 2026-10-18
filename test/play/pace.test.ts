@@ -29,18 +29,29 @@ describe("weapons and keys", () => {
   test("the sniper rifle has a magazine of 3", () => {
     expect(WEAPONS.longbow.ammo).toBe(3)
   })
-  test("weapon 1, skills Q W E, ultimate R, Reload T, Overwatch Y, Hunker U", () => {
+  test("weapon 1, skills 2 3 4, ultimate 5, Reload 6, Overwatch 7, Hunker 8", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const g = setup(open(4, 4), [v])
     expect(new Kit(g, v).slots().map((x) => `${x.id}=${x.key}`)).toEqual([
       "weapon:shotgun=1",
-      "ability:shove=Q",
-      "ability:charge=W",
-      "ability:breach=E",
-      "ability:rampage=R",
-      "reload=T",
-      "overwatch=Y",
-      "hunker=U",
+      "ability:shove=2",
+      "ability:charge=3",
+      "ability:breach=4",
+      "ability:rampage=5",
+      "reload=6",
+      "overwatch=7",
+      "hunker=8",
+    ])
+  })
+  test("R, Y and H press Reload, Overwatch and Hunker", () => {
+    const v = squad("v", "vanguard", { x: 0, y: 0 })
+    const kit = new Kit(setup(open(4, 4), [v]), v)
+    expect(["R", "Y", "H", "7", "Q"].map((k) => kit.slotFor(k)?.id ?? null)).toEqual([
+      "reload",
+      "overwatch",
+      "hunker",
+      "overwatch",
+      null,
     ])
   })
   test("the squad is spent when no soldier has AP", () => {
