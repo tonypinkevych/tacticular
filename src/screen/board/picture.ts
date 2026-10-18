@@ -164,10 +164,15 @@ export class Picture {
     return this.scene.seen.has(key({ x: Math.round(p.x), y: Math.round(p.y) }))
   }
 
-  /** Where a unit stands this frame, walking or not. */
+  /** Where a unit stands this frame, walking, dragged by a Hook, or still. */
   private place(u: Unit): Point {
-    const m = this.scene.mover
-    return m?.id === u.id ? m.at : u.pos
+    const { mover: m, shot } = this.scene
+    if (m?.id === u.id) return m.at
+    if (shot?.style === "hook" && shot.land && same(shot.to, u.pos) && shot.progress > 0.5) {
+      const k = (shot.progress - 0.5) / 0.5
+      return { x: u.pos.x + (shot.land.x - u.pos.x) * k, y: u.pos.y + (shot.land.y - u.pos.y) * k }
+    }
+    return u.pos
   }
 
   private cell(u: Unit): Point {
@@ -194,12 +199,14 @@ export class Picture {
         ? -1
         : 0
     const float = u.kind === "whisperer" ? Math.round(Math.sin(this.t / 400) * 1.5) - 2 : 0
-    const firing = shot && shot.style !== "melee" && shot.progress < 0.3 && same(shot.from, u.pos)
+    const firing =
+      shot && (shot.style === "bolt" || shot.style === "arc") && shot.progress < 0.3 && same(shot.from, u.pos)
     const kick = firing ? -Math.sign(shot.to.x - shot.to.y - shot.from.x + shot.from.y || 1) : 0
     const shake = struck ? (Math.floor(now / 40) % 2 ? 1 : -1) : 0
     const push = this.push(u)
     const spent = u.side === "squad" && u.allegiance() === "squad" && game.phase === "squad" && u.ap === 0
-    const alpha = fade ? Math.max(0, 1 - (now - fade.born) / life) : spent ? 0.55 : u.concealed ? 0.75 : 1
+    const vanish = shot?.style === "ghost" && same(shot.from, u.pos) ? 1 - Math.sin(shot.progress * Math.PI) * 0.85 : 1
+    const alpha = vanish * (fade ? Math.max(0, 1 - (now - fade.born) / life) : spent ? 0.55 : u.concealed ? 0.75 : 1)
     const x = a.x + kick + shake + push.x
     const y = a.y - 2 - lift + bob + float + push.y
     for (const [dx, dy] of [
@@ -252,6 +259,20 @@ export class Picture {
       this.arc(A.x, A.y - 7 - la, B.x, B.y - 4 - lb, shot.progress)
       return
     }
+    if (shot.style === "hook") {
+      const p = shot.progress
+      const reach = p < 0.5 ? p * 2 : 1 - ((p - 0.5) / 0.5) * (1 - this.drag(shot.from, shot.to, shot.land))
+      this.hook(A.x, A.y - 7 - la, B.x, B.y - 6 - lb, reach)
+      return
+    }
+    if (shot.style === "mark") {
+      this.mark(B.x, B.y - 6 - lb, shot.progress)
+      return
+    }
+    if (shot.style === "ghost") {
+      this.puff(A.x, A.y - 4 - la, shot.progress)
+      return
+    }
     const f = Math.min(1, shot.progress * 1.6)
     for (let k = 0; k < 4; k++) {
       const ff = Math.max(0, f - k * 0.05)
@@ -267,6 +288,52 @@ export class Picture {
         const y = B.y - 6 - lb + Math.sin(angle) * v * s * 0.6 + s * s * 8
         this.px.dot(x, y, k < 5 ? FLAME : mix(EMBER, BLACK, 0.4), 1 - s)
       }
+    }
+  }
+
+  /** The share of the chain left out once the Hook's target lands: its landing distance over the throw. */
+  private drag(from: Point, to: Point, land: Point | undefined): number {
+    const out = Math.hypot(to.x - from.x, to.y - from.y) || 1
+    return land ? Math.hypot(land.x - from.x, land.y - from.y) / out : 0
+  }
+
+  /** The Hook's chain, out to a share of the way to the target, with the hook at its head. */
+  private hook(x0: number, y0: number, x1: number, y1: number, reach: number): void {
+    const hx = x0 + (x1 - x0) * reach
+    const hy = y0 + (y1 - y0) * reach
+    const links = Math.max(1, Math.floor(Math.hypot(hx - x0, hy - y0) / 3))
+    for (let k = 0; k <= links; k++) this.px.dot(x0 + ((hx - x0) * k) / links, y0 + ((hy - y0) * k) / links, SMOKE, 0.9)
+    this.px.dot(hx - 1, hy - 1, WHITE, 1, 3, 3)
+  }
+
+  /** Mark: red corner brackets that close on the target, then blink. */
+  private mark(x: number, y: number, progress: number): void {
+    const r = Math.round(12 - 7 * Math.min(1, progress / 0.6))
+    const a = progress < 0.6 || Math.floor(progress * 12) % 2 === 0 ? 0.95 : 0.3
+    for (const [sx, sy] of [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ]) {
+      this.px.dot(x + sx * r - (sx > 0 ? 2 : 0), y + sy * r, ALIEN, a, 3, 1)
+      this.px.dot(x + sx * r, y + sy * r - (sy > 0 ? 2 : 0), ALIEN, a, 1, 3)
+    }
+  }
+
+  /** Ghost: a ring of grey smoke that spreads and fades around the Scout. */
+  private puff(x: number, y: number, progress: number): void {
+    for (let k = 0; k < 14; k++) {
+      const angle = hash(k, 3, 7) * 6.28
+      const v = 4 + progress * 12 * (0.6 + hash(k, 5, 7) * 0.4)
+      this.px.dot(
+        x + Math.cos(angle) * v,
+        y + Math.sin(angle) * v * 0.5 - progress * 4,
+        SMOKE,
+        0.8 * (1 - progress),
+        2,
+        2,
+      )
     }
   }
 

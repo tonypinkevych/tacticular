@@ -22,8 +22,11 @@ export interface Float {
   unit?: Unit
 }
 
-/** How an attack travels: a bolt for guns and spells, a strike for melee, an arc for thrown and fired charges. */
-export type Style = "bolt" | "melee" | "arc"
+/**
+ * How an attack travels: a bolt for guns and spells, a strike for melee, an arc for thrown and fired charges; the
+ * Scout's chain, sight and fade for Hook, Mark and Ghost.
+ */
+export type Style = "bolt" | "melee" | "arc" | "hook" | "mark" | "ghost"
 
 const ARCS = ["rocket", "smoke", "mine", "blast"]
 
@@ -31,7 +34,8 @@ const ARCS = ["rocket", "smoke", "mine", "blast"]
 export interface Still {
   game: Game
   mover: { id: string; at: Point } | null
-  shot: { from: Point; to: Point; progress: number; style: Style } | null
+  /** A shot in flight; a Hook also gives where it drags its target. */
+  shot: { from: Point; to: Point; progress: number; style: Style; land?: Point } | null
   /** Where a visible enemy acts, for the camera to follow. */
   focus: Point | null
 }
@@ -60,6 +64,7 @@ interface Stop {
 const TILE_MS = 110
 const SHOT_MS = 420
 const ARC_MS = 700
+const SKILL_MS = 650
 const STEP_MS = 260
 const FLOAT_MS = 1100
 const ACTIVITY_MS = 1500
@@ -123,11 +128,15 @@ function along(points: Point[], share: number): Point {
 function style(before: Game, frame: Frame): Style {
   const a = frame.action
   if (a.type === "attack") return WEAPONS[before.unit(a.unit).weapon].melee ? "melee" : "bolt"
+  if (a.type === "ability" && a.ability === "hook") return "hook"
+  if (a.type === "ability" && a.ability === "tag") return "mark"
+  if (a.type === "ability" && a.ability === "ghost") return "ghost"
   return a.type === "ability" && ARCS.includes(a.ability) ? "arc" : "bolt"
 }
 
 function flight(before: Game, frame: Frame): number {
-  return style(before, frame) === "arc" ? ARC_MS : SHOT_MS
+  const s = style(before, frame)
+  return s === "arc" ? ARC_MS : s === "hook" || s === "mark" || s === "ghost" ? SKILL_MS : SHOT_MS
 }
 
 function target(before: Game, frame: Frame): Point | null {
@@ -137,6 +146,7 @@ function target(before: Game, frame: Frame): Point | null {
     return t ? t.pos : null
   }
   if (a.type === "ability" && a.at) return a.at
+  if (a.type === "ability" && a.ability === "ghost") return before.unit(a.unit).pos
   return null
 }
 
@@ -319,6 +329,8 @@ export class Playback {
       const from = mover?.at ?? c.before.units.find((x) => x.id === id)!.pos
       const progress = Math.min(1, (t - walkEnd) / (flight(c.before, c.frame) / total))
       shot = { from, to, progress, style: style(c.before, c.frame) }
+      const a = c.frame.action
+      if (shot.style === "hook" && a.type === "ability" && a.target) shot.land = c.frame.game.unit(a.target).pos
     }
     const u = id ? c.before.units.find((x) => x.id === id) : undefined
     const focus = u && c.visible && u.allegiance() === "enemy" ? (mover?.at ?? u.pos) : null

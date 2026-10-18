@@ -1,6 +1,6 @@
 import type { Frame } from "../../../src/mission/match"
 import { floats, Playback } from "../../../src/screen/playback/motion"
-import { enemy, open, setup, squad } from "../../fixture"
+import { enemy, find, open, setup, squad } from "../../fixture"
 
 describe("enemy turn playback", () => {
   const w = squad("w", "warden", { x: 0, y: 1 })
@@ -121,5 +121,24 @@ describe("shot styles", () => {
     expect(style(g, { action: { type: "attack", unit: "v", target: "e" }, game: g.clone() })).toBe("bolt")
     const at = { x: 5, y: 1 }
     expect(style(g, { action: { type: "ability", unit: "h", ability: "rocket", at }, game: g.clone() })).toBe("arc")
+  })
+  test("the Scout's Hook throws a chain and drags the alien to where it lands, Mark closes a sight, Ghost fades", () => {
+    const g = setup(open(8, 2), [squad("s", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 4, y: 0 })])
+    find(g, "s").ult = 4
+    const play = (action: Frame["action"]) => {
+      const p = new Playback(1, g)
+      p.add(g, [{ action, game: g.apply(action) }])
+      return p.at(0).shot
+    }
+    expect(play({ type: "ability", unit: "s", ability: "hook", target: "e" })).toMatchObject({
+      style: "hook",
+      to: { x: 4, y: 0 },
+      land: { x: 2, y: 0 },
+    })
+    expect(play({ type: "ability", unit: "s", ability: "tag", target: "e" })?.style).toBe("mark")
+    expect(play({ type: "ability", unit: "s", ability: "ghost" })).toMatchObject({
+      style: "ghost",
+      from: { x: 0, y: 0 },
+    })
   })
 })
