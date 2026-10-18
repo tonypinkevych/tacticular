@@ -7,7 +7,7 @@ import { burning } from "../rules/fire"
 import { area, distance, inside, key, reach, same, unitAt } from "../rules/grid"
 import { lineOfSight, sees } from "../rules/sight"
 import type { Action, Game, Point, Unit, WeaponId } from "../rules/types"
-import { alive, foes, has, sideOf } from "../rules/units"
+import { alive, foes, has, sideOf, soldier } from "../rules/units"
 
 interface Choice {
   action: Action
@@ -144,6 +144,12 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
       return { action: { type: "ability", unit: u.id, ability: "charge", target: t.id }, value: 100 }
     }
   }
+  if (u.intent?.type === "psi") {
+    const t = game.units.find((x) => x.id === (u.intent as { target: string }).target)
+    if (t && alive(t) && ready(u, "dominate") && canTarget(game, u, t) && distance(u.pos, t.pos) <= RANGE.dominate) {
+      return { action: { type: "ability", unit: u.id, ability: "dominate", target: t.id }, value: 100 }
+    }
+  }
   if (u.intent?.type === "bomb") {
     const at = u.intent.at
     const friendly = area(at, 1).some((p) => {
@@ -199,16 +205,16 @@ function special(game: Game, u: Unit, targets: Unit[]): Choice | null {
     if (ready(u, "ward") && ally)
       return { action: { type: "ability", unit: u.id, ability: "ward", target: ally.id }, value: 3 }
     for (const id of ["dominate", "dread"] as const) {
-      if (!ready(u, id)) continue
+      const marked =
+        u.intent?.type === "psi" && game.units.some((x) => x.id === (u.intent as { target: string }).target && alive(x))
+      if (!ready(u, id) || (id === "dominate" && marked)) continue
       const t = targets
-        .filter(
-          (x) => canTarget(game, u, x) && distance(u.pos, x.pos) <= RANGE[id] && (id === "dread" || x.side === "squad"),
-        )
+        .filter((x) => canTarget(game, u, x) && distance(u.pos, x.pos) <= RANGE[id] && (id === "dread" || soldier(x)))
         .sort((a, b) => b.hp - a.hp)[0]
-      if (t) {
-        const value = failChance(t.will, 10 + u.will, t.stance === "hunker" ? 1 : 0) * (id === "dominate" ? 12 : 5)
-        return { action: { type: "ability", unit: u.id, ability: id, target: t.id }, value }
-      }
+      if (!t) continue
+      const value = failChance(t.will, 10 + u.will, t.stance === "hunker" ? 1 : 0) * (id === "dominate" ? 12 : 5)
+      const ability = id === "dominate" ? "mark" : id
+      return { action: { type: "ability", unit: u.id, ability, target: t.id }, value }
     }
   }
   return null

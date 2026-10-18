@@ -250,7 +250,7 @@ export const PROFILES: Record<Kind, Profile> = {
     will: 4,
     weapon: "lash",
     sidearm: null,
-    abilities: ["dread", "dominate", "ward"],
+    abilities: ["dread", "dominate", "ward", "mark"],
     ultimate: null,
     axes: 0,
   },

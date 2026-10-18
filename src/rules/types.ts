@@ -140,7 +140,7 @@ export type Stance = "none" | "overwatch" | "hunker"
 
 export type Alert = "unaware" | "investigating" | "engaged"
 
-export type Intent = { type: "charge"; target: string } | { type: "bomb"; at: Point }
+export type Intent = { type: "charge"; target: string } | { type: "bomb"; at: Point } | { type: "psi"; target: string }
 
 export interface Unit {
   id: string

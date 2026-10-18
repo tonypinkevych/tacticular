@@ -273,6 +273,7 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
           chance: Math.round(failChance(t!.will, dc, edge) * 100),
         },
       })
+      if (id === "dominate") u.intent = null
       if (!saved && id === "dominate") {
         addStatus(t!, { id: "dominated", rounds: 2, source: u.id })
         t!.stance = "none"
@@ -298,9 +299,9 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
       break
     }
     case "mark": {
-      if (u.kind === "ogre") {
+      if (u.kind === "ogre" || u.kind === "whisperer") {
         check(!!t && canTarget(game, u, t), "target")
-        u.intent = { type: "charge", target: t!.id }
+        u.intent = { type: u.kind === "ogre" ? "charge" : "psi", target: t!.id }
       } else {
         check(!!at && distance(u.pos, at) <= RANGE.blast, "place")
         u.intent = { type: "bomb", at: { ...at! } }
