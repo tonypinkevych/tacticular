@@ -26,6 +26,7 @@ export class Mind {
     const game = this.game
     if (!u.alive() || u.ap <= 0) return null
     const mode = u.side === "squad" ? "engaged" : u.alert
+    if (this.guards(u) && this.known(u).length === 0) return this.post(u)
     if (mode === "unaware") return this.patrol(u)
     if (mode === "investigating") {
       const goal = game.groups.find((g) => g.id === u.group)?.target
@@ -175,6 +176,33 @@ export class Mind {
       .sort((a, b) => this.jitter(u, b) - this.jitter(u, a))
     if (hidden.length > 0) return { type: "move", unit: u.id, to: hidden[0] }
     if (next && distance(u.pos, next) > SEARCH) return this.toward(u, next, u.mobility * u.ap)
+    if (WEAPONS[u.weapon].ammo === null || u.ammo > 0) return { type: "overwatch", unit: u.id }
+    return null
+  }
+
+  /** True when the unit's group is the alien group nearest to the evac zone. */
+  private guards(u: Unit): boolean {
+    const game = this.game
+    const goal = game.goal
+    if (goal.kind !== "evac" || u.side !== "enemy") return false
+    const zone = goal.tiles[0]
+    const nearest = game.units
+      .filter((x) => x.alive() && x.side === "enemy" && x.group)
+      .sort((a, b) => distance(a.pos, zone) - distance(b.pos, zone))[0]
+    return nearest?.group === u.group
+  }
+
+  /** Walks to the evac zone, then holds the covered tile near it that faces where the squad was last known. */
+  private post(u: Unit): Action | null {
+    const game = this.game
+    if (game.goal.kind !== "evac") return null
+    const zone = game.goal.tiles[0]
+    if (distance(u.pos, zone) > SEARCH + 1) return this.toward(u, zone, u.mobility * u.ap)
+    const group = game.groups.find((g) => g.id === u.group)
+    const facing = group?.target ?? group?.landing ?? u.pos
+    const score = (p: Point) => game.cover.against(p, facing) + this.jitter(u, p)
+    const move = this.bestMove(u, (p) => (distance(p, zone) <= SEARCH ? score(p) : -Infinity))
+    if (move && !u.moved) return move.action
     if (WEAPONS[u.weapon].ammo === null || u.ammo > 0) return { type: "overwatch", unit: u.id }
     return null
   }

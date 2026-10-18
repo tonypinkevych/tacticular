@@ -134,6 +134,34 @@ describe("fight", () => {
   })
 })
 
+describe("evac guard", () => {
+  const evac = (rows: string[], units: Unit[]) => {
+    const g = setup(rows, [squad("s", "vanguard", { x: 0, y: 1 }), ...units])
+    g.goal = { kind: "evac", tiles: [{ x: rows[0].length - 1, y: 1 }] }
+    g.phase = "enemy"
+    for (const u of g.units) if (u.side === "enemy") u.ap = 2
+    return g
+  }
+
+  test("the group nearest the evac zone walks to it, the other group does not", () => {
+    const g = evac(open(30, 3), [
+      enemy("a", "orc", { x: 18, y: 1 }, "unaware", "g1"),
+      enemy("b", "orc", { x: 10, y: 1 }, "unaware", "g2"),
+    ])
+    const a = new Mind(g).decide(find(g, "a"))
+    expect(a?.type).toBe("move")
+    expect((a as { to: { x: number } }).to.x).toBeGreaterThan(18)
+    expect(new Mind(g).decide(find(g, "b"))).toBeNull()
+  })
+  test("a guard at the evac zone takes cover facing where the squad landed", () => {
+    const rows = [".".repeat(12), `${".".repeat(8)}:...`, ".".repeat(12)]
+    const g = evac(rows, [enemy("a", "orc", { x: 10, y: 0 }, "unaware", "g1")])
+    g.groups[0].landing = { x: 0, y: 1 }
+    const a = new Mind(g).decide(find(g, "a"))
+    expect(a).toMatchObject({ type: "move", to: { x: 9, y: 1 } })
+  })
+})
+
 describe("headless missions", () => {
   test("AI against AI ends without errors on 50 seeds", () => {
     const rows = [
