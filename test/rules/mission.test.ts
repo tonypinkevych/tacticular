@@ -52,6 +52,15 @@ describe("mission", () => {
       }
     }
   })
+  test("every group has a route of 3 points and knows where the squad landed", () => {
+    for (const seed of seeds) {
+      const g = mission(seed)
+      for (const group of g.groups) {
+        expect(group.landing, `seed ${seed}`).toEqual(g.units[0].pos)
+        for (const u of g.units.filter((x) => x.group === group.id)) expect(u.patrol.length, `seed ${seed}`).toBe(3)
+      }
+    }
+  })
   test("every enemy can walk to the squad", () => {
     for (const seed of seeds) {
       const g = mission(seed)

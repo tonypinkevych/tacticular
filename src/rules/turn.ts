@@ -1,6 +1,6 @@
 import { WEAPONS } from "./data"
 import type { Game } from "./game"
-import { distance, same } from "./point"
+import { distance, pointOf, same } from "./point"
 import type { Side } from "./types"
 import type { Unit } from "./unit"
 
@@ -23,6 +23,7 @@ export class Turn {
   start(side: Side): void {
     const game = this.game
     game.phase = side
+    if (side === "enemy") this.drift()
     for (const u of game.units) {
       if (!u.alive()) continue
       u.statuses = u.statuses.filter((s) => {
@@ -56,6 +57,25 @@ export class Turn {
       game.log.push({ key: "log.beacon", params: {} })
       game.phase = "lost"
     } else if (game.round >= goal.rounds) game.phase = "won"
+  }
+
+  /** After round 3, an unaware group at a route point gets its next point nearer to where the squad landed. */
+  private drift(): void {
+    const game = this.game
+    if (game.round <= 3) return
+    for (const g of game.groups) {
+      const members = game.units.filter((u) => u.alive() && u.group === g.id && u.side === "enemy")
+      const lead = members[0]
+      const landing = g.landing
+      if (!landing || !lead || lead.patrol.length === 0 || members.some((u) => u.alert !== "unaware")) continue
+      if (distance(lead.pos, lead.patrol[lead.patrolIndex % lead.patrol.length]) > 1) continue
+      const closer = [...game.reach(lead, lead.mobility * 4).cost.keys()]
+        .map(pointOf)
+        .filter((p) => distance(p, landing) < distance(lead.pos, landing) - 2)
+      if (closer.length === 0) continue
+      const next = game.dice.pick(closer)
+      for (const u of members) u.patrol[(u.patrolIndex + 1) % u.patrol.length] = { ...next }
+    }
   }
 
   /** Stalkers that no soldier sees take cover in the shadows again. */

@@ -118,6 +118,8 @@ export interface Group {
   revealed: boolean
   target: Point | null
   alarmed?: boolean
+  /** Where the squad landed; routes drift toward it after round 3. */
+  landing?: Point
 }
 
 export interface Noise {

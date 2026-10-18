@@ -75,7 +75,13 @@ export function composition(r: Dice, size: number): EnemyKind[] {
   return out
 }
 
-function enemies(r: Dice, board: Board, taken: Set<number>, reachable: Point[]): { units: Unit[]; groups: Group[] } {
+function enemies(
+  r: Dice,
+  board: Board,
+  taken: Set<number>,
+  reachable: Point[],
+  landing: Point,
+): { units: Unit[]; groups: Group[] } {
   const count = 2
   const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.45))
   const anchors: Point[] = []
@@ -87,9 +93,9 @@ function enemies(r: Dice, board: Board, taken: Set<number>, reachable: Point[]):
   const groups: Group[] = []
   anchors.forEach((anchor, g) => {
     const id = `g${g + 1}`
-    groups.push({ id, revealed: false, target: null })
+    groups.push({ id, revealed: false, target: null, landing: { ...landing } })
     const kinds = composition(r, r.between(2, 3))
-    const route = r.random() < 0.6 ? [anchor, r.pick(field), r.pick(field)] : []
+    const route = [anchor, r.pick(field), r.pick(field)]
     for (const kind of kinds) {
       const u = Unit.of(`e${units.length + 1}`, kind, "enemy", free(board, anchor, taken), kind, id)
       u.patrol = route.map((p) => ({ ...p }))
@@ -129,7 +135,7 @@ export function mission(seed: number): Game {
   const reachable = [...flood(board, team[0].pos)]
     .map((k) => ({ x: k % 1000, y: Math.floor(k / 1000) }))
     .filter((p) => board.tiles[p.y * board.width + p.x] !== "door")
-  const { units, groups } = enemies(r, board, taken, reachable)
+  const { units, groups } = enemies(r, board, taken, reachable, team[0].pos)
   const game = Game.start({ seed, board, units: [...team, ...units], groups })
   game.goal = goal(r, board, reachable)
   game.rng = state.rng
