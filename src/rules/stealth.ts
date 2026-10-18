@@ -1,4 +1,4 @@
-import { DETECTION, HORN, STEPS, WEAPONS } from "./data"
+import { DETECTION, HORN, SEARCH, STEPS, WEAPONS } from "./data"
 import type { Game } from "./game"
 import { distance, type Point } from "./point"
 import type { Group, WeaponId } from "./types"
@@ -81,13 +81,21 @@ export class Stealth {
     this.noise(u.pos, WEAPONS[w].noise, u)
   }
 
-  /** Records a noise and sends hearing groups to investigate; a soldier that makes it loses concealment. */
+  /**
+   * Records a noise and sends hearing groups to investigate; a soldier that makes it loses concealment.
+   * An engaged group that hears a soldier's noise hunts there.
+   */
   noise(at: Point, radius: number, source: Unit | null): void {
     if (radius <= 0) return
     this.game.noises.push({ at: { ...at }, radius, round: this.game.round })
     if (source && source.side === "squad") source.concealed = false
     for (const e of this.hostiles()) {
-      if (e.alert !== "engaged" && distance(e.pos, at) <= radius) this.investigate(e.group, at)
+      if (distance(e.pos, at) > radius) continue
+      if (e.alert !== "engaged") this.investigate(e.group, at)
+      else if (source?.allegiance() === "squad") {
+        const g = this.group(e.group)
+        if (g) g.target = { ...at }
+      }
     }
   }
 
@@ -121,14 +129,24 @@ export class Stealth {
     }
   }
 
-  /** Round end: a group that reached the place it investigated and found nobody goes back to patrol. */
+  /** Round end: a group that searched its target for 2 rounds and saw no soldier patrols again; beacon raiders do not. */
   calm(): void {
-    for (const g of this.game.groups) {
+    const game = this.game
+    for (const g of game.groups) {
       const units = this.members(g.id)
       const target = g.target
-      if (!target || units.length === 0 || units.some((u) => u.alert !== "investigating")) continue
-      if (!units.some((u) => distance(u.pos, target) <= 2)) continue
+      if (!target || units.length === 0) continue
+      if (game.goal.kind === "defend" && units.some((u) => u.alert === "engaged")) continue
+      const soldiers = game.units.filter((s) => s.alive() && s.side === "squad" && !s.concealed)
+      if (units.some((u) => soldiers.some((s) => game.sight.sees(u, s.pos)))) {
+        g.searched = 0
+        continue
+      }
+      if (!units.some((u) => distance(u.pos, target) <= SEARCH)) continue
+      g.searched = (g.searched ?? 0) + 1
+      if (g.searched < 2) continue
       g.target = null
+      g.searched = 0
       for (const u of units) u.alert = "unaware"
     }
   }

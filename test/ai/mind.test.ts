@@ -2,6 +2,7 @@ import { Mind } from "../../src/ai/mind"
 import { Match } from "../../src/match"
 import { Board } from "../../src/rules/board"
 import { Game } from "../../src/rules/game"
+import { distance } from "../../src/rules/point"
 import { Unit } from "../../src/rules/unit"
 import { enemy, find, open, setup, squad } from "../fixture"
 
@@ -22,8 +23,12 @@ describe("enemy AI", () => {
     const rows = ["....:.........", "....:.........", ".............."]
     const base = setup(rows, [squad("v", "vanguard", { x: 0, y: 0 }), enemy("o", "ogre", { x: 8, y: 0 })])
     find(base, "v").concealed = false
+    base.groups[0].target = { x: 0, y: 0 }
     let g = enemyTurn(base)
-    for (let i = 0; i < 2 && !find(g, "o").intent; i++) g = g.apply(new Mind(g).decide(find(g, "o"))!)
+    for (let i = 0; i < 4 && !find(g, "o").intent; i++) {
+      const a = new Mind(g).decide(find(g, "o"))
+      g = a ? g.apply(a) : enemyTurn(enemyTurn(g))
+    }
     expect(find(g, "o").intent).toEqual({ type: "charge", target: "v" })
     g = enemyTurn(enemyTurn(g))
     expect(new Mind(g).decide(find(g, "o"))).toMatchObject({ type: "ability", ability: "charge", target: "v" })
@@ -55,6 +60,47 @@ describe("enemy AI", () => {
     const g = new Match(g0).play({ type: "endTurn" }).at(-1)!.game
     expect(find(g, "e").pos.x).toBeLessThan(19)
     expect(g.phase).toBe("squad")
+  })
+})
+
+describe("search and hunt", () => {
+  const alien = (
+    rows: string[],
+    at: { x: number; y: number },
+    alert: "investigating" | "engaged",
+    target: { x: number; y: number },
+  ) => {
+    const g = setup(rows, [
+      squad("s", "vanguard", { x: rows[0].length - 1, y: rows.length - 1 }),
+      enemy("e", "orc", at, alert),
+    ])
+    find(g, "s").concealed = true
+    g.groups[0].target = target
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    return g
+  }
+  const moved = (g: Game) => {
+    const a = new Mind(g).decide(find(g, "e"))
+    return a?.type === "move" ? a.to : null
+  }
+
+  test("an alien far from the noise dashes toward it with both moves", () => {
+    const g = alien(open(30, 3), { x: 29, y: 2 }, "investigating", { x: 12, y: 2 })
+    expect(29 - (moved(g)?.x ?? 29)).toBeGreaterThan(find(g, "e").mobility)
+  })
+  test("at the noise an alien moves to a tile its side does not see", () => {
+    const rows = ["..###...", "..###...", "........"]
+    const g = alien(rows, { x: 4, y: 2 }, "investigating", { x: 1, y: 2 })
+    find(g, "e").mobility = 6
+    const to = moved(g)
+    expect(to).not.toBeNull()
+    expect(g.sight.sees(find(g, "e"), to!)).toBe(false)
+  })
+  test("an engaged alien that lost sight of the squad searches the last place it saw a soldier", () => {
+    const g = alien(open(30, 3), { x: 20, y: 1 }, "engaged", { x: 20, y: 1 })
+    const to = moved(g)
+    expect(to === null || distance(to, { x: 20, y: 1 }) <= 3).toBe(true)
   })
 })
 

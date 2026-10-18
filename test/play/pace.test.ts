@@ -95,6 +95,7 @@ describe("team AI", () => {
     const e = enemy("e", "orc", { x: 28, y: 1 })
     const g = setup(open(30, 3), [s, e])
     g.groups[0].target = { x: 28, y: 1 }
+    g.groups[0].landing = { x: 0, y: 1 }
     e.ap = 2
     expect(new Mind(g).decide(e)?.type).toBe("move")
   })

@@ -1,5 +1,5 @@
 import { canReach } from "../rules/combat"
-import { PROFILES, RANGE, WEAPONS } from "../rules/data"
+import { PROFILES, RANGE, SEARCH, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
 import type { Game } from "../rules/game"
 import { area, distance, key, type Point, pointOf, same } from "../rules/point"
@@ -28,10 +28,7 @@ export class Mind {
     if (mode === "unaware") return this.patrol(u)
     if (mode === "investigating") {
       const goal = game.groups.find((g) => g.id === u.group)?.target
-      if (!goal) return this.patrol(u)
-      if (!u.moved && distance(u.pos, goal) > 1) return this.toward(u, goal)
-      if (WEAPONS[u.weapon].ammo === null || u.ammo > 0) return { type: "overwatch", unit: u.id }
-      return null
+      return goal ? this.search(u, goal) : this.patrol(u)
     }
     return this.engaged(u)
   }
@@ -45,8 +42,8 @@ export class Mind {
     )
   }
 
-  /** One move along the walking path to a goal, or to the reachable tile nearest it. */
-  toward(u: Unit, target: Point): Action | null {
+  /** One move along the walking path to a goal, or to the reachable tile nearest it; a dash when given the range. */
+  toward(u: Unit, target: Point, range = u.mobility): Action | null {
     const game = this.game
     const r = game.reach(u, 400, u.allegiance())
     let goal = target
@@ -58,7 +55,7 @@ export class Mind {
         if (d < best) [best, goal] = [d, p]
       }
     }
-    const path = r.path(goal).filter((p) => (r.cost.get(key(p)) ?? Infinity) <= u.mobility)
+    const path = r.path(goal).filter((p) => (r.cost.get(key(p)) ?? Infinity) <= range)
     const to = path.reverse().find((p) => !game.unitAt(p) && this.allowed(u, p))
     return to ? { type: "move", unit: u.id, to } : null
   }
@@ -146,6 +143,30 @@ export class Mind {
         best = { action: { type: "move", unit: u.id, to: p }, value }
     }
     return best
+  }
+
+  /**
+   * Goes to a place where soldiers were seen or heard, dashing when far, then moves to tiles its side does not see.
+   * With nothing hidden there, it dashes on toward the next place given.
+   */
+  private search(u: Unit, goal: Point, next?: Point): Action | null {
+    const game = this.game
+    if (distance(u.pos, goal) > SEARCH) return this.toward(u, goal, u.mobility * u.ap)
+    const side = game.units.filter((x) => x.alive() && x.allegiance() === u.allegiance())
+    const hidden = [...game.reach(u, u.mobility).cost.keys()]
+      .map(pointOf)
+      .filter(
+        (p) =>
+          distance(p, goal) <= SEARCH &&
+          !game.unitAt(p) &&
+          this.allowed(u, p) &&
+          !side.some((x) => game.sight.sees(x, p)),
+      )
+      .sort((a, b) => this.jitter(u, b) - this.jitter(u, a))
+    if (hidden.length > 0) return { type: "move", unit: u.id, to: hidden[0] }
+    if (next && distance(u.pos, next) > SEARCH) return this.toward(u, next, u.mobility * u.ap)
+    if (WEAPONS[u.weapon].ammo === null || u.ammo > 0) return { type: "overwatch", unit: u.id }
+    return null
   }
 
   private patrol(u: Unit): Action | null {
@@ -257,13 +278,8 @@ export class Mind {
     if (sp && sp.value >= 100) return sp.action
     if (targets.length === 0) {
       const beacon = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : null
-      const goal = beacon ?? group?.target
-      if (goal && distance(u.pos, goal) > (beacon ? 0 : 1)) return this.toward(u, goal)
-      const prey = game.units
-        .filter((x) => x.alive() && u.foe(x))
-        .sort((a, b) => distance(u.pos, a.pos) - distance(u.pos, b.pos))[0]
-      const hunt = !beacon && prey ? this.toward(u, prey.pos) : null
-      if (hunt) return hunt
+      if (beacon && !same(u.pos, beacon)) return this.toward(u, beacon, u.mobility * u.ap)
+      if (!beacon && group?.target) return this.search(u, group.target, group.landing)
       if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }
       return null
     }

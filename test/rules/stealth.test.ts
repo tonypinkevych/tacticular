@@ -85,6 +85,29 @@ describe("heard steps", () => {
   })
 })
 
+describe("hunt", () => {
+  test("a soldier's loud shot moves the goal of an engaged group that hears it", () => {
+    const g = setup(open(24, 3), [
+      squad("w", "warden", { x: 0, y: 1 }),
+      enemy("a", "orc", { x: 6, y: 1 }, "unaware", "g1"),
+      enemy("b", "orc", { x: 8, y: 2 }, "engaged", "g2"),
+    ])
+    g.groups.find((x) => x.id === "g2")!.target = { x: 20, y: 2 }
+    const a = g.apply({ type: "attack", unit: "w", target: "a" })
+    expect(a.groups.find((x) => x.id === "g2")!.target).toEqual({ x: 0, y: 1 })
+  })
+  test("a group searches the place of its target for 2 rounds, then patrols again", () => {
+    const g = setup(open(24, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 20, y: 1 }, "engaged")])
+    g.groups[0].target = { x: 20, y: 1 }
+    g.phase = "enemy"
+    const once = g.apply({ type: "endTurn" })
+    expect(find(once, "e").alert).toBe("engaged")
+    const twice = once.apply({ type: "endTurn" }).apply({ type: "endTurn" })
+    expect(find(twice, "e").alert).toBe("unaware")
+    expect(twice.groups[0].target).toBeNull()
+  })
+})
+
 describe("horn", () => {
   const base = () =>
     setup(open(24, 3), [

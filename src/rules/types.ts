@@ -118,6 +118,8 @@ export interface Group {
   revealed: boolean
   target: Point | null
   alarmed?: boolean
+  /** Round ends the group spent at its target without seeing a soldier. */
+  searched?: number
   /** Where the squad landed; routes drift toward it after round 3. */
   landing?: Point
 }
