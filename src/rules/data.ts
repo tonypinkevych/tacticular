@@ -336,5 +336,8 @@ export const ROCKET_NOISE = 10
 
 export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 1 }
 
+/** How far a soldier hears an alien it does not see walk. */
+export const STEPS = 5
+
 /** How far an alarm calls other alien groups. */
 export const HORN = 6

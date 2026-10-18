@@ -53,6 +53,7 @@ export class Orders {
     }
     game.stealth.scan()
     game.stealth.observe()
+    if (action.type === "move") game.stealth.hear(u)
     this.settle()
   }
 

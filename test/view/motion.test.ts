@@ -22,6 +22,18 @@ describe("enemy turn playback", () => {
     p.add(g, [walk("w", { x: 1, y: 1 })])
     expect(p.at(0).focus).toBeNull()
   })
+  test("an alien turn with nothing in sight still shows for 1.5 s", () => {
+    const turn = g.clone()
+    turn.phase = "enemy"
+    const p = new Playback(1, g)
+    p.add(g, [
+      { action: { type: "endTurn" }, game: turn },
+      { action: { type: "endTurn" }, game: g.clone() },
+    ])
+    p.at(0)
+    expect(p.at(1400).game.phase).toBe("enemy")
+    expect(p.at(1600).game.phase).toBe("squad")
+  })
 })
 
 describe("floats", () => {

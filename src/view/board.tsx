@@ -119,15 +119,15 @@ export function Board(props: { model: Model }) {
         for (const e of g.units)
           if (e.allegiance() === "enemy" && (e.side === "squad" || g.stealth.visible(e)) && g.orders.canTarget(u, e))
             targets.add(e.id)
-      } else if (hover) {
+      } else {
         const r = g.reach(u, u.mobility * u.ap)
         for (const [k, c] of r.cost) {
           if (c === 0) continue
           far.add(k)
           if (u.ap === 2 && c <= u.mobility) near.add(k)
         }
-        if (r.cost.has(key(hover))) path = r.path(hover)
-        const foe = m.foeAt(hover)
+        if (hover && r.cost.has(key(hover))) path = r.path(hover)
+        const foe = hover && m.foeAt(hover)
         if (foe && g.orders.canTarget(u, foe)) {
           const o = g.combat.odds(u, foe)
           aim = { target: foe, chance: Math.round(o.chance * 100), cover: o.cover, from: u.pos }

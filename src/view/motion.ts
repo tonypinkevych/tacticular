@@ -43,6 +43,7 @@ const TILE_MS = 110
 const SHOT_MS = 420
 const STEP_MS = 260
 const FLOAT_MS = 1100
+const ACTIVITY_MS = 1500
 
 function walkPath(before: Game, frame: Frame): Point[] {
   const a = frame.action
@@ -137,10 +138,11 @@ export function floats(before: Game, after: Game, now: number): Float[] {
   return out
 }
 
-/** Plays frames one after another: walks, shots and rising numbers, at a chosen speed. */
+/** Plays frames one after another: walks, shots and rising numbers, at a chosen speed. An alien turn lasts 1.5 s at least. */
 export class Playback {
   private queue: { before: Game; frame: Frame }[] = []
   private clip: Clip | null = null
+  private activity: number | null = null
   texts: Float[] = []
 
   constructor(
@@ -174,6 +176,7 @@ export class Playback {
   reset(game: Game): void {
     this.queue = []
     this.clip = null
+    this.activity = null
     this.texts = []
     this.shownGame = game
   }
@@ -191,7 +194,10 @@ export class Playback {
     const visible = shown(before, frame)
     const shotAt = target(before, frame)
     const scale = this.speed === 0 || instant || !visible ? 0 : 1 / this.speed
-    const length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? SHOT_MS : 0) + STEP_MS)
+    let length = scale * (span(before, frame, path) * TILE_MS + (shotAt ? SHOT_MS : 0) + STEP_MS)
+    this.activity = before.phase === "enemy" ? (this.activity ?? now) : null
+    if (this.activity !== null && frame.game.phase !== "enemy" && !instant && this.speed > 0)
+      length = Math.max(length, ACTIVITY_MS / this.speed - (now - this.activity))
     this.clip = { before, frame, start: now, length, path, visible }
   }
 

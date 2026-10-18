@@ -1,4 +1,4 @@
-import { DETECTION, HORN, WEAPONS } from "./data"
+import { DETECTION, HORN, STEPS, WEAPONS } from "./data"
 import type { Game } from "./game"
 import { distance, type Point } from "./point"
 import type { Group, WeaponId } from "./types"
@@ -89,6 +89,14 @@ export class Stealth {
     for (const e of this.hostiles()) {
       if (e.alert !== "engaged" && distance(e.pos, at) <= radius) this.investigate(e.group, at)
     }
+  }
+
+  /** Records a silent noise where an alien no soldier sees stops within hearing of a soldier. */
+  hear(u: Unit): void {
+    const game = this.game
+    if (u.allegiance() !== "enemy" || this.visible(u)) return
+    if (this.eyes().some((s) => distance(s.pos, u.pos) <= STEPS))
+      game.noises.push({ at: { ...u.pos }, radius: 0, round: game.round })
   }
 
   /** True when any foe sees the unit. */

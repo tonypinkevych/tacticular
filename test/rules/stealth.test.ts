@@ -65,6 +65,26 @@ describe("noise and silent kills", () => {
   })
 })
 
+describe("heard steps", () => {
+  const walk = (rows: string[], from: { x: number; y: number }, to: { x: number; y: number }): Game => {
+    const g = setup(rows, [squad("g", "warden", { x: 0, y: 0 }), enemy("e", "orc", from, "unaware")])
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    return g.apply({ type: "move", unit: "e", to })
+  }
+  const walled = ["....................", "####################", "...................."]
+
+  test("an alien no soldier sees leaves a noise where it stops near a soldier", () => {
+    expect(walk(walled, { x: 2, y: 2 }, { x: 3, y: 2 }).noises).toEqual([{ at: { x: 3, y: 2 }, radius: 0, round: 1 }])
+  })
+  test("an unseen alien that stops far from every soldier leaves no noise", () => {
+    expect(walk(walled, { x: 12, y: 2 }, { x: 13, y: 2 }).noises).toEqual([])
+  })
+  test("an alien a soldier sees leaves no noise", () => {
+    expect(walk(open(20, 3), { x: 2, y: 2 }, { x: 3, y: 2 }).noises).toEqual([])
+  })
+})
+
 describe("horn", () => {
   const base = () =>
     setup(open(24, 3), [

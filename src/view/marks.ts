@@ -1,7 +1,7 @@
 import { DETECTION } from "../rules/data"
 import { distance, key, ORTHOGONAL, type Point, plus, pointOf } from "../rules/point"
 import type { Unit } from "../rules/unit"
-import { ALIEN, AMBER, BEACON, DOMINATED, EVAC, type Rgb, rgb, SQUAD } from "./color"
+import { ALIEN, AMBER, BEACON, DASH, DOMINATED, EVAC, MOVE, type Rgb, rgb, SQUAD } from "./color"
 import { height, tone } from "./picture"
 import type { Pixels } from "./pixels"
 import type { Scene } from "./scene"
@@ -18,15 +18,12 @@ export class Marks {
     private readonly scene: Scene,
     private readonly t: number,
   ) {
-    const { hover, near, far, range, game } = scene
-    if (this.planning()) {
-      for (const e of this.aliens())
-        if (e.stance === "overwatch") for (const k of game.sight.tiles(e)) if (far.has(k)) this.danger.add(k)
-      for (const k of far)
-        if (this.explored(pointOf(k))) this.dots.set(k, this.danger.has(k) ? ALIEN : near.has(k) ? SQUAD : AMBER)
-      for (const p of scene.path) this.dots.delete(key(p))
-      if (hover) this.dots.delete(key(hover))
-    }
+    const { hover, far, range, game } = scene
+    for (const e of this.aliens())
+      if (e.stance === "overwatch") for (const k of game.sight.tiles(e)) if (far.has(k)) this.danger.add(k)
+    for (const k of this.danger) if (this.explored(pointOf(k))) this.dots.set(k, ALIEN)
+    for (const p of scene.path) this.dots.delete(key(p))
+    if (hover) this.dots.delete(key(hover))
     for (const k of range) if (this.explored(pointOf(k))) this.dots.set(k, AMBER)
   }
 
@@ -37,6 +34,7 @@ export class Marks {
 
   under(): void {
     this.borders()
+    this.reach()
     this.goal()
     if (this.scene.zones) this.zones()
     for (const [k, c] of this.dots) {
@@ -81,6 +79,12 @@ export class Marks {
     return !!hover && !!selected && (near.has(key(hover)) || far.has(key(hover)))
   }
 
+  /** True when a tile is in the blue area: one move away, or any move when only one is left. */
+  private near(p: Point): boolean {
+    const { near } = this.scene
+    return near.size === 0 || near.has(key(p))
+  }
+
   private aliens(): Unit[] {
     const { game } = this.scene
     return game.units.filter((u) => u.alive() && u.allegiance() === "enemy" && this.shown(u))
@@ -108,6 +112,16 @@ export class Marks {
           built.add(key(p))
       }
     this.px.outline(built, BORDER, 0.35, true)
+  }
+
+  /** Dotted borders of the move area: blue within one move, yellow within a dash. */
+  private reach(): void {
+    const { near, far, selected } = this.scene
+    if (!selected || far.size === 0) return
+    const seen = (keys: Set<number>) =>
+      new Set([key(selected.pos), ...[...keys].filter((k) => this.explored(pointOf(k)))])
+    this.px.outline(seen(far), near.size > 0 ? DASH : MOVE, 0.75, true)
+    if (near.size > 0) this.px.outline(seen(near), MOVE, 0.85, true)
   }
 
   /** The evac zone, the beacon to hold and the next alien landing. */
@@ -146,25 +160,25 @@ export class Marks {
 
   /** The path to the cursor and the cursor's tile, while a move is planned; the area of an armed action. */
   private plan(): void {
-    const { path, hover, near, area, selected, game } = this.scene
+    const { path, hover, area, selected, game } = this.scene
     if (this.planning() && selected && hover) {
       const points = [selected.pos, ...path].map((p) => this.px.projection.ground(p))
       let walked = 0
       for (let i = 1; i < points.length; i++) {
         const [from, to] = [points[i - 1], points[i]]
         const length = Math.hypot(to.x - from.x, to.y - from.y)
-        const c = this.danger.has(key(path[i - 1])) ? ALIEN : near.has(key(path[i - 1])) ? SQUAD : AMBER
+        const c = this.danger.has(key(path[i - 1])) ? ALIEN : this.near(path[i - 1]) ? MOVE : DASH
         for (let d = (2 - (walked % 2)) % 2; d <= length; d += 2) {
           if (walked + d < 7 || (i === points.length - 1 && length - d < 5)) continue
           this.px.dot(from.x + ((to.x - from.x) * d) / length, from.y + ((to.y - from.y) * d) / length, c, 0.85)
         }
         walked += length
       }
-      const color = near.has(key(hover)) ? SQUAD : AMBER
+      const color = this.near(hover) ? MOVE : DASH
       const pulse = 0.6 + 0.3 * Math.sin(this.t / 250)
-      this.px.outline(new Set([key(hover)]), color, pulse, true)
-      const g = this.px.projection.ground(hover)
       const lift = height(game.tile(hover))
+      this.px.ring(hover, color, pulse, true, lift)
+      const g = this.px.projection.ground(hover)
       this.px.dot(g.x - 2, g.y - lift, color, pulse, 5)
       this.px.dot(g.x, g.y - 2 - lift, color, pulse, 1, 5)
     }
