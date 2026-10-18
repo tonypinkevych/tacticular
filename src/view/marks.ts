@@ -5,6 +5,7 @@ import { ALIEN, AMBER, BEACON, DASH, DOMINATED, EVAC, MOVE, type Rgb, rgb, SQUAD
 import { height, tone } from "./picture"
 import type { Pixels } from "./pixels"
 import type { Scene } from "./scene"
+import { shape } from "./shape"
 
 const BORDER = rgb("#94806e")
 
@@ -118,7 +119,7 @@ export class Marks {
     const { near, far, selected } = this.scene
     if (!selected || far.size === 0) return
     const seen = (keys: Set<number>) =>
-      new Set([key(selected.pos), ...[...keys].filter((k) => this.explored(pointOf(k)))])
+      shape(new Set([key(selected.pos), ...[...keys].filter((k) => this.explored(pointOf(k)))]))
     this.px.outline(seen(far), DASH, 0.4, 5)
     if (near.size > 0) this.px.outline(seen(near), MOVE, 0.45, 5)
   }
