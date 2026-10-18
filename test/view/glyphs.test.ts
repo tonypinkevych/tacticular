@@ -1,5 +1,5 @@
 import { DICTIONARIES } from "../../src/i18n/strings"
-import { textWidth } from "../../src/view/glyphs"
+import { ICONS, textWidth } from "../../src/view/glyphs"
 
 describe("pixel font", () => {
   test("every word that floats over the map has its letters in both languages", () => {
@@ -8,5 +8,14 @@ describe("pixel font", () => {
         const word = `${DICTIONARIES[lang][k]} −12`.toUpperCase()
         expect(textWidth(word), `${lang} ${word}`).toBeGreaterThan(0)
       }
+  })
+})
+
+describe("action bar icons", () => {
+  test("every icon is 9×9", () => {
+    for (const [id, icon] of Object.entries(ICONS)) {
+      expect(icon.length, id).toBe(9)
+      for (const row of icon) expect(row.length, id).toBe(9)
+    }
   })
 })

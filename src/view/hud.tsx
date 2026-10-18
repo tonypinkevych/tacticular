@@ -354,6 +354,7 @@ function Panel(props: { model: Model }) {
 }
 
 const GROUPS = ["weapon", "skill", "ult", "stance"] as const
+const FAMILY = { weapon: "#efe4cc", skill: "#7fc8e8", ult: "#ffb347", stance: "#a8c49a" } as const
 
 /** Action slots grouped as weapon, skills, ultimate and stances, then End turn. */
 function Bar(props: { model: Model }) {
@@ -384,7 +385,7 @@ function Bar(props: { model: Model }) {
                     <Show when={s().badge}>
                       <span class="badge">{s().badge}</span>
                     </Show>
-                    <Icon glyph={ICONS[s().id] ?? ICONS.unknown} color="#d6e4ea" class="glyph" />
+                    <Icon glyph={ICONS[s().id] ?? ICONS.unknown} color={FAMILY[s().group]} class="glyph" />
                   </span>
                 </button>
               )}
