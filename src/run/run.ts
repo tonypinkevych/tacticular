@@ -1,8 +1,9 @@
 import { Dice } from "../combat/dice"
+import { same } from "../map/point"
 import type { Game } from "../mission/game"
 import { type Conditions, NAMES } from "../mission/mission"
 import { CLASSES, type ClassId, PROFILES } from "../units/profiles"
-import type { Recruit } from "../units/unit"
+import type { Recruit, Unit } from "../units/unit"
 import { Chart, type Node, type Task } from "./chart"
 
 /** Where a run stands: picking the squad, on the chart, in a mission, picking a reward, or over. */
@@ -209,12 +210,18 @@ export class Run {
   }
 }
 
-/** The result of a finished mission: a downed soldier counts 1 HP after a win and 0 after a loss. */
+/**
+ * The result of a finished mission: a downed soldier counts 1 HP after a win and 0 after a loss, or when it was
+ * left outside the evac zone while aliens still live.
+ */
 export function outcome(game: Game): Result {
   const won = game.phase === "won"
+  const goal = game.goal
+  const clear = !game.units.some((u) => u.alive() && u.side === "enemy")
+  const carried = (u: Unit) => clear || !("tiles" in goal) || goal.tiles.some((p) => same(p, u.pos))
   const hp: Record<string, number> = {}
   for (const u of game.units)
-    if (u.side === "squad" && u.kind !== "turret") hp[u.id] = u.alive() ? u.hp : won && u.down > 0 ? 1 : 0
+    if (u.side === "squad" && u.kind !== "turret") hp[u.id] = u.alive() ? u.hp : won && u.down > 0 && carried(u) ? 1 : 0
   return { won, hp }
 }
 

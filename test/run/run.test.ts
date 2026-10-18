@@ -213,6 +213,24 @@ describe("outcome", () => {
     g.phase = "lost"
     expect(outcome(g).hp.b).toBe(0)
   })
+  test("a downed soldier left outside the evac zone while aliens live is lost", () => {
+    const a = squad("a", "warden", { x: 0, y: 0 })
+    const b = squad("b", "ranger", { x: 1, y: 0 })
+    b.hp = 0
+    b.down = 2
+    const g = setup(open(4, 2), [a, b, enemy("e", "orc", { x: 3, y: 1 })])
+    g.goal = { kind: "evac", tiles: [{ x: 0, y: 0 }] }
+    g.phase = "won"
+    expect(outcome(g).hp.b).toBe(0)
+    g.goal = {
+      kind: "evac",
+      tiles: [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ],
+    }
+    expect(outcome(g).hp.b).toBe(1)
+  })
 })
 
 describe("replay", () => {
