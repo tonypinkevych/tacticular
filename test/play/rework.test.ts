@@ -1,4 +1,4 @@
-import { PROFILES } from "../../src/rules/data"
+import { PROFILES } from "../../src/units/profiles"
 import { enemy, find, open, setup, squad } from "../fixture"
 
 describe("one weapon per class", () => {

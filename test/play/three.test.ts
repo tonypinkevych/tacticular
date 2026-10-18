@@ -1,6 +1,8 @@
-import { Mind } from "../../src/ai/mind"
-import { DETECTION, HORN, PROFILES, WEAPONS } from "../../src/rules/data"
-import { mission } from "../../src/rules/mission"
+import { Mind } from "../../src/aliens/mind"
+import { DETECTION, HORN } from "../../src/aliens/stealth"
+import { WEAPONS } from "../../src/combat/weapons"
+import { mission } from "../../src/mission/mission"
+import { PROFILES } from "../../src/units/profiles"
 import { enemy, find, open, setup, squad } from "../fixture"
 
 const seeds = Array.from({ length: 100 }, (_, i) => i + 1)

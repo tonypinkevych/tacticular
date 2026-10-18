@@ -1,8 +1,8 @@
 import type { Event } from "nostr-tools/pure"
-import { type Frame, Match } from "../match"
-import type { Game } from "../rules/game"
-import { mission } from "../rules/mission"
-import type { Action } from "../rules/types"
+import type { Game } from "../mission/game"
+import { type Frame, Match } from "../mission/match"
+import { mission } from "../mission/mission"
+import type { Action } from "../mission/orders"
 import { history, Journal } from "./journal"
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">

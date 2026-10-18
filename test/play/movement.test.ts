@@ -1,5 +1,5 @@
-import { key } from "../../src/rules/point"
-import type { Kind } from "../../src/rules/types"
+import { key } from "../../src/map/point"
+import type { Kind } from "../../src/units/profiles"
 import { find, setup, squad } from "../fixture"
 
 const cost = (rows: string[], kind: Kind, to: { x: number; y: number }) => {

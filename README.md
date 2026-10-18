@@ -44,19 +44,21 @@ local key, so the log can go to relays later. If an event is changed, the game r
 ## Layout
 
 ```
-src/rules/    the game: Game and its parts (Sight, Cover, Stealth, Fire, Combat, Turn, Orders, Abilities), maps
-src/ai/       Mind: the alien side's decisions
-src/match.ts  Match: one player action, then reactions and the enemy phase; AI-against-AI balance runs
-src/save/     Journal (signed Nostr event log) and the saved Session
-src/i18n/     Locale: English and Russian strings
-src/view/     the isometric glyph board (Projection, Camera, Picture, Marks, Light) and the HUD
-test/         Vitest specs, one folder per source folder; test/play/ holds cases that cross modules
+src/map/       Board, tiles, the map generator (Terrain), Sight, Cover, Reach, Fire
+src/units/     Unit and the profiles of the classes and the aliens
+src/combat/    Dice, weapons, Combat (odds and attacks), Abilities
+src/aliens/    Mind (the alien AI), Stealth (alerts, noise, the alarm), Reinforcements
+src/mission/   Game, Turn, Orders, the mission generator, Match (the alien side and AI balance runs)
+src/save/      Journal (signed Nostr event log) and the saved Session
+src/i18n/      Locale: English and Russian strings
+src/screen/    the isometric glyph board (board/), the HUD (hud/) and playback with sound (playback/)
+test/          Vitest specs, one folder per source folder; test/play/ holds cases that cross modules
 ```
 
-The rules have no rendering code and use a seeded random stream, so the same seed and actions always give the
-same game.
+Only `src/screen/` has rendering code. The rest uses a seeded random stream, so the same seed and actions always
+give the same game.
 
 ## Credits
 
-All glyphs, tiles and icons are drawn for this game as 1-bit bitmaps in `src/view/glyphs.ts`. The time of day
+All glyphs, tiles and icons are drawn for this game as 1-bit bitmaps in `src/screen/board/glyphs.ts`. The time of day
 comes from the mission seed and changes only the look.

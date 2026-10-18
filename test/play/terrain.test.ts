@@ -1,8 +1,8 @@
-import type { Biome, Board } from "../../src/rules/board"
-import { Dice } from "../../src/rules/dice"
-import type { Game } from "../../src/rules/game"
-import { key } from "../../src/rules/point"
-import { map } from "../../src/rules/terrain"
+import { Dice } from "../../src/combat/dice"
+import type { Biome, Board } from "../../src/map/board"
+import { key } from "../../src/map/point"
+import { map } from "../../src/map/terrain"
+import type { Game } from "../../src/mission/game"
 import { enemy, find, setup, squad } from "../fixture"
 
 const round = (g: Game): Game => g.apply({ type: "endTurn" }).apply({ type: "endTurn" })

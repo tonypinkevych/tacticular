@@ -9,12 +9,21 @@ conventions live here, where every tool reads them.
 
 ## Layers
 
-- **`src/rules/`** holds the game: no DOM, no canvas, no clock. Random numbers come from the seeded stream
-  only, so one seed and one action log always give the same game.
-- **`src/ai/`** decides for the aliens through the rules, never around them.
-- **`src/view/`** draws the game and reads input. It never changes a `Game` except through an action.
-- **`src/i18n/`** holds every string the player reads, in English and Russian, with the same keys.
-- **`src/save/`** holds the signed event log and the saved session.
+The folders name what the game is made of.
+
+- **`src/map/`**: the board, its tiles, the map generator, sight, cover, walking reach and fire.
+- **`src/units/`**: units and the profiles of the classes and the aliens.
+- **`src/combat/`**: dice, weapons, attacks and abilities.
+- **`src/aliens/`**: the alien AI, stealth (alerts, noise, the alarm) and reinforcements.
+- **`src/mission/`**: the game, its turns and orders, the mission generator, and the match that plays the
+  alien side.
+- **`src/save/`**: the signed event log and the saved session.
+- **`src/i18n/`**: every string the player reads, in English and Russian, with the same keys.
+- **`src/screen/`**: the canvas board, the HUD and playback. It never changes a `Game` except through an action.
+
+Everything outside `src/screen/` and `src/main.tsx` has no DOM, no canvas and no clock. Random numbers come from
+the seeded stream only, so one seed and one action log always give the same game. The alien AI decides through
+the rules, never around them.
 
 ## Writing
 
@@ -57,7 +66,7 @@ messages and replies in chat. Short sentences, never telegraphic fragments.
 
 ## Tests
 
-- **A test file proves one source file**: `src/rules/sight.ts` → `test/rules/sight.test.ts`. A case that
+- **A test file proves one source file**: `src/map/sight.ts` → `test/map/sight.test.ts`. A case that
   reaches several modules is an integration test in `test/play/`.
 - **One case per behaviour, no behaviour twice.**
 - **A test proves behaviour through the public surface**: inputs in, outputs and visible effects out. It

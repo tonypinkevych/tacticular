@@ -1,5 +1,5 @@
-import { Mind } from "../../src/ai/mind"
-import { key } from "../../src/rules/point"
+import { Mind } from "../../src/aliens/mind"
+import { key } from "../../src/map/point"
 import { history } from "../../src/save/journal"
 import { Session } from "../../src/save/session"
 

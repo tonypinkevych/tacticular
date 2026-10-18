@@ -1,4 +1,4 @@
-import { Match } from "../../src/match"
+import { Match } from "../../src/mission/match"
 import { enemy, find, open, setup, squad } from "../fixture"
 
 describe("telegraphed shots", () => {

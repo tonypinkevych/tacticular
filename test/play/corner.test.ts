@@ -1,4 +1,4 @@
-import { Mind } from "../../src/ai/mind"
+import { Mind } from "../../src/aliens/mind"
 import { enemy, open, setup, squad } from "../fixture"
 
 describe("corners", () => {

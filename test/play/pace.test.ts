@@ -1,7 +1,7 @@
-import { Mind } from "../../src/ai/mind"
-import { WEAPONS } from "../../src/rules/data"
-import { Kit } from "../../src/view/kit"
-import { spent } from "../../src/view/model"
+import { Mind } from "../../src/aliens/mind"
+import { WEAPONS } from "../../src/combat/weapons"
+import { Kit } from "../../src/screen/hud/kit"
+import { spent } from "../../src/screen/model"
 import { enemy, open, setup, squad } from "../fixture"
 
 describe("edge", () => {

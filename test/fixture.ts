@@ -1,8 +1,8 @@
-import { Board } from "../src/rules/board"
-import { Game } from "../src/rules/game"
-import type { Point } from "../src/rules/point"
-import type { Kind, Side } from "../src/rules/types"
-import { Unit } from "../src/rules/unit"
+import { Board } from "../src/map/board"
+import type { Point } from "../src/map/point"
+import { Game } from "../src/mission/game"
+import type { Kind } from "../src/units/profiles"
+import { type Side, Unit } from "../src/units/unit"
 
 export const open = (w = 12, h = 12): string[] => Array.from({ length: h }, () => ".".repeat(w))
 

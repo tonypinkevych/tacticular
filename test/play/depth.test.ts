@@ -1,8 +1,8 @@
-import { Mind } from "../../src/ai/mind"
-import { WEAPONS } from "../../src/rules/data"
-import { mission } from "../../src/rules/mission"
-import { distance, key } from "../../src/rules/point"
-import { walkable } from "../../src/rules/tile"
+import { Mind } from "../../src/aliens/mind"
+import { WEAPONS } from "../../src/combat/weapons"
+import { distance, key } from "../../src/map/point"
+import { walkable } from "../../src/map/tile"
+import { mission } from "../../src/mission/mission"
 import { enemy, open, setup, squad } from "../fixture"
 
 describe("overwatch risk", () => {

@@ -1,7 +1,7 @@
-import type { Game } from "../../src/rules/game"
-import { mission } from "../../src/rules/mission"
-import { AROUND, distance, key, type Point, pointOf } from "../../src/rules/point"
-import { coverOf, passable } from "../../src/rules/tile"
+import { AROUND, distance, key, type Point, pointOf } from "../../src/map/point"
+import { coverOf, passable } from "../../src/map/tile"
+import type { Game } from "../../src/mission/game"
+import { mission } from "../../src/mission/mission"
 
 const ORTHO = AROUND.slice(0, 4)
 

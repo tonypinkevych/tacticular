@@ -1,7 +1,8 @@
-import { Mind } from "../../src/ai/mind"
-import { crit } from "../../src/rules/combat"
-import { CLASSES, PROFILES, WEAPONS } from "../../src/rules/data"
-import { chance, failChance } from "../../src/rules/dice"
+import { Mind } from "../../src/aliens/mind"
+import { crit } from "../../src/combat/combat"
+import { chance, failChance } from "../../src/combat/dice"
+import { WEAPONS } from "../../src/combat/weapons"
+import { CLASSES, PROFILES } from "../../src/units/profiles"
 import { enemy, open, setup, squad } from "../fixture"
 
 describe("simplified d20", () => {

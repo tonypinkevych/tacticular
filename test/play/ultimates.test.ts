@@ -1,6 +1,7 @@
-import { PROFILES, ULT } from "../../src/rules/data"
-import type { Game } from "../../src/rules/game"
-import { Illegal } from "../../src/rules/orders"
+import type { Game } from "../../src/mission/game"
+import { Illegal } from "../../src/mission/orders"
+import { PROFILES } from "../../src/units/profiles"
+import { ULT } from "../../src/units/unit"
 import { enemy, find, open, reseed, setup, squad } from "../fixture"
 
 const ult = (g: Game, unit: string, ability: string, more: { target?: string; at?: { x: number; y: number } } = {}) => {

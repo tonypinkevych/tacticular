@@ -24,10 +24,11 @@ describe("strings", () => {
     expect(Locale.detect(s, ["ru-RU"])).toBe("en")
   })
   test("every log and illegal key the rules emit has a string", async () => {
-    const files = import.meta.glob("../../src/rules/*.ts", { query: "?raw", import: "default", eager: true }) as Record<
-      string,
-      string
-    >
+    const files = import.meta.glob(["../../src/*/*.ts", "!../../src/screen/**"], {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
     const used = new Set<string>()
     for (const text of Object.values(files)) {
       for (const m of text.matchAll(/key: "(log\.\w+)"/g)) used.add(m[1])

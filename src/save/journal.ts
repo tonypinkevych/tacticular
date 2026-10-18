@@ -1,6 +1,6 @@
 import { type Event, finalizeEvent, generateSecretKey, getPublicKey, verifyEvent } from "nostr-tools/pure"
 import { bytesToHex, hexToBytes } from "nostr-tools/utils"
-import type { Action } from "../rules/types"
+import type { Action } from "../mission/orders"
 
 /** Nostr event kind of the game log: one start event, then one event per player action. */
 export const KIND = 7350
