@@ -189,7 +189,7 @@ describe("objectives", () => {
       }
       if (g.goal.kind === "defend") {
         expect(walkable(g.tile(g.goal.at))).toBe(true)
-        expect(g.goal.rounds).toBe(6)
+        expect(g.goal.rounds).toBe(8)
       }
     }
     expect([...kinds].sort()).toEqual(["defend", "evac", "warchief"])
@@ -272,6 +272,24 @@ describe("alarm", () => {
     expect(find(g, "e").alert).toBe("investigating")
     expect(g.groups.find((x) => x.id === "g1")?.target).toEqual({ x: 0, y: 5 })
     expect(find(g, "f").alert).toBe("unaware")
+  })
+})
+
+describe("defend waves", () => {
+  test("waves of 2, 3 and 4 aliens land at the edge farthest from the beacon at the end of rounds 2, 4 and 6", () => {
+    const g = setup(open(24, 10), [squad("s", "warden", { x: 1, y: 5 }), enemy("e", "orc", { x: 3, y: 9 }, "unaware")])
+    g.goal = { kind: "defend", at: { x: 2, y: 5 }, rounds: 8 }
+    const sizes: number[] = []
+    for (let round = 1; round <= 6; round++) {
+      if (round % 2 === 0) expect(g.reinforcements.coming()?.x).toBe(23)
+      g.phase = "enemy"
+      g.turn.end()
+      sizes.push(g.units.filter((u) => u.side === "enemy").length - 1)
+    }
+    expect(sizes).toEqual([0, 2, 2, 5, 5, 9])
+    const wave = g.units.filter((u) => u.group?.startsWith("w"))
+    expect(wave.every((u) => u.alert === "engaged" && u.pos.x >= 20)).toBe(true)
+    expect(g.groups.filter((x) => x.id.startsWith("w")).every((x) => x.target?.x === 2)).toBe(true)
   })
 })
 

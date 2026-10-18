@@ -126,7 +126,7 @@ function raid(units: Unit[], groups: Group[], beacon: Point): void {
  * captive, and an evac zone at the far edge. With no room for an evac zone it is Kill all.
  */
 function goal(r: Dice, board: Board, reachable: Point[], kind: Kind, site: Site | null, captive: Unit | null): Goal {
-  if (kind === "defend" && site) return { kind, at: site.at, rounds: 6 }
+  if (kind === "defend" && site) return { kind, at: site.at, rounds: 8 }
   if (kind === "relay" && site) return { kind, at: site.at, planted: null }
   const floor = (p: Point) => board.tiles[p.y * board.width + p.x] === "floor"
   const open = reachable.filter(floor)
