@@ -88,13 +88,13 @@ describe("ultimates", () => {
       squad("f", "rogue", { x: 7, y: 0 }),
     ])
     find(g, "v").hp = 2
-    find(g, "v").statuses.push({ id: "frightened", rounds: 2 })
+    find(g, "v").statuses.push({ id: "shaken", rounds: 2 })
     find(g, "d").hp = 0
     find(g, "d").down = 2
     find(g, "f").hp = 2
     const a = ult(g, "c", "hospital")
     expect(find(a, "v").hp).toBe(5)
-    expect(find(a, "v").has("frightened")).toBe(false)
+    expect(find(a, "v").has("shaken")).toBe(false)
     expect(find(a, "d").hp).toBe(3)
     expect(find(a, "d").down).toBe(0)
     expect(find(a, "f").hp).toBe(2)

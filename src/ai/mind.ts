@@ -58,7 +58,7 @@ export class Mind {
       }
     }
     const path = r.path(goal).filter((p) => (r.cost.get(key(p)) ?? Infinity) <= range)
-    const to = path.reverse().find((p) => !game.unitAt(p) && this.allowed(u, p))
+    const to = path.reverse().find((p) => !game.unitAt(p))
     return to ? { type: "move", unit: u.id, to } : null
   }
 
@@ -133,13 +133,6 @@ export class Mind {
     return this.bestMove(u, (p) => near(p) + shelter(p))?.action ?? null
   }
 
-  private allowed(u: Unit, p: Point): boolean {
-    const game = this.game
-    const fear = u.statuses.find((s) => s.id === "frightened")
-    const source = fear?.source ? game.units.find((x) => x.id === fear.source && x.alive()) : undefined
-    return !source || distance(p, source.pos) >= distance(u.pos, source.pos)
-  }
-
   /** Best tile within one move, or null when staying is as good. */
   private bestMove(u: Unit, score: (p: Point) => number): Choice | null {
     const game = this.game
@@ -148,7 +141,7 @@ export class Mind {
     const stay = score(u.pos)
     for (const k of r.cost.keys()) {
       const p = pointOf(k)
-      if (same(p, u.pos) || !this.allowed(u, p)) continue
+      if (same(p, u.pos)) continue
       const value = score(p)
       if (value > stay + 0.5 && (!best || value > best.value))
         best = { action: { type: "move", unit: u.id, to: p }, value }
@@ -167,13 +160,7 @@ export class Mind {
     const side = game.units.filter((x) => x.alive() && x.allegiance() === u.allegiance())
     const hidden = [...game.reach(u, u.mobility).cost.keys()]
       .map(pointOf)
-      .filter(
-        (p) =>
-          distance(p, goal) <= SEARCH &&
-          !game.unitAt(p) &&
-          this.allowed(u, p) &&
-          !side.some((x) => game.sight.sees(x, p)),
-      )
+      .filter((p) => distance(p, goal) <= SEARCH && !game.unitAt(p) && !side.some((x) => game.sight.sees(x, p)))
       .sort((a, b) => this.jitter(u, b) - this.jitter(u, a))
     if (hidden.length > 0) return { type: "move", unit: u.id, to: hidden[0] }
     if (next && distance(u.pos, next) > SEARCH) return this.toward(u, next, u.mobility * u.ap)

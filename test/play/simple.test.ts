@@ -50,13 +50,13 @@ describe("shotgun and close range", () => {
     expect(PROFILES.vanguard.weapon).toBe("shotgun")
     expect(WEAPONS.shotgun).toMatchObject({ min: 1, max: 3, melee: false })
   })
-  test("only the sniper is too close at 1 tile", () => {
+  test("only the sniper is out of range at 1 tile", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const r = squad("r", "ranger", { x: 2, y: 0 })
     const e = enemy("e", "orc", { x: 1, y: 0 })
     const g = setup(open(4, 2), [v, r, e])
-    expect(g.combat.odds(v, e).disadvantages).not.toContain("close")
-    expect(g.combat.odds(r, e).disadvantages).toContain("close")
+    expect(g.combat.odds(v, e).disadvantages).not.toContain("range")
+    expect(g.combat.odds(r, e).disadvantages).toContain("range")
   })
 })
 

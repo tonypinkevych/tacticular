@@ -8,7 +8,7 @@ import type { AbilityId, StatusId } from "./types"
 import { Unit } from "./unit"
 
 /** Statuses a Field hospital clears. */
-const BAD: StatusId[] = ["suppressed", "frightened", "shaken", "burning", "staggered", "exposed"]
+const BAD: StatusId[] = ["shaken", "burning", "exposed"]
 
 /** The class abilities and ultimates units use in a game. */
 export class Abilities {
@@ -62,7 +62,7 @@ export class Abilities {
         check(!!t && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= RANGE.volley, "target")
         check(u.ammo >= 2, "ammo")
         u.ammo -= 2
-        t!.give({ id: "suppressed", rounds: 99, source: u.id })
+        t!.give({ id: "shaken", rounds: 2, source: u.id })
         game.log.push({ key: "log.volley", params: { unit: u.id, target: t!.id } })
         game.stealth.noise(u.pos, WEAPONS[u.weapon].noise, u)
         break
@@ -82,12 +82,6 @@ export class Abilities {
         )
         t!.give({ id: "ward", rounds: 2, source: u.id })
         game.log.push({ key: "log.ward", params: { unit: u.id, target: t!.id } })
-        break
-      }
-      case "vanish": {
-        check(!game.stealth.seen(u), "seen")
-        u.concealed = true
-        game.log.push({ key: "log.vanish", params: { unit: u.id } })
         break
       }
       case "fear":
@@ -117,17 +111,9 @@ export class Abilities {
           t!.stance = "none"
           t!.ap = 0
         } else if (!saved) {
-          t!.give({ id: "frightened", rounds: 2, source: u.id })
+          t!.give({ id: "shaken", rounds: 2, source: u.id })
         }
         game.stealth.attacked(u, t!, u.weapon)
-        break
-      }
-      case "blink": {
-        check(!!at && walkable(game.tile(at)) && !game.unitAt(at), "place")
-        check(distance(u.pos, at!) <= RANGE.blink && game.sight.line(u.pos, at!, false), "place")
-        u.pos = { ...at! }
-        game.log.push({ key: "log.blink", params: { unit: u.id } })
-        game.stealth.scan()
         break
       }
       case "rouse": {
@@ -147,16 +133,6 @@ export class Abilities {
         game.log.push({ key: "log.mark", params: { unit: u.id } })
         break
       }
-      case "breach": {
-        check(!!at && adjacent(u.pos, at) && (game.tile(at) === "door" || game.tile(at) === "open"), "place")
-        game.board.set(at!, "open")
-        game.log.push({ key: "log.breach", params: { unit: u.id } })
-        for (const x of game.units) {
-          if (x.alive() && u.foe(x) && adjacent(x.pos, at!)) x.give({ id: "staggered", rounds: 1, source: u.id })
-        }
-        game.stealth.noise(at!, 6, u)
-        break
-      }
       case "grapple": {
         check(!!at && (game.tile(at) === "roof" || game.tile(at) === "ridge") && !game.unitAt(at), "place")
         check(distance(u.pos, at!) <= RANGE.grapple && game.sight.line(u.pos, at!, false), "range")
@@ -174,22 +150,9 @@ export class Abilities {
         game.log.push({ key: "log.guard", params: { unit: u.id, target: t!.id } })
         break
       }
-      case "steady": {
-        check(!u.moved, "moved")
-        u.give({ id: "steady", rounds: 1 })
-        game.log.push({ key: "log.steady", params: { unit: u.id } })
-        break
-      }
       case "rocket": {
         check(!!at && distance(u.pos, at) <= RANGE.rocket && game.sight.line(u.pos, at!, false), "range")
         this.rocket(u, at!)
-        break
-      }
-      case "brace": {
-        check(WEAPONS[u.weapon].ammo === null || u.ammo > 0, "ammo")
-        u.stance = "overwatch"
-        u.give({ id: "braced", rounds: 1 })
-        game.log.push({ key: "log.brace", params: { unit: u.id } })
         break
       }
       case "smoke": {
@@ -235,14 +198,6 @@ export class Abilities {
         check(!game.unitAt(at!), "place")
         game.board.set(at!, "high")
         game.log.push({ key: "log.barricade", params: { unit: u.id } })
-        break
-      }
-      case "drone": {
-        check(!!at && adjacent(u.pos, at) && walkable(game.tile(at)) && !game.unitAt(at!), "place")
-        const id = `${u.id}-drone`
-        game.units = game.units.filter((x) => x.id !== id)
-        game.units.push(Unit.of(id, "drone", "squad", at!, "drone"))
-        game.log.push({ key: "log.drone", params: { unit: u.id } })
         break
       }
       case "mine": {

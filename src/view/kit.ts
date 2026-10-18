@@ -4,15 +4,14 @@ import { PROFILES, RANGE, ULT, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
 import type { Game } from "../rules/game"
 import { AROUND, adjacent, distance, key, type Point, pointOf, same } from "../rules/point"
-import { walkable } from "../rules/tile"
 import type { AbilityId, Action, WeaponId } from "../rules/types"
 import type { Unit } from "../rules/unit"
 
 /** Keys of the bar: the weapon on 1, skills on 2 3 4, the ultimate on 5, stances on 6 7 8 with letter aliases. */
-const SKILL_KEYS = "234"
-const ULT_KEY = "5"
+const SKILL_KEYS = "23"
+const ULT_KEY = "4"
 const ROUSE_KEY = "9"
-const STANCE_KEYS = { reload: ["6", "R"], overwatch: ["7", "Y"], hunker: ["8", "H"] } as const
+const STANCE_KEYS = { reload: ["5", "R"], overwatch: ["6", "Y"], hunker: ["7", "H"] } as const
 
 /** What an action needs before it can be confirmed. */
 export type Aim = "unit" | "tile" | "none"
@@ -53,18 +52,7 @@ const UNIT_ABILITIES: AbilityId[] = [
   "tag",
   "swap",
 ]
-const TILE_ABILITIES: AbilityId[] = [
-  "blink",
-  "breach",
-  "grapple",
-  "rocket",
-  "smoke",
-  "barricade",
-  "drone",
-  "mine",
-  "saturation",
-  "turret",
-]
+const TILE_ABILITIES: AbilityId[] = ["grapple", "rocket", "smoke", "barricade", "mine", "saturation", "turret"]
 /** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
 const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard"]
 const ANY: AbilityId[] = ["swap"]
@@ -133,7 +121,6 @@ export class Kit {
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
       skill("rouse", "skill", ROUSE_KEY, "", false)
     if (p.ultimate) skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
-    if (u.kind === "drone") return out
     for (const id of ["reload", "overwatch", "hunker"] as const) {
       if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
       const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" as const }
@@ -189,9 +176,7 @@ export class Kit {
       case "heal":
       case "rouse":
       case "shove":
-      case "breach":
       case "barricade":
-      case "drone":
         return around()
       case "tag":
         return within(1, RANGE.tag)
@@ -215,8 +200,6 @@ export class Kit {
         return within(0, RANGE.fear)
       case "volley":
         return within(0, RANGE.volley)
-      case "blink":
-        return new Set([...within(1, RANGE.blink)].filter((k) => walkable(game.tile(pointOf(k)))))
       default:
         return new Set()
     }

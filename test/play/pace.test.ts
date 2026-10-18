@@ -8,18 +8,16 @@ import { enemy, open, setup, squad } from "../fixture"
 describe("edge", () => {
   const rows = open(13, 13)
   rows[5] = "......:......"
-  test("advantages add up: flanked and staggered give 2 steps of 3", () => {
+  test("advantages add up: flanked and unaware give 2 steps of 3", () => {
     const r = squad("r", "warden", { x: 12, y: 6 })
-    const e = enemy("e", "orc", { x: 6, y: 6 })
-    e.statuses.push({ id: "staggered", rounds: 1 })
+    const e = enemy("e", "orc", { x: 6, y: 6 }, "unaware")
     const o = setup(rows, [r, e]).combat.odds(r, e)
     expect(o.edge).toBe(2)
     expect(chance(0, 10, 2)).toBe(17 / 20)
   })
   test("one disadvantage cancels one advantage, not all", () => {
     const r = squad("r", "warden", { x: 12, y: 6 })
-    const e = enemy("e", "orc", { x: 6, y: 6 })
-    e.statuses.push({ id: "staggered", rounds: 1 })
+    const e = enemy("e", "orc", { x: 6, y: 6 }, "unaware")
     e.stance = "hunker"
     expect(setup(rows, [r, e]).combat.odds(r, e).edge).toBe(1)
   })
@@ -29,24 +27,23 @@ describe("weapons and keys", () => {
   test("the sniper rifle has a magazine of 3", () => {
     expect(WEAPONS.longbow.ammo).toBe(3)
   })
-  test("weapon 1, skills 2 3 4, ultimate 5, Reload 6, Overwatch 7, Hunker 8", () => {
+  test("weapon 1, skills 2 3, ultimate 4, Reload 5, Overwatch 6, Hunker 7", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const g = setup(open(4, 4), [v])
     expect(new Kit(g, v).slots().map((x) => `${x.id}=${x.key}`)).toEqual([
       "weapon:shotgun=1",
       "ability:shove=2",
       "ability:charge=3",
-      "ability:breach=4",
-      "ability:rampage=5",
-      "reload=6",
-      "overwatch=7",
-      "hunker=8",
+      "ability:rampage=4",
+      "reload=5",
+      "overwatch=6",
+      "hunker=7",
     ])
   })
   test("R, Y and H press Reload, Overwatch and Hunker", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const kit = new Kit(setup(open(4, 4), [v]), v)
-    expect(["R", "Y", "H", "7", "Q"].map((k) => kit.slotFor(k)?.id ?? null)).toEqual([
+    expect(["R", "Y", "H", "6", "Q"].map((k) => kit.slotFor(k)?.id ?? null)).toEqual([
       "reload",
       "overwatch",
       "hunker",

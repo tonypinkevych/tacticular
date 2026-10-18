@@ -6,7 +6,7 @@ export type Side = "squad" | "enemy"
 export type ClassId = "vanguard" | "ranger" | "warden" | "cleric" | "rogue" | "mage" | "engineer"
 
 /** Squad units an Engineer deploys; they are not soldiers. */
-export type Gadget = "drone" | "turret"
+export type Gadget = "turret"
 
 export type EnemyKind = "orc" | "bomber" | "ogre" | "shieldwall" | "assassin" | "warchief" | "whisperer"
 
@@ -49,9 +49,7 @@ export type AbilityId =
   | "volley"
   | "heal"
   | "ward"
-  | "vanish"
   | "fear"
-  | "blink"
   | "rouse"
   | "dread"
   | "dominate"
@@ -59,18 +57,14 @@ export type AbilityId =
   | "shove"
   | "rally"
   | "blast"
-  | "breach"
   | "grapple"
   | "guard"
-  | "steady"
   | "rocket"
-  | "brace"
   | "smoke"
   | "hook"
   | "tag"
   | "swap"
   | "barricade"
-  | "drone"
   | "mine"
   | "rampage"
   | "killzone"
@@ -79,21 +73,7 @@ export type AbilityId =
   | "ghost"
   | "turret"
 
-export type StatusId =
-  | "suppressed"
-  | "frightened"
-  | "shaken"
-  | "burning"
-  | "dominated"
-  | "ward"
-  | "exposed"
-  | "staggered"
-  | "guarded"
-  | "steady"
-  | "plated"
-  | "braced"
-  | "killzone"
-  | "deployed"
+export type StatusId = "shaken" | "burning" | "dominated" | "ward" | "exposed" | "guarded" | "killzone" | "deployed"
 
 export interface Status {
   id: StatusId

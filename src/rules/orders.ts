@@ -58,8 +58,7 @@ export class Orders {
   }
 
   /**
-   * Steps tile by tile; each step can trigger fire, a mine, a Guard, overwatch, suppression fire and zone of
-   * control. Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it
+   * Steps tile by tile; each step can trigger fire, a mine, a Guard, overwatch and zone of control. Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it
    * vaults, and a tree or low cover a Heavy walks into turns to floor.
    */
   walk(u: Unit, path: Point[], dash = false): void {
@@ -75,7 +74,7 @@ export class Orders {
           x.foe(u) &&
           x.arms().melee &&
           x.stance !== "hunker" &&
-          !x.has("staggered") &&
+          !x.has("exposed") &&
           adjacent(x.pos, u.pos) &&
           !adjacent(x.pos, step),
       )
@@ -90,18 +89,12 @@ export class Orders {
       this.guard(u, risky)
       for (const x of game.units) {
         if (!u.alive()) return
-        if (!x.alive() || !x.foe(u) || x.stance !== "overwatch" || x.has("staggered")) continue
+        if (!x.alive() || !x.foe(u) || x.stance !== "overwatch" || x.has("exposed")) continue
         const w = x.arms()
         if (w.melee ? !adjacent(x.pos, u.pos) : !sight.sees(x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
         if (u.kind === "assassin" && u.concealed) continue
         if (!x.has("killzone")) x.stance = "none"
         combat.attack(x, u, x.weapon, { reaction: true, risky })
-      }
-      const pin = u.statuses.find((s) => s.id === "suppressed")
-      const suppressor = pin?.source ? game.units.find((x) => x.id === pin.source) : undefined
-      if (u.alive() && suppressor?.alive() && sight.sees(suppressor, u.pos)) {
-        u.lift("suppressed")
-        combat.attack(suppressor, u, suppressor.weapon, { reaction: true, risky })
       }
       for (const x of threats) {
         if (u.alive() && x.alive()) combat.attack(x, u, x.weapon)
@@ -141,9 +134,6 @@ export class Orders {
     const r = game.reach(u, u.mobility * u.ap)
     const cost = r.cost.get(key(to))
     check(cost !== undefined && cost > 0, "unreachable")
-    const fear = u.statuses.find((s) => s.id === "frightened")
-    const source = fear?.source ? game.units.find((x) => x.id === fear.source) : undefined
-    if (source?.alive()) check(distance(to, source.pos) >= distance(u.pos, source.pos), "frightened")
     u.ap -= cost <= u.mobility ? 1 : 2
     u.moved = true
     this.walk(u, r.path(to), cost > u.mobility)

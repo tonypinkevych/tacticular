@@ -187,7 +187,7 @@ export class Picture {
       : Math.floor(this.t / 500 + hash(u.pos.x, u.pos.y, 2) * 4) % 4 === 0
         ? -1
         : 0
-    const float = u.kind === "whisperer" || u.kind === "drone" ? Math.round(Math.sin(this.t / 400) * 1.5) - 2 : 0
+    const float = u.kind === "whisperer" ? Math.round(Math.sin(this.t / 400) * 1.5) - 2 : 0
     const firing = shot && shot.progress < 0.3 && same(shot.from, u.pos)
     const kick = firing ? -Math.sign(shot.to.x - shot.to.y - shot.from.x + shot.from.y || 1) : 0
     const shake = struck ? (Math.floor(now / 40) % 2 ? 1 : -1) : 0

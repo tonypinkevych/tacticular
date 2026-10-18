@@ -26,10 +26,6 @@ export class Turn {
     if (side === "enemy") this.drift()
     for (const u of game.units) {
       if (!u.alive()) continue
-      u.statuses = u.statuses.filter((s) => {
-        const source = game.units.find((x) => x.id === s.source)
-        return !(s.id === "suppressed" && source && source.allegiance() === side)
-      })
       if (u.allegiance() !== side) {
         u.ap = 0
         continue
@@ -38,7 +34,6 @@ export class Turn {
       u.moved = false
       u.waited = u.stance === "overwatch" || u.stance === "hunker"
       u.stance = "none"
-      if (u.kind === "warden") u.give({ id: "plated", rounds: 1 })
       if (u.kind === "turret") {
         u.ap = 0
         u.stance = "overwatch"
@@ -103,9 +98,7 @@ export class Turn {
         game.log.push({ key: "log.burning", params: { unit: u.id, dmg: 2 } })
         game.combat.hurt(u, 2)
       }
-      u.statuses = u.statuses
-        .map((s) => (s.id === "suppressed" ? s : { ...s, rounds: s.rounds - 1 }))
-        .filter((s) => s.rounds > 0)
+      u.statuses = u.statuses.map((s) => ({ ...s, rounds: s.rounds - 1 })).filter((s) => s.rounds > 0)
       for (const id of Object.keys(u.cooldowns) as (keyof typeof u.cooldowns)[]) {
         const left = (u.cooldowns[id] ?? 0) - 1
         u.cooldowns[id] = left > 0 ? left : undefined

@@ -6,27 +6,7 @@ import { climb, high, walkable } from "./tile"
 import type { Weapon, WeaponId } from "./types"
 import type { Unit } from "./unit"
 
-/** Advantages that let the Scout's Sneak Attack add 2 damage. */
-const SNEAK: Reason[] = ["flanked", "unaware", "exposed", "staggered", "pincer"]
-
-export type Reason =
-  | "flanked"
-  | "exposed"
-  | "staggered"
-  | "pincer"
-  | "close"
-  | "unaware"
-  | "surprised"
-  | "isolated"
-  | "reaction"
-  | "smoke"
-  | "hunkered"
-  | "suppressed"
-  | "frightened"
-  | "shaken"
-  | "range"
-  | "point"
-  | "steady"
+export type Reason = "flanked" | "unaware" | "range" | "reaction" | "hunkered" | "shaken"
 
 /** Everything a player sees before an attack: modifiers, the edge and the hit chance. */
 export interface Odds {
@@ -92,26 +72,18 @@ export class Combat {
     const adv: Reason[] = []
     const dis: Reason[] = []
     const exposed = target.has("exposed")
-    const facing = weapon.ignoresCover || exposed ? 0 : game.cover.against(target.pos, attacker.pos)
+    const smoke = this.smoke(target) ? 2 : 0
+    const facing = weapon.ignoresCover || exposed ? 0 : Math.max(smoke, game.cover.against(target.pos, attacker.pos))
     const above = !weapon.melee && high(game.tile(attacker.pos)) && !high(game.tile(target.pos))
     const cover = weapon.melee || (above && facing < 5) ? 0 : facing
-    if (exposed) adv.push("exposed")
-    else if (!weapon.ignoresCover && !weapon.melee && facing === 0) adv.push("flanked")
-    if (target.has("staggered")) adv.push("staggered")
-    if (weapon.melee && this.pincer(attacker, target)) adv.push("pincer")
-    if (target.side === "enemy" && target.alert === "unaware") adv.push("unaware")
-    if (this.surprised(target)) adv.push("surprised")
-    if (attacker.kind === "assassin" && this.isolated(target)) adv.push("isolated")
+    const open = weapon.melee ? this.pincer(attacker, target) : !weapon.ignoresCover && facing === 0
+    if (exposed || open) adv.push("flanked")
+    if ((target.side === "enemy" && target.alert === "unaware") || this.surprised(target)) adv.push("unaware")
     if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
-    if (this.surprised(attacker)) dis.push("surprised")
-    if (this.smoke(target)) dis.push("smoke")
-    if (target.stance === "hunker" || target.has("braced")) dis.push("hunkered")
-    for (const s of ["suppressed", "frightened", "shaken"] as const) if (attacker.has(s)) dis.push(s)
+    if (target.stance === "hunker") dis.push("hunkered")
+    if (attacker.has("shaken") || this.surprised(attacker)) dis.push("shaken")
     const range = distance(attacker.pos, target.pos)
-    if (!weapon.melee && range > weapon.max) dis.push("range")
-    if (!weapon.melee && range < weapon.min) dis.push("close")
-    if (attacker.kind === "vanguard" && !weapon.melee && range <= 2) adv.push("point")
-    if (attacker.has("steady")) adv.push("steady")
+    if (!weapon.melee && (range > weapon.max || range < weapon.min)) dis.push("range")
     const edge = Math.max(-2, Math.min(2, adv.length - dis.length))
     const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
     if (this.groupAim(attacker)) aimParts.push({ key: "warchief", value: this.groupAim(attacker) })
@@ -122,7 +94,6 @@ export class Combat {
     if (this.wall(target)) defenseParts.push({ key: "wall", value: 1 })
     const aim = aimParts.reduce((sum, p) => sum + p.value, 0)
     const defense = defenseParts.reduce((sum, p) => sum + p.value, 0)
-    const sneak = attacker.kind === "rogue" && adv.some((r) => SNEAK.includes(r)) ? 2 : 0
     return {
       weapon,
       aim,
@@ -135,8 +106,8 @@ export class Combat {
       need: Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
       aimParts,
       defenseParts,
-      min: weapon.dice.count + weapon.dice.bonus + sneak,
-      max: weapon.dice.count * weapon.dice.sides + weapon.dice.bonus + sneak,
+      min: weapon.dice.count + weapon.dice.bonus,
+      max: weapon.dice.count * weapon.dice.sides + weapon.dice.bonus,
     }
   }
 
@@ -145,7 +116,6 @@ export class Combat {
     const game = this.game
     const o = this.odds(attacker, target, weaponId, shot)
     const w = o.weapon
-    attacker.lift("steady")
     if (w.ammo !== null && weaponId === attacker.weapon) attacker.ammo -= 1
     if (weaponId === "axes") attacker.axes -= 1
     if (w.saveHalf) {
@@ -191,8 +161,7 @@ export class Combat {
       game.log.push({ key: "log.miss", params })
       return
     }
-    const sneak = attacker.kind === "rogue" && o.advantages.some((r) => SNEAK.includes(r))
-    const raw = game.dice.roll(w.dice) + (sneak ? 2 : 0)
+    const raw = game.dice.roll(w.dice)
     const dmg = critical ? crit(raw) : raw
     game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
     if (critical && !w.melee) {
@@ -205,12 +174,12 @@ export class Combat {
   }
 
   /**
-   * Pushes a target 1 tile away and staggers it. A push into anything solid or a unit does 2 damage instead of
+   * Pushes a target 1 tile away and exposes it for 1 round. A push into anything solid or a unit does 2 damage instead of
    * a move; a push off a roof does 2 damage; a push into fire burns.
    */
   push(from: Point, target: Unit, source?: string): void {
     const game = this.game
-    target.give({ id: "staggered", rounds: 1, source })
+    target.give({ id: "exposed", rounds: 1, source })
     const to = {
       x: target.pos.x + Math.sign(target.pos.x - from.x),
       y: target.pos.y + Math.sign(target.pos.y - from.y),
@@ -232,15 +201,11 @@ export class Combat {
   }
 
   /**
-   * Applies damage and the effects of a fall; returns true when the target falls. Heavy plating takes 1 off the
-   * first hit each round. A soldier goes down for 2 rounds, 3 while a Medic stands.
+   * Applies damage and the effects of a fall; returns true when the target falls. A soldier goes down for 2
+   * rounds, 3 while a Medic stands.
    */
   hurt(target: Unit, dmg: number): boolean {
     const game = this.game
-    if (target.has("plated") && dmg > 0) {
-      target.lift("plated")
-      dmg -= 1
-    }
     target.hp = Math.max(0, target.hp - dmg)
     if (target.hp > 0) return false
     target.stance = "none"
@@ -271,9 +236,5 @@ export class Combat {
 
   private surprised(u: Unit): boolean {
     return this.game.reactions.includes(u.id)
-  }
-
-  private isolated(u: Unit): boolean {
-    return !this.game.units.some((x) => x !== u && x.alive() && !x.foe(u) && distance(x.pos, u.pos) <= 3)
   }
 }

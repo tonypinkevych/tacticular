@@ -46,6 +46,7 @@ describe("noise and silent kills", () => {
       enemy("a", "orc", { x: 5, y: 2 }, "unaware", "g1"),
       enemy("b", "orc", { x: 19, y: 4 }, "unaware", "g2"),
     ])
+    find(g, "a").hp = 3
     const a = kill(g, "g", "a")
     expect(find(a, "g").concealed).toBe(true)
     expect(find(a, "b").alert).toBe("unaware")

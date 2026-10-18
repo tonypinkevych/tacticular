@@ -130,7 +130,7 @@ export class Unit implements UnitData {
 
   /** A squad member that is a soldier, not a gadget. */
   soldier(): boolean {
-    return this.side === "squad" && this.kind !== "drone" && this.kind !== "turret"
+    return this.side === "squad" && this.kind !== "turret"
   }
 
   has(id: StatusId): boolean {

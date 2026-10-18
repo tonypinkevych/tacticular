@@ -31,8 +31,8 @@ describe("a controlled alien", () => {
   e.give({ id: "dominated", rounds: 2 })
   const g = setup(open(8, 3), [w, c, e])
 
-  test.each(["heal", "rally"])("takes the squad's %s by hover and as the default target", (id) => {
-    const armed = { slot: `ability:${id}`, target: null, at: null }
+  test("takes the squad's heal by hover and as the default target", () => {
+    const armed = { slot: "ability:heal", target: null, at: null }
     expect(new Kit(g, c).retarget(armed, e.pos).target).toBe("e")
   })
   test("takes a soldier's shot by hover, but is not its default target", () => {
