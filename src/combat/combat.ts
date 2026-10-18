@@ -87,9 +87,10 @@ export class Combat {
     if (attacker.has("shaken") || attacker.wounded() || this.surprised(attacker)) dis.push("shaken")
     const range = distance(attacker.pos, target.pos)
     if (!weapon.melee && (range > weapon.max || range < weapon.min)) dis.push("range")
-    const sure = adv.length > dis.length
+    const guarded = target.stance === "hunker" || (target.side === "enemy" && target.arms().melee)
+    const sure = adv.length > dis.length && !guarded
     const scale = (n: number) => (sure ? crit(n) : n)
-    const edge = Math.max(-2, Math.min(0, adv.length - dis.length))
+    const edge = Math.max(-2, Math.min(guarded ? 1 : 0, adv.length - dis.length))
     const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
     if (this.groupAim(attacker)) aimParts.push({ key: "warchief", value: this.groupAim(attacker) })
     if (above) aimParts.push({ key: "height", value: 2 })
@@ -169,6 +170,7 @@ export class Combat {
     const raw = game.dice.roll(w.dice)
     const dmg = critical ? crit(raw) : raw
     game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
+    if (o.sure) target.lift("exposed")
     if (critical && !w.melee) {
       const p = game.cover.tile(target.pos, attacker.pos)
       if (p) this.smash(p)

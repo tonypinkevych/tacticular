@@ -10,8 +10,7 @@ describe("edge", () => {
   test("one disadvantage cancels one advantage, not all: two against one is still a sure hit", () => {
     const r = squad("r", "warden", { x: 12, y: 6 })
     const e = enemy("e", "orc", { x: 6, y: 6 }, "unaware")
-    e.stance = "hunker"
-    expect(setup(rows, [r, e]).combat.odds(r, e).sure).toBe(true)
+    expect(setup(rows, [r, e]).combat.odds(r, e, { reaction: true }).sure).toBe(true)
   })
 })
 

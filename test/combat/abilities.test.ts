@@ -71,6 +71,18 @@ describe("Scout", () => {
     expect(find(a, "e").has("exposed")).toBe(true)
     expect(find(a, "g").concealed).toBe(true)
   })
+  test("Mark lasts 1 round and ends after the first sure hit on the target", () => {
+    const g = setup(open(8, 2), [
+      squad("g", "rogue", { x: 0, y: 0 }),
+      squad("w", "warden", { x: 0, y: 1 }),
+      enemy("e", "orc", { x: 5, y: 0 }),
+    ])
+    find(g, "e").hp = 50
+    const a = use(g, "g", "tag", { target: "e" })
+    expect(find(a, "e").statuses.find((x) => x.id === "exposed")?.rounds).toBe(1)
+    const b = a.apply({ type: "attack", unit: "w", target: "e" })
+    expect(find(b, "e").has("exposed")).toBe(false)
+  })
 })
 
 describe("Psi operative", () => {

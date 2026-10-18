@@ -206,7 +206,7 @@ export class Abilities {
       }
       case "tag": {
         check(!!t && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= RANGE.tag, "target")
-        t!.give({ id: "exposed", rounds: 2, source: u.id })
+        t!.give({ id: "exposed", rounds: 1, source: u.id })
         game.log.push({ key: "log.tag", params: { unit: u.id, target: t!.id } })
         break
       }

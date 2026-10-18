@@ -21,6 +21,23 @@ describe("odds", () => {
     expect(o.sure).toBe(true)
     expect(o.chance).toBe(1)
   })
+  test("a melee alien in the open takes no sure hit; the flank gives an edge instead", () => {
+    const r = squad("r", "ranger", { x: 0, y: 0 })
+    const e = enemy("e", "ogre", { x: 0, y: 8 })
+    const o = setup(open(3, 10), [r, e]).combat.odds(r, e)
+    expect(o.advantages).toContain("flanked")
+    expect(o.sure).toBe(false)
+    expect(o.edge).toBe(1)
+    expect(o.chance).toBeLessThan(1)
+  })
+  test("a hunkered unit takes no sure hit, even flanked and unaware", () => {
+    const r = squad("r", "ranger", { x: 0, y: 0 })
+    const e = enemy("e", "orc", { x: 0, y: 8 }, "unaware")
+    e.stance = "hunker"
+    const o = setup(open(3, 10), [r, e]).combat.odds(r, e)
+    expect(o.advantages).toEqual(["flanked", "unaware"])
+    expect(o.sure).toBe(false)
+  })
   test("a sure hit forecasts critical damage", () => {
     const r = squad("r", "ranger", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 0, y: 8 })
