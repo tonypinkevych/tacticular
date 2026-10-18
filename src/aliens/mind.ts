@@ -2,7 +2,7 @@ import { RANGE } from "../combat/abilities"
 import { canReach } from "../combat/combat"
 import { failChance } from "../combat/dice"
 import { WEAPONS } from "../combat/weapons"
-import { area, distance, key, type Point, pointOf, same } from "../map/point"
+import { AROUND, area, distance, key, type Point, plus, pointOf, same } from "../map/point"
 import type { Game } from "../mission/game"
 import type { Action } from "../mission/orders"
 import { PROFILES } from "../units/profiles"
@@ -40,6 +40,14 @@ export class Mind {
     return game.units.filter(
       (t) => t.alive() && u.foe(t) && !t.concealed && side.some((x) => game.sight.sees(x, t.pos)),
     )
+  }
+
+  /** Tiles an alien can walk to next turn, with the tiles next to them when it fights in melee. */
+  threat(u: Unit): Set<number> {
+    const budget = u.wounded() ? u.mobility : u.mobility * 2
+    const walk = [key(u.pos), ...this.game.reach(u, budget).cost.keys()]
+    if (!u.arms().melee) return new Set(walk)
+    return new Set(walk.flatMap((k) => [k, ...AROUND.map((d) => key(plus(pointOf(k), d)))]))
   }
 
   /** One move along the walking path to a goal, or to the reachable tile nearest it; a dash when given the range. */

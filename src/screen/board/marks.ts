@@ -1,5 +1,6 @@
+import { Mind } from "../../aliens/mind"
 import { DETECTION } from "../../aliens/stealth"
-import { distance, key, ORTHOGONAL, type Point, plus, pointOf } from "../../map/point"
+import { distance, key, ORTHOGONAL, type Point, plus, pointOf, same } from "../../map/point"
 import type { Unit } from "../../units/unit"
 import { ALIEN, AMBER, BEACON, DASH, DOMINATED, EVAC, MOVE, type Rgb, rgb, SQUAD } from "./color"
 import { height, tone } from "./picture"
@@ -36,6 +37,7 @@ export class Marks {
   under(): void {
     this.borders()
     this.reach()
+    this.threat()
     this.goal()
     if (this.scene.zones) this.zones()
     for (const [k, c] of this.dots) {
@@ -122,6 +124,15 @@ export class Marks {
       shape(new Set([key(selected.pos), ...[...keys].filter((k) => this.explored(pointOf(k)))]))
     this.px.outline(seen(far), DASH, 0.4, 5)
     if (near.size > 0) this.px.outline(seen(near), MOVE, 0.45, 5)
+  }
+
+  /** Where the alien under the cursor can walk, or strike in melee, next turn. */
+  private threat(): void {
+    const { hover, game } = this.scene
+    const e = hover ? this.aliens().find((u) => same(u.pos, hover)) : undefined
+    if (!e) return
+    const zone = [...new Mind(game).threat(e)].filter((k) => this.explored(pointOf(k)))
+    this.px.outline(new Set(zone), ALIEN, 0.5, 5)
   }
 
   /** The evac zone, the beacon, the terminal or relay, the captive and the next alien landing. */

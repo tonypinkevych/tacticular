@@ -1,6 +1,6 @@
 import { Mind } from "../../src/aliens/mind"
 import { Board } from "../../src/map/board"
-import { distance } from "../../src/map/point"
+import { distance, key } from "../../src/map/point"
 import { Game } from "../../src/mission/game"
 import { Match } from "../../src/mission/match"
 import { Unit } from "../../src/units/unit"
@@ -258,5 +258,24 @@ describe("patrols", () => {
     ]
     const g = new Match(g0).play({ type: "endTurn" }).at(-1)!.game
     expect(find(g, "e").pos.x).toBeLessThan(19)
+  })
+})
+
+describe("threat", () => {
+  test("covers the tiles an alien can walk to next turn, and for a melee alien the tiles next to them", () => {
+    const orc = enemy("o", "orc", { x: 1, y: 1 })
+    const brute = enemy("b", "ogre", { x: 1, y: 1 })
+    const reach = new Mind(setup(open(20, 3), [orc])).threat(orc)
+    expect(reach.has(key({ x: 1 + 2 * orc.mobility, y: 1 }))).toBe(true)
+    expect(reach.has(key({ x: 2 + 2 * orc.mobility, y: 1 }))).toBe(false)
+    const strike = new Mind(setup(open(20, 3), [brute])).threat(brute)
+    expect(strike.has(key({ x: 2 + 2 * brute.mobility, y: 1 }))).toBe(true)
+  })
+  test("a wounded alien threatens one move only", () => {
+    const orc = enemy("o", "orc", { x: 1, y: 1 })
+    orc.hp = 1
+    const reach = new Mind(setup(open(20, 3), [orc])).threat(orc)
+    expect(reach.has(key({ x: 1 + orc.mobility, y: 1 }))).toBe(true)
+    expect(reach.has(key({ x: 2 + orc.mobility, y: 1 }))).toBe(false)
   })
 })
