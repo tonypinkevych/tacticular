@@ -20,6 +20,8 @@ export interface Float {
   hit?: boolean
   /** A unit that died here and fades out. */
   unit?: Unit
+  /** A horn: the reach in tiles of a ring that spreads from here; it shows even out of sight. */
+  ring?: number
 }
 
 /**
@@ -152,7 +154,7 @@ function target(before: Game, frame: Frame): Point | null {
 
 /** The sounds the player hears of a step: all of a step in sight, else only the alarms and the heard steps. */
 function heard(sounds: Cue[], visible: boolean): Cue[] {
-  return visible ? sounds : sounds.filter((c) => c === "heard" || c === "spotted")
+  return visible ? sounds : sounds.filter((c) => c === "heard" || c === "spotted" || c === "horn")
 }
 
 function actor(frame: Frame): string | null {
@@ -205,6 +207,14 @@ export function floats(
     if (e.key === "log.heal") add(e, `+${p.amount}`, "#5fd35f")
     if (e.key === "log.burning") add(e, `−${p.dmg}`, "#ff8a3c", p.unit, true)
     if (e.key === "log.detected") add(e, "!", "#ffd84a", p.unit)
+    if (e.key === "log.horn")
+      out.push({
+        text: t("ui.horn"),
+        color: "#ff6a5a",
+        at: { x: Number(p.x), y: Number(p.y) },
+        born: now,
+        ring: Number(p.radius),
+      })
     if (spell) add(e, t(p.saved ? "ui.saved" : "ui.failed"), p.saved ? "#d9dde3" : "#c38bff")
     const dead = e.key === "log.dies" ? after.units.find((u) => u.id === p.unit) : undefined
     if (dead) out.push({ text: "", color: "", at: dead.pos, born: now, unit: dead })

@@ -41,6 +41,12 @@ describe("cues", () => {
     )
     expect(cues(g, f).end).toContain("heard")
   })
+  test("a horn sounds even when no one sees it", () => {
+    const f = frame({ type: "endTurn" }, (a) =>
+      a.log.push({ key: "log.horn", params: { group: "g1", x: 5, y: 1, radius: 15 } }),
+    )
+    expect(cues(g, f).end).toContain("horn")
+  })
   test("a spotted soldier sounds the alarm", () => {
     const f = frame({ type: "move", unit: "w", to: { x: 1, y: 1 } }, (a) =>
       a.log.push({ key: "log.detected", params: { unit: "w", by: "e" } }),

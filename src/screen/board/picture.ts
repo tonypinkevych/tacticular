@@ -1,4 +1,4 @@
-import { key, type Point, same } from "../../map/point"
+import { area, key, type Point, same } from "../../map/point"
 import type { Tile } from "../../map/tile"
 import type { Unit } from "../../units/unit"
 import { ALIEN, AMBER, BLACK, DOMINATED, EMBER, FLAME, mix, PSION, type Rgb, rgb, SMOKE, SQUAD, WHITE } from "./color"
@@ -414,9 +414,16 @@ export class Picture {
       }
     }
     for (const f of texts) {
-      if (!f.text || !this.seenAt(f.at)) continue
+      if (!f.text || (!f.ring && !this.seenAt(f.at))) continue
       const age = (now - f.born) / life
       if (age >= 1) continue
+      if (f.ring)
+        this.px.outline(
+          new Set(area(f.at, Math.max(1, Math.round(f.ring * Math.min(1, age * 1.4)))).map(key)),
+          ALIEN,
+          0.9 * (1 - age),
+          true,
+        )
       const a = this.px.projection.anchor(f.at)
       const y = a.y - 26 - height(game.tile(f.at)) - age * 10
       const color = rgb(f.color)

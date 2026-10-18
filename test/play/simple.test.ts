@@ -79,6 +79,7 @@ describe("alarm", () => {
     g.stealth.horn()
     g.stealth.horn()
     expect(g.log.filter((x) => x.key === "log.horn")).toHaveLength(1)
+    expect(g.log.find((x) => x.key === "log.horn")?.params).toMatchObject({ x: 5, y: 0, radius: 15 })
   })
   test("it calls groups within 15 tiles only, and 30 for a Warchief's group", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })

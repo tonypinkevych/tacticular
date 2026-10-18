@@ -97,6 +97,10 @@ describe("floats", () => {
     expect(f.text).not.toContain("%")
     expect(f.text).toContain("6")
   })
+  test("a horn shows a text at the caller and a ring as wide as its reach", () => {
+    const [f] = floats(g, logged("log.horn", { group: "g1", x: 5, y: 1, radius: 15 }), 0)
+    expect(f).toMatchObject({ text: "Horn!", at: { x: 5, y: 1 }, ring: 15 })
+  })
   test("a death leaves a fading figure", () => {
     const a = logged("log.dies", { unit: "e" })
     a.units.find((u) => u.id === "e")!.hp = 0

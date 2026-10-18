@@ -178,9 +178,10 @@ export class Stealth {
       const callers = this.members(g.id).filter((u) => u.alert === "engaged")
       if (callers.length === 0 || !g.target || g.alarmed) continue
       g.alarmed = true
-      game.log.push({ key: "log.horn", params: { group: g.id } })
       const reach = this.members(g.id).some((u) => u.kind === "warchief") ? HORN * 2 : HORN
-      game.noises.push({ at: { ...callers[0].pos }, radius: reach, round: game.round })
+      const at = callers[0].pos
+      game.log.push({ key: "log.horn", params: { group: g.id, x: at.x, y: at.y, radius: reach } })
+      game.noises.push({ at: { ...at }, radius: reach, round: game.round })
       for (const other of game.groups) {
         if (other === g) continue
         const near = this.members(other.id).some((u) => callers.some((c) => distance(c.pos, u.pos) <= reach))

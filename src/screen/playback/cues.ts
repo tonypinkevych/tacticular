@@ -23,6 +23,7 @@ export type Cue =
   | "door"
   | "heard"
   | "spotted"
+  | "horn"
   | "select"
   | "denied"
 
@@ -64,6 +65,7 @@ export function cues(before: Game, frame: Frame): { start: Cue[]; end: Cue[] } {
     if (e.key === "log.dies") add("death")
     if (e.key === "log.door") add("door")
     if (e.key === "log.detected" || e.key === "log.engaged") add("spotted")
+    if (e.key === "log.horn") add("horn")
   }
   if (after.noises.slice(before.noises.length).some((n) => n.radius === 0)) add("heard")
   return { start, end }

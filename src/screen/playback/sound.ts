@@ -121,6 +121,10 @@ const RECIPES: Record<Cue, (v: Voice, t: number) => void> = {
     v.burst(t, 0.12, 2500, 3, 0.5, "bandpass")
     v.burst(t + 0.08, 0.1, 700, 1, 0.6)
   },
+  horn: (v, t) => {
+    v.tone(t, 170, 210, 0.55, "sawtooth", 0.22)
+    v.tone(t + 0.3, 210, 150, 0.8, "sawtooth", 0.22)
+  },
   alien: (v, t) => {
     v.tone(t, 1400, 300, 0.25, "sawtooth", 0.18)
     v.burst(t, 0.1, 1500, 1, 0.4)
