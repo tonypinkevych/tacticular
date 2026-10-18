@@ -24,6 +24,22 @@ describe("hover sets the armed target", () => {
   })
 })
 
+describe("a controlled alien", () => {
+  const c = squad("c", "cleric", { x: 1, y: 1 })
+  const w = squad("w", "warden", { x: 0, y: 0 })
+  const e = enemy("e", "orc", { x: 2, y: 1 })
+  e.give({ id: "dominated", rounds: 2 })
+  const g = setup(open(8, 3), [w, c, e])
+
+  test.each(["heal", "rally"])("takes the squad's %s by hover and as the default target", (id) => {
+    const armed = { slot: `ability:${id}`, target: null, at: null }
+    expect(new Kit(g, c).retarget(armed, e.pos).target).toBe("e")
+  })
+  test("takes Guard", () => {
+    expect(new Kit(g, w).retarget({ slot: "ability:guard", target: null, at: null }, e.pos).target).toBe("e")
+  })
+})
+
 describe("sights", () => {
   const w = squad("w", "warden", { x: 0, y: 1 })
   const e = enemy("e", "orc", { x: 5, y: 1 })
