@@ -131,7 +131,7 @@ export class Orders {
 
   private move(u: Unit, to: Point): void {
     const game = this.game
-    const r = game.reach(u, u.mobility * u.ap)
+    const r = game.reach(u, u.stride())
     const cost = r.cost.get(key(to))
     check(cost !== undefined && cost > 0, "unreachable")
     u.ap -= cost <= u.mobility ? 1 : 2

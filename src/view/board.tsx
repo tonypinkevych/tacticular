@@ -120,7 +120,7 @@ export function Board(props: { model: Model }) {
           if (e.allegiance() === "enemy" && (e.side === "squad" || g.stealth.visible(e)) && g.orders.canTarget(u, e))
             targets.add(e.id)
       } else {
-        const r = g.reach(u, u.mobility * u.ap)
+        const r = g.reach(u, u.stride())
         for (const [k, c] of r.cost) {
           if (c === 0) continue
           far.add(k)

@@ -102,6 +102,11 @@ function Card(props: { unit: Unit; game: Game; model: Model; children?: JSX.Elem
         <Show when={u().intent}>
           <span class="chip danger">{t("ui.telegraph")}</span>
         </Show>
+        <Show when={u().wounded()}>
+          <span class="chip status" title={t("about.wounded")}>
+            {t("ui.wounded")}
+          </span>
+        </Show>
         <Show when={u().stance !== "none"}>
           <span class="chip">{t(`action.${u().stance}`)}</span>
         </Show>
@@ -420,7 +425,7 @@ function Contacts(props: { model: Model }) {
     if (!u || m.game().phase !== "squad") return []
     const g = m.game()
     const h = m.hover()
-    const planned = h && u.ap > 0 && !m.armed() && g.reach(u, u.mobility * u.ap).cost.has(key(h)) ? h : u.pos
+    const planned = h && u.ap > 0 && !m.armed() && g.reach(u, u.stride()).cost.has(key(h)) ? h : u.pos
     return new Kit(g, u).sights(planned)
   }
   return (

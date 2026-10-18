@@ -37,6 +37,12 @@ describe("odds", () => {
     expect(o.disadvantages).toEqual(["reaction"])
     expect(o.edge).toBe(0)
   })
+  test("a wounded attacker is shaken", () => {
+    const r = squad("r", "ranger", { x: 0, y: 0 })
+    const e = enemy("e", "orc", { x: 0, y: 6 })
+    r.hp = Math.floor(r.maxHp / 2)
+    expect(setup(open(3, 10), [r, e]).combat.odds(r, e).disadvantages).toContain("shaken")
+  })
   test("past best range: disadvantage only, Aim stays", () => {
     const c = squad("c", "cleric", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 0, y: 10 })

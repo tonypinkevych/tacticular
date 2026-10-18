@@ -155,7 +155,7 @@ export class Mind {
    */
   private search(u: Unit, goal: Point, next?: Point): Action | null {
     const game = this.game
-    if (distance(u.pos, goal) > SEARCH) return this.toward(u, goal, u.mobility * u.ap)
+    if (distance(u.pos, goal) > SEARCH) return this.toward(u, goal, u.stride())
     if (u.moved) return this.watch(u)
     const side = game.units.filter((x) => x.alive() && x.allegiance() === u.allegiance())
     const hidden = [...game.reach(u, u.mobility).cost.keys()]
@@ -163,7 +163,7 @@ export class Mind {
       .filter((p) => distance(p, goal) <= SEARCH && !game.unitAt(p) && !side.some((x) => game.sight.sees(x, p)))
       .sort((a, b) => this.jitter(u, b) - this.jitter(u, a))
     if (hidden.length > 0) return { type: "move", unit: u.id, to: hidden[0] }
-    if (next && distance(u.pos, next) > SEARCH) return this.toward(u, next, u.mobility * u.ap)
+    if (next && distance(u.pos, next) > SEARCH) return this.toward(u, next, u.stride())
     return this.watch(u)
   }
 
@@ -189,7 +189,7 @@ export class Mind {
     const game = this.game
     if (game.goal.kind !== "evac") return null
     const zone = game.goal.tiles[0]
-    if (distance(u.pos, zone) > SEARCH + 1) return this.toward(u, zone, u.mobility * u.ap)
+    if (distance(u.pos, zone) > SEARCH + 1) return this.toward(u, zone, u.stride())
     const group = game.groups.find((g) => g.id === u.group)
     const facing = group?.target ?? group?.landing ?? u.pos
     const score = (p: Point) => game.cover.against(p, facing) + this.jitter(u, p)
@@ -307,7 +307,7 @@ export class Mind {
     if (sp && sp.value >= 100) return sp.action
     if (targets.length === 0) {
       const beacon = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : null
-      if (beacon && !same(u.pos, beacon)) return this.toward(u, beacon, u.mobility * u.ap)
+      if (beacon && !same(u.pos, beacon)) return this.toward(u, beacon, u.stride())
       const goal = group?.target ?? (u.waited ? group?.landing : undefined)
       if (!beacon && goal) return this.search(u, goal, group?.landing)
       if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }

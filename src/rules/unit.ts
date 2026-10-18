@@ -128,6 +128,16 @@ export class Unit implements UnitData {
     return this.hp > 0
   }
 
+  /** At half its HP or less: it attacks shaken and cannot dash. */
+  wounded(): boolean {
+    return this.alive() && this.hp * 2 <= this.maxHp
+  }
+
+  /** How far the unit can walk with the AP it has: one move when wounded. */
+  stride(): number {
+    return this.mobility * (this.wounded() ? Math.min(1, this.ap) : this.ap)
+  }
+
   /** A squad member that is a soldier, not a gadget. */
   soldier(): boolean {
     return this.side === "squad" && this.kind !== "turret"

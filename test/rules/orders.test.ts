@@ -186,3 +186,12 @@ describe("a controlled alien", () => {
     expect(hits(g.apply({ type: "attack", unit: "w", target: "e" }))).toHaveLength(1)
   })
 })
+
+describe("wounds", () => {
+  test("a wounded soldier cannot dash", () => {
+    const v = squad("v", "vanguard", { x: 0, y: 0 })
+    v.hp = Math.floor(v.maxHp / 2)
+    const g = setup(open(12, 2), [v, enemy("e", "orc", { x: 11, y: 1 })])
+    expect(() => g.apply({ type: "move", unit: "v", to: { x: v.mobility + 1, y: 0 } })).toThrow("unreachable")
+  })
+})

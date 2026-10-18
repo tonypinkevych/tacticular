@@ -82,7 +82,7 @@ export class Combat {
     if ((target.side === "enemy" && target.alert === "unaware") || this.surprised(target)) adv.push("unaware")
     if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
     if (target.stance === "hunker") dis.push("hunkered")
-    if (attacker.has("shaken") || this.surprised(attacker)) dis.push("shaken")
+    if (attacker.has("shaken") || attacker.wounded() || this.surprised(attacker)) dis.push("shaken")
     const range = distance(attacker.pos, target.pos)
     if (!weapon.melee && (range > weapon.max || range < weapon.min)) dis.push("range")
     const sure = adv.length > dis.length
