@@ -210,6 +210,12 @@ export class Model {
         else this.setArmed({ ...current, target: here.id, at: null })
         return
       }
+      const barrel = slot.aim === "unit" && !here ? kit.retarget(current, p) : undefined
+      if (barrel?.at && same(barrel.at, p)) {
+        if (current.at && same(current.at, p)) this.act(kit.action(current)!)
+        else this.setArmed(barrel)
+        return
+      }
       const target = current.target ? g.units.find((x) => x.id === current.target) : undefined
       if (current.slot === "ability:charge" && target && g.orders.landings(u, target).some((q) => same(q, p))) {
         if (current.at && same(current.at, p)) this.act(kit.action(current)!)

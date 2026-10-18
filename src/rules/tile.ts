@@ -15,6 +15,7 @@ export type Tile =
   | "tree"
   | "rock"
   | "mud"
+  | "barrel"
 
 export const walkable = (tile: Tile): boolean =>
   tile === "floor" ||
@@ -40,7 +41,7 @@ export const blocksSight = (tile: Tile): boolean =>
 
 /** Defense a tile gives to a unit behind it. */
 export function coverOf(tile: Tile): number {
-  if (tile === "low") return 2
+  if (tile === "low" || tile === "barrel") return 2
   if (tile === "high" || tile === "wall" || tile === "door" || tile === "roof" || tile === "tree" || tile === "rock")
     return 5
   return 0

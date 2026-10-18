@@ -20,6 +20,7 @@ const LEGEND: Record<string, Tile> = {
   T: "tree",
   o: "rock",
   m: "mud",
+  b: "barrel",
 }
 
 /** The tiles of a map, row by row; outside the map is wall. */

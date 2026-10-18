@@ -290,7 +290,7 @@ export class Abilities {
     }
     game.log.push({ key: "log.saturation", params: { unit: u.id } })
     const hits = game.units.filter((x) => x !== u && x.alive() && cone(x.pos))
-    for (const p of area(u.pos, RANGE.saturation)) if (game.board.inside(p) && cone(p)) game.board.break(p)
+    for (const p of area(u.pos, RANGE.saturation)) if (game.board.inside(p) && cone(p)) game.combat.smash(p)
     for (const x of hits) {
       game.log.push({ key: "log.shrapnel", params: { target: x.id, dmg: 2 } })
       game.combat.hurt(x, 2)
@@ -306,7 +306,7 @@ export class Abilities {
     const hits = area(at, 1)
       .map((p) => game.unitAt(p))
       .filter((x): x is Unit => !!x && x.alive())
-    for (const p of area(at, 1)) if (game.board.inside(p) && !game.fire.ignite(p)) game.board.break(p)
+    for (const p of area(at, 1)) if (game.board.inside(p) && !game.fire.ignite(p)) game.combat.smash(p)
     for (const x of hits) {
       game.log.push({ key: "log.shrapnel", params: { target: x.id, dmg: 2 } })
       if (game.combat.hurt(x, 2) || same(x.pos, at)) continue
@@ -322,7 +322,7 @@ export class Abilities {
     game.log.push({ key: "log.flask", params: { unit: u.id } })
     for (const p of area(at, 1)) {
       if (!game.board.inside(p)) continue
-      if (!game.fire.ignite(p)) game.board.break(p)
+      if (!game.fire.ignite(p)) game.combat.smash(p)
       const hit = game.unitAt(p)
       if (!hit) continue
       game.log.push({ key: "log.burn", params: { target: hit.id, dmg: 3 } })

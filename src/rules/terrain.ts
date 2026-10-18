@@ -1,7 +1,7 @@
 import { type Biome, Board } from "./board"
 import type { Dice } from "./dice"
 import { AROUND, key, type Point, plus, same } from "./point"
-import { blocksSight, climb, passable, type Tile } from "./tile"
+import { blocksSight, climb, coverOf, passable, type Tile } from "./tile"
 
 export const SIZE = { width: 32, height: 32 }
 
@@ -341,6 +341,18 @@ class Terrain {
     }
   }
 
+  /** Barrels on open ground next to cover, off the routes. */
+  barrels(count: number): void {
+    const { dice: r, board: d } = this
+    for (let i = 0, tries = 0; i < count && tries < 200; tries++) {
+      const p = { x: r.between(START + 2, d.width - 2), y: r.between(1, d.height - 2) }
+      const beside = AROUND.slice(0, 4).some((s) => coverOf(d.at(plus(p, s))) > 0)
+      if (d.at(p) !== "floor" || this.kept.has(key(p)) || !beside) continue
+      d.set(p, "barrel")
+      i++
+    }
+  }
+
   /** Patches of tall grass that grow over open ground. */
   meadows(count: number): void {
     const { dice: r, board: d } = this
@@ -438,6 +450,7 @@ export function map(
     for (let i = 0; i < pieces; i++) land.piece()
     for (let i = 0; i < houses; i++) land.house(r.random() < t.roofs)
     land.clutter()
+    land.barrels(Math.round(scale * 1.5))
     land.meadows(Math.round(t.grass * scale))
     land.banks()
     const ridges = r.between(1, 2) * Math.round(scale)

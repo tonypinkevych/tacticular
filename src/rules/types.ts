@@ -139,4 +139,5 @@ export type Action =
   | { type: "overwatch"; unit: string }
   | { type: "hunker"; unit: string }
   | { type: "aim"; unit: string; target: string }
+  | { type: "shoot"; unit: string; at: Point }
   | { type: "endTurn" }

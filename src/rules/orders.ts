@@ -54,6 +54,9 @@ export class Orders {
       case "hunker":
         this.hunker(u)
         break
+      case "shoot":
+        this.shoot(u, action.at)
+        break
     }
     game.stealth.scan()
     game.stealth.observe()
@@ -71,7 +74,7 @@ export class Orders {
     for (const step of path) {
       const vault = distance(u.pos, step) === 2 && (u.pos.x === step.x || u.pos.y === step.y)
       const risky = dash || vault
-      if (vault && u.kind === "ogre") game.board.break({ x: (u.pos.x + step.x) / 2, y: (u.pos.y + step.y) / 2 })
+      if (vault && u.kind === "ogre") game.combat.smash({ x: (u.pos.x + step.x) / 2, y: (u.pos.y + step.y) / 2 })
       const threats = game.units.filter(
         (x) =>
           x.alive() &&
@@ -186,6 +189,22 @@ export class Orders {
     if (u.intent?.type === "shot") u.intent = null
     this.game.combat.attack(u, t, weaponId)
     this.game.stealth.attacked(u, t, weaponId)
+    u.ap = 0
+  }
+
+  /** Fires at a barrel in sight and in weapon range; it blows up. */
+  private shoot(u: Unit, at: Point): void {
+    const game = this.game
+    const w = u.arms()
+    check(!w.melee && game.tile(at) === "barrel", "target")
+    check(distance(u.pos, at) <= w.max && game.sight.sees(u, at), "range")
+    if (w.twoAp) check(u.ap === 2 && !u.moved, "needs 2 AP")
+    if (w.ammo !== null) {
+      check(u.ammo > 0, "ammo")
+      u.ammo -= 1
+    }
+    game.combat.smash(at)
+    game.stealth.noise(u.pos, w.noise, u)
     u.ap = 0
   }
 

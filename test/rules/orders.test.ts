@@ -220,3 +220,20 @@ describe("aim", () => {
     expect(find(a, "e").intent).toBeNull()
   })
 })
+
+describe("shooting a barrel", () => {
+  test("a soldier shoots a barrel in sight and weapon range: it blows up and the turn ends", () => {
+    const g = setup(
+      ["..........", "......b...", ".........."],
+      [squad("w", "warden", { x: 2, y: 1 }), enemy("e", "orc", { x: 7, y: 2 })],
+    )
+    const a = g.apply({ type: "shoot", unit: "w", at: { x: 6, y: 1 } })
+    expect(a.tile({ x: 6, y: 1 })).toBe("floor")
+    expect(find(a, "e").hp).toBe(find(g, "e").maxHp - 3)
+    expect(find(a, "w").ap).toBe(0)
+  })
+  test("a melee fighter cannot shoot a barrel", () => {
+    const g = setup(["...b......"], [squad("g", "rogue", { x: 2, y: 0 }), enemy("e", "orc", { x: 9, y: 0 })])
+    expect(() => g.apply({ type: "shoot", unit: "g", at: { x: 3, y: 0 } })).toThrow(Illegal)
+  })
+})

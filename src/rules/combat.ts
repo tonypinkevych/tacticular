@@ -1,7 +1,7 @@
-import { ULT, WEAPONS } from "./data"
+import { BLAST_NOISE, ULT, WEAPONS } from "./data"
 import { chance, EDGE, failChance } from "./dice"
 import type { Game } from "./game"
-import { adjacent, distance, type Point, same } from "./point"
+import { adjacent, area, distance, type Point, same } from "./point"
 import { climb, high, walkable } from "./tile"
 import type { Weapon, WeaponId } from "./types"
 import type { Unit } from "./unit"
@@ -170,7 +170,7 @@ export class Combat {
     game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
     if (critical && !w.melee) {
       const p = game.cover.tile(target.pos, attacker.pos)
-      if (p) game.board.break(p)
+      if (p) this.smash(p)
     }
     const killed = this.hurt(target, dmg)
     if (attacker.soldier()) attacker.ult = Math.min(ULT, attacker.ult + (killed ? 3 : 1))
@@ -229,6 +229,26 @@ export class Combat {
       }
     }
     return true
+  }
+
+  /** Damages cover on a tile; a barrel there blows up: 3 damage to everyone in 3×3, and the blast smashes the tiles. */
+  smash(p: Point): void {
+    const game = this.game
+    if (game.tile(p) !== "barrel") {
+      game.board.break(p)
+      return
+    }
+    game.board.set(p, "floor")
+    game.log.push({ key: "log.barrel", params: {} })
+    for (const q of area(p, 1)) {
+      const hit = game.unitAt(q)
+      if (hit?.alive()) {
+        game.log.push({ key: "log.shrapnel", params: { target: hit.id, dmg: 3 } })
+        this.hurt(hit, 3)
+      }
+    }
+    for (const q of area(p, 1)) if (!same(q, p) && game.board.inside(q) && !game.fire.ignite(q)) this.smash(q)
+    game.stealth.noise(p, BLAST_NOISE, null)
   }
 
   /** True when an ally of the attacker stands on the far side of the target. */

@@ -67,3 +67,14 @@ describe("sights", () => {
     expect(new Kit(walled, w).sights({ x: 3, y: 3 }).map((s) => s.unit.id)).toEqual(["f"])
   })
 })
+
+describe("a barrel", () => {
+  const w = squad("w", "warden", { x: 1, y: 1 })
+  const g = setup(["........", ".....b..", "........"], [w, enemy("e", "orc", { x: 7, y: 2 })])
+  test("a weapon aims at a barrel under the cursor, and firing shoots it", () => {
+    const kit = new Kit(g, w)
+    const armed = kit.retarget({ slot: "weapon:repeater", target: null, at: null }, { x: 5, y: 1 })
+    expect(armed.at).toEqual({ x: 5, y: 1 })
+    expect(kit.action(armed)).toEqual({ type: "shoot", unit: "w", at: { x: 5, y: 1 } })
+  })
+})

@@ -21,6 +21,7 @@ export const TERRAIN: Record<Tile, Rgb> = {
   ridge: rgb("#8c846e"),
   high: rgb("#8e8a7c"),
   door: rgb("#a08660"),
+  barrel: rgb("#b0644e"),
 }
 
 /** A light on the board: a lamp, a fire or a muzzle flash. */

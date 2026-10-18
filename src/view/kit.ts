@@ -241,6 +241,7 @@ export class Kit {
   action(armed: Armed): Action | null {
     const u = this.unit
     const [kind, id] = armed.slot.split(":")
+    if (kind === "weapon" && armed.at) return { type: "shoot", unit: u.id, at: armed.at }
     if (kind === "weapon")
       return armed.target ? { type: "attack", unit: u.id, target: armed.target, weapon: id as WeaponId } : null
     if (kind === "ability") {
@@ -270,10 +271,15 @@ export class Kit {
     return { ...armed, at: hover && this.range(armed.slot).has(key(hover)) ? hover : armed.at }
   }
 
-  /** The armed action aimed at the unit under the cursor when it is a valid target, else unchanged. */
+  /** The armed action aimed at the unit, or for a gun the barrel, under the cursor when it is valid, else unchanged. */
   retarget(armed: Armed, hover: Point | null): Armed {
     const { game, unit: u } = this
     const [kind, id] = armed.slot.split(":")
+    if (kind === "weapon" && hover && game.tile(hover) === "barrel") {
+      const w = WEAPONS[id as WeaponId]
+      const ok = !w.melee && distance(u.pos, hover) <= w.max && game.sight.sees(u, hover)
+      return ok ? { ...armed, target: null, at: hover } : armed
+    }
     const unitAim = kind === "weapon" || UNIT_ABILITIES.includes(id as AbilityId)
     const t = hover && unitAim ? game.unitAt(hover) : undefined
     if (!t?.alive() || t.id === armed.target) return armed

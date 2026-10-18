@@ -1,4 +1,4 @@
-import { enemy, open, reseed, setup, squad } from "../fixture"
+import { enemy, find, open, reseed, setup, squad } from "../fixture"
 
 describe("odds", () => {
   test("cover adds defense and removes the flank", () => {
@@ -85,5 +85,25 @@ describe("results", () => {
     const p = g.log.find((x) => x.key !== "log.dies")!.params
     expect(p.need).toBe(need)
     expect(p.total).toBe(Number(p.roll) + g.combat.odds(r, e).aim + 3 * g.combat.odds(r, e).edge)
+  })
+})
+
+describe("barrels", () => {
+  test("a barrel blows up: 3 damage to everyone in 3×3, cover in it breaks, the barrel is gone", () => {
+    const g = setup(
+      ["......", ".:b...", "......"],
+      [squad("s", "warden", { x: 2, y: 0 }), enemy("e", "orc", { x: 3, y: 2 })],
+    )
+    g.combat.smash({ x: 2, y: 1 })
+    expect(g.tile({ x: 2, y: 1 })).toBe("floor")
+    expect(g.tile({ x: 1, y: 1 })).toBe("floor")
+    expect(find(g, "s").hp).toBe(find(g, "s").maxHp - 3)
+    expect(find(g, "e").hp).toBe(find(g, "e").maxHp - 3)
+  })
+  test("a blast sets off the barrels next to it", () => {
+    const g = setup([".bb...b"])
+    g.combat.smash({ x: 1, y: 0 })
+    expect(g.tile({ x: 2, y: 0 })).toBe("floor")
+    expect(g.tile({ x: 6, y: 0 })).toBe("barrel")
   })
 })

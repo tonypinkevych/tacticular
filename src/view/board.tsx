@@ -109,7 +109,7 @@ export function Board(props: { model: Model }) {
         if (armed.slot === "ability:charge" && armed.at) {
           ghost = { unit: u, at: armed.at }
           path = g.reach(u, u.mobility).path(armed.at)
-        } else if (armed.at && slot?.aim === "tile") area = [armed.at]
+        } else if (armed.at && (slot?.aim === "tile" || g.tile(armed.at) === "barrel")) area = [armed.at]
         const f = kit.forecast(raw, hover)
         if (f) {
           const from = armed.slot === "ability:charge" && armed.at ? armed.at : u.pos

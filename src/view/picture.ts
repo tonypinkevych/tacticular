@@ -10,7 +10,7 @@ import { LIFT } from "./projection"
 import type { Scene } from "./scene"
 
 /** Tiles that stand up from the ground and can hide what is behind them. */
-const TALL: Tile[] = ["roof", "wall", "door", "open", "high", "tree", "rock", "low", "ladder"]
+const TALL: Tile[] = ["roof", "wall", "door", "open", "high", "tree", "rock", "low", "ladder", "barrel"]
 
 /** A whole-number hash of a tile, for steady random looks. */
 export const hash = (x: number, y: number, i: number): number => {
@@ -123,7 +123,7 @@ export class Picture {
       const sway = Math.sin(this.t / 700 + r * 6) > 0.6 ? 1 : 0
       this.px.glyph(TILES.tree.slice(0, 3), a.x + sway, a.y - 6, c, alpha)
       this.px.glyph([[], [], [], ...TILES.tree.slice(3)], a.x, a.y, c, alpha)
-    } else if (tile === "ladder" || tile === "rock" || tile === "low" || tile === "high")
+    } else if (tile === "ladder" || tile === "rock" || tile === "low" || tile === "high" || tile === "barrel")
       this.px.glyph(TILES[tile], a.x, a.y, c, alpha)
     if (houses.roofed(p, this.standing))
       this.px.glyph(TILES.roof, a.x, a.y, mix(this.light.shade(TERRAIN.roof, p), WHITE, 0.1))

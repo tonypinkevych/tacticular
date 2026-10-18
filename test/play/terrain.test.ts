@@ -121,6 +121,14 @@ describe("push", () => {
 
 const SYMBOL: Record<string, string> = { floor: ".", low: ":", high: "H", wall: "#", door: "+", rock: "o" }
 
+describe("barrels", () => {
+  test("most maps hold a few barrels", () => {
+    const maps = Array.from({ length: 40 }, (_, i) => map(new Dice({ rng: i + 1 })))
+    const counts = maps.map((b) => b.tiles.filter((t) => t === "barrel").length)
+    expect(counts.filter((n) => n >= 3).length).toBeGreaterThanOrEqual(36)
+  })
+})
+
 describe("set pieces", () => {
   test("most maps hold a crashed ship, a checkpoint or a farm", () => {
     const marks = ["H#oo#H", ":.....:", "#...#.HH"]
