@@ -184,6 +184,17 @@ export class Stealth {
     }
   }
 
+  /** Sends the calm group nearest to a soldier to search where that soldier stands. */
+  hunt(): void {
+    const soldiers = this.game.units.filter((s) => s.alive() && s.soldier())
+    const calm = this.hostiles().filter((e) => e.alert !== "engaged" && e.group)
+    const near = (e: Unit) => Math.min(...soldiers.map((s) => distance(s.pos, e.pos)))
+    const e = calm.sort((a, b) => near(a) - near(b))[0]
+    if (!e || soldiers.length === 0) return
+    const s = soldiers.sort((a, b) => distance(a.pos, e.pos) - distance(b.pos, e.pos))[0]
+    this.investigate(e.group, s.pos)
+  }
+
   private investigate(id: string | null, at: Point): void {
     const g = this.group(id)
     if (!g) return

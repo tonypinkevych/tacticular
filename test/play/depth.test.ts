@@ -3,7 +3,7 @@ import { WEAPONS } from "../../src/combat/weapons"
 import { distance, key } from "../../src/map/point"
 import { walkable } from "../../src/map/tile"
 import { mission } from "../../src/mission/mission"
-import { enemy, open, setup, squad } from "../fixture"
+import { enemy, find, open, setup, squad } from "../fixture"
 
 describe("overwatch risk", () => {
   test("a reaction shot has disadvantage, but not against a unit that vaults or dashes", () => {
@@ -231,45 +231,47 @@ describe("objectives", () => {
   })
 })
 
-describe("reinforcements", () => {
-  test("after the alarm, 2 aliens drop on the landing pad every 3 rounds, at most 3 times", () => {
-    const s = squad("s", "warden", { x: 0, y: 5 })
-    const e = enemy("e", "orc", { x: 20, y: 5 }, "unaware")
-    const g = setup(open(24, 10), [s, e])
-    g.pad = { x: 18, y: 2 }
-    g.groups[0].alarmed = true
-    const enemies = () => g.units.filter((u) => u.side === "enemy").length
-    g.phase = "enemy"
-    g.turn.end()
-    expect(g.drop?.round).toBe(4)
-    for (let i = 0; i < 2; i++) {
+describe("alarm", () => {
+  const ends = (g: ReturnType<typeof setup>, n: number) => {
+    for (let i = 0; i < n; i++) {
       g.phase = "enemy"
       g.turn.end()
     }
+  }
+  test("rises by 1 at each round end", () => {
+    const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
+    ends(g, 3)
+    expect(g.alarm).toBe(3)
+  })
+  test("at 4, 7 and 10, 2 aliens land on the pad, shown the round before", () => {
+    const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
+    g.pad = { x: 18, y: 2 }
+    const enemies = () => g.units.filter((u) => u.side === "enemy").length
+    ends(g, 2)
+    expect(g.reinforcements.coming()).toBeNull()
+    ends(g, 1)
+    expect(g.reinforcements.coming()).toEqual({ x: 18, y: 2 })
     expect(enemies()).toBe(1)
-    g.phase = "enemy"
-    g.turn.end()
+    ends(g, 1)
     expect(enemies()).toBe(3)
     expect(g.log.some((x) => x.key === "log.drop")).toBe(true)
-    for (let i = 0; i < 12; i++) {
-      g.phase = "enemy"
-      g.turn.end()
-    }
+    ends(g, 8)
     expect(enemies()).toBe(7)
-    expect(g.drop).toBeNull()
     expect(g.units.filter((u) => u.group?.startsWith("d")).every((u) => distance(u.pos, { x: 18, y: 2 }) <= 2)).toBe(
       true,
     )
   })
-  test("a map with no landing pad gets no reinforcements", () => {
-    const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
-    g.groups[0].alarmed = true
-    for (let i = 0; i < 6; i++) {
-      g.phase = "enemy"
-      g.turn.end()
-    }
-    expect(g.drop).toBeNull()
-    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(1)
+  test("with no pad, at 4 the nearest calm group hunts the squad", () => {
+    const g = setup(open(24, 10), [
+      squad("s", "warden", { x: 0, y: 5 }),
+      enemy("e", "orc", { x: 10, y: 5 }, "unaware", "g1"),
+      enemy("f", "orc", { x: 22, y: 5 }, "unaware", "g2"),
+    ])
+    ends(g, 4)
+    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(2)
+    expect(find(g, "e").alert).toBe("investigating")
+    expect(g.groups.find((x) => x.id === "g1")?.target).toEqual({ x: 0, y: 5 })
+    expect(find(g, "f").alert).toBe("unaware")
   })
 })
 

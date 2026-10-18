@@ -143,6 +143,7 @@ export interface Conditions {
   size?: number
   pad?: boolean
   explored?: boolean
+  alarm?: number
 }
 
 /** A new mission from a seed: map, squad at one edge and alien groups toward the opposite edge. */
@@ -199,6 +200,7 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
   game.pad = pad?.at ?? null
   game.rng = state.rng
   if (conditions.explored) game.explored.fill(true)
+  game.alarm = conditions.alarm ?? 0
   return game
 }
 

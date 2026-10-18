@@ -29,9 +29,9 @@ function Top(props: { model: Model }) {
         {t("ui.round", { round: m.shown().round })} · {t(`ui.phase.${m.shown().phase}`)}
       </span>
       <span class="goal">{goal(m.shown())}</span>
-      <Show when={m.shown().drop}>
-        {(d) => <span class="drop">{t("ui.drop", { left: d().round - m.shown().round + 1 })}</span>}
-      </Show>
+      <span class="alarm" classList={{ coming: !!m.shown().reinforcements.coming() }}>
+        {t("ui.alarm", { alarm: m.shown().alarm, next: m.shown().reinforcements.next() ?? "—" })}
+      </span>
       <span class="grow" />
       <button type="button" classList={{ active: m.help() }} onClick={() => m.setHelp(!m.help())}>
         ?

@@ -1,4 +1,4 @@
-import { type Drop, Reinforcements } from "../aliens/reinforcements"
+import { Reinforcements } from "../aliens/reinforcements"
 import { type Group, type Noise, Stealth } from "../aliens/stealth"
 import { Abilities } from "../combat/abilities"
 import { Combat } from "../combat/combat"
@@ -51,8 +51,8 @@ export interface GameData {
   goal: Goal
   /** Where alien reinforcements land; a map with no pad gets none. */
   pad: Point | null
-  drop: Drop | null
-  drops: number
+  /** Rises each round; at some values the aliens get help. */
+  alarm: number
 }
 
 /** What a new game starts from. */
@@ -82,8 +82,7 @@ export class Game implements GameData {
   log!: Entry[]
   goal!: Goal
   pad!: Point | null
-  drop!: Drop | null
-  drops!: number
+  alarm!: number
   readonly dice = new Dice(this)
   readonly sight = new Sight(this)
   readonly cover = new Cover(this)
@@ -116,8 +115,7 @@ export class Game implements GameData {
       log: [],
       goal: { kind: "kill" },
       pad: null,
-      drop: null,
-      drops: 0,
+      alarm: 0,
     })
     game.stealth.observe()
     return game
@@ -144,8 +142,7 @@ export class Game implements GameData {
       log: this.log,
       goal: this.goal,
       pad: this.pad,
-      drop: this.drop,
-      drops: this.drops,
+      alarm: this.alarm,
     })
     return new Game({ ...plain, board: this.board.clone(), units: this.units.map((u) => u.clone()) })
   }

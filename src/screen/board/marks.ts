@@ -135,10 +135,10 @@ export class Marks {
       const a = this.px.projection.ground(g.at)
       this.px.dot(a.x - 1, a.y - 1, BEACON, 0.9, 3, 3)
     }
-    const d = game.drop
-    if (d && d.round - game.round <= 1) {
+    const d = game.reinforcements.coming()
+    if (d) {
       const area = new Set<number>()
-      for (const o of [{ x: 0, y: 0 }, ...ORTHOGONAL]) area.add(key(plus(d.at, o)))
+      for (const o of [{ x: 0, y: 0 }, ...ORTHOGONAL]) area.add(key(plus(d, o)))
       this.px.outline(area, ALIEN, pulse, true)
     }
   }

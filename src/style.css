@@ -617,11 +617,14 @@ main.extended .more-mark {
   text-transform: uppercase;
   color: var(--accent);
 }
-#top .drop {
+#top .alarm {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--muted);
+}
+#top .alarm.coming {
   color: var(--bad);
 }
 

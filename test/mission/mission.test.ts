@@ -151,6 +151,9 @@ describe("conditions", () => {
       expect(squad.map((u) => [u.id, u.kind, u.name, u.hp, u.maxHp])).toEqual([["s1", "mage", "Voss", 3, 7]])
     }
   })
+  test("set where the alarm starts", () => {
+    expect(mission(1, { alarm: 3 }).alarm).toBe(3)
+  })
   test("an explored map shows every tile", () => {
     expect(mission(1, { explored: true }).explored.every(Boolean)).toBe(true)
   })
