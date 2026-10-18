@@ -58,17 +58,17 @@ describe("cooperation statuses", () => {
 })
 
 describe("stealthy Rogue", () => {
-  test("unaware enemies do not detect a concealed Rogue, even next to them", () => {
+  test("an unaware enemy detects a concealed Rogue within 2 tiles", () => {
     const g = setup(open(12, 3), [squad("g", "rogue", { x: 0, y: 1 }), enemy("e", "orc", { x: 6, y: 1 }, "unaware")])
-    const a = g.apply({ type: "move", unit: "g", to: { x: 5, y: 1 } })
-    expect(find(a, "g").concealed).toBe(true)
+    expect(find(g.apply({ type: "move", unit: "g", to: { x: 3, y: 1 } }), "g").concealed).toBe(true)
+    expect(find(g.apply({ type: "move", unit: "g", to: { x: 4, y: 1 } }), "g").concealed).toBe(false)
   })
-  test("investigating enemies detect a concealed Rogue within 1 tile", () => {
+  test("an investigating enemy detects a concealed Rogue within 3 tiles", () => {
     const g = setup(open(12, 3), [
       squad("g", "rogue", { x: 0, y: 1 }),
       enemy("e", "orc", { x: 6, y: 1 }, "investigating"),
     ])
-    expect(find(g.apply({ type: "move", unit: "g", to: { x: 4, y: 1 } }), "g").concealed).toBe(true)
-    expect(find(g.apply({ type: "move", unit: "g", to: { x: 5, y: 1 } }), "g").concealed).toBe(false)
+    expect(find(g.apply({ type: "move", unit: "g", to: { x: 2, y: 1 } }), "g").concealed).toBe(true)
+    expect(find(g.apply({ type: "move", unit: "g", to: { x: 3, y: 1 } }), "g").concealed).toBe(false)
   })
 })

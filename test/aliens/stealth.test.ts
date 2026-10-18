@@ -33,7 +33,8 @@ describe("detection", () => {
     const spots = [...g.stealth.spots(find(g, "e"), find(g, "g"))].map((k) => k % 1000)
     expect(Math.min(...spots)).toBe(8)
     expect(Math.max(...spots)).toBe(12)
-    expect(g.stealth.spots(find(g, "e"), find(g, "r")).size).toBe(0)
+    const scout = new Set([...g.stealth.spots(find(g, "e"), find(g, "r"))].map((k) => k % 1000))
+    expect([...scout].sort((a, b) => a - b)).toEqual([8, 9, 10, 11, 12])
   })
   test("a first reveal in the player phase queues the group's reveal reaction", () => {
     const g = setup(open(20, 3), [

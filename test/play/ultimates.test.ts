@@ -101,7 +101,7 @@ describe("ultimates", () => {
     expect(find(a, "f").hp).toBe(2)
   })
   test("Ghost conceals the Scout even in sight and gives 1 AP", () => {
-    const g = setup(open(8, 2), [squad("g", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 3, y: 0 })])
+    const g = setup(open(8, 2), [squad("g", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 5, y: 0 })])
     find(g, "g").concealed = false
     const a = ult(g, "g", "ghost")
     expect(find(a, "g").concealed).toBe(true)

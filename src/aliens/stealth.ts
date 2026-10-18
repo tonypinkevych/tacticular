@@ -20,7 +20,7 @@ export interface Noise {
   round: number
 }
 
-export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 1 }
+export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 3 }
 
 /** How far from its target an alien group searches. */
 export const SEARCH = 3
@@ -43,10 +43,10 @@ export class Stealth {
     )
   }
 
-  /** Detection radius of an enemy against a concealed soldier on a tile, its own by default; -1 means it cannot detect it at all. Grass hides a soldier from all but next tiles. */
+  /** Detection radius of an enemy against a concealed soldier on a tile, its own by default. Grass hides a soldier from all but next tiles. */
   detection(e: Unit, s: Unit, at: Point = s.pos): number {
-    if (s.kind === "rogue" && e.alert === "unaware") return -1
-    const radius = s.kind === "rogue" ? DETECTION.rogue : DETECTION[e.alert === "unaware" ? "unaware" : "investigating"]
+    const alert = s.kind === "rogue" ? DETECTION.rogue : DETECTION.investigating
+    const radius = e.alert === "unaware" ? DETECTION.unaware : alert
     return this.game.tile(at) === "grass" ? Math.min(1, radius) : radius
   }
 
