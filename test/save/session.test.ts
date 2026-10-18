@@ -81,3 +81,14 @@ describe("save", () => {
     expect(s.canUndo()).toBe(false)
   })
 })
+
+describe("conditions", () => {
+  test("a mission started with conditions replays with them", () => {
+    const store = memory()
+    const s = Session.open(store, () => 4)
+    s.start(8, { goal: "relay", groups: 2 })
+    const again = Session.open(store, () => 1)
+    expect(again.game.goal.kind).toBe("relay")
+    expect(again.game.groups).toHaveLength(2)
+  })
+})

@@ -7,7 +7,7 @@ import { CLASSES, type EnemyKind } from "../units/profiles"
 import { type Recruit, Unit } from "../units/unit"
 import { Game, type Goal } from "./game"
 
-const NAMES = [
+export const NAMES = [
   "Voss",
   "Reyes",
   "Okafor",

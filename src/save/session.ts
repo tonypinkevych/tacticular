@@ -1,7 +1,7 @@
 import type { Event } from "nostr-tools/pure"
 import type { Game } from "../mission/game"
 import { type Frame, Match } from "../mission/match"
-import { mission } from "../mission/mission"
+import { type Conditions, mission } from "../mission/mission"
 import type { Action } from "../mission/orders"
 import { history, Journal } from "./journal"
 
@@ -30,7 +30,7 @@ export class Session {
   }
 
   /** Loads the saved mission, or starts a new one when there is none or it does not verify. */
-  static open(store: Store, seed: () => number): Session {
+  static open(store: Store, seed: () => number, conditions: Conditions = {}): Session {
     const s = new Session(store)
     try {
       const events = JSON.parse(store.getItem(SAVE) ?? "null") as Event[] | null
@@ -41,22 +41,23 @@ export class Session {
     } catch {
       store.removeItem(SAVE)
     }
-    s.start(seed())
+    s.start(seed(), conditions)
     return s
   }
 
-  start(seed: number): void {
-    this.events = [this.journal.begin(seed)]
-    this.games = [mission(seed)]
+  /** Starts a mission from a seed and what the run asks of it. */
+  start(seed: number, conditions: Conditions = {}): void {
+    this.events = [this.journal.begin(seed, conditions)]
+    this.games = [mission(seed, conditions)]
     this.actions = []
     this.save()
   }
 
   replay(events: Event[]): void {
-    const { seed, actions } = history(events)
+    const { seed, conditions, actions } = history(events)
     this.events = events
     this.actions = []
-    this.games = [mission(seed)]
+    this.games = [mission(seed, conditions)]
     for (const a of actions) {
       this.games.push(new Match(this.game).play(a).at(-1)!.game)
       this.actions.push(a)
