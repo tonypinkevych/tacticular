@@ -1,7 +1,7 @@
 import { Mind } from "./ai/mind"
 import type { Game } from "./rules/game"
 import { Illegal } from "./rules/orders"
-import { distance, key } from "./rules/point"
+import { distance, key, type Point, same } from "./rules/point"
 import type { Action } from "./rules/types"
 import type { Unit } from "./rules/unit"
 
@@ -96,17 +96,26 @@ export class Match {
       out.push({ action: { type: "endTurn" }, game: last(out).apply({ type: "endTurn" }) })
   }
 
-  /** Squad policy with no enemy in sight: walk to the nearest unexplored tile. */
+  /** Squad policy with no enemy in sight: walk to the beacon or to a free evac tile, else to the nearest fog. */
   private explore(u: Unit): Action | null {
     const game = this.game
     if (u.moved && u.ap < 2) return null
+    const goal = game.goal
+    const free = (p: Point) => same(p, u.pos) || !game.units.some((x) => x.alive() && same(x.pos, p))
+    const spot =
+      goal.kind === "defend"
+        ? goal.at
+        : goal.kind === "evac"
+          ? goal.tiles.filter(free).sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
+          : null
+    if (spot) return same(spot, u.pos) ? null : new Mind(game).toward(u, spot)
     const w = game.board.width
     const open = game.reach(u, 400).cost
     const fog = game.explored.flatMap((seen, i) =>
       seen || !open.has(key({ x: i % w, y: Math.floor(i / w) })) ? [] : [{ x: i % w, y: Math.floor(i / w) }],
     )
-    const goal = fog.sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
-    return goal ? new Mind(game).toward(u, goal) : null
+    const near = fog.sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
+    return near ? new Mind(game).toward(u, near) : null
   }
 }
 

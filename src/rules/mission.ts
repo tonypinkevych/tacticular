@@ -95,7 +95,7 @@ function enemies(
   anchors.forEach((anchor, g) => {
     const id = `g${g + 1}`
     groups.push({ id, revealed: false, target: null, landing: { ...landing } })
-    const kinds = composition(r, lead && g === 0 ? 3 : r.between(2, 3))
+    const kinds = composition(r, lead && g === 0 ? 3 : r.between(1, 2))
     const route = [anchor, r.pick(field), r.pick(field)]
     for (const kind of kinds) {
       const u = Unit.of(`e${units.length + 1}`, kind, "enemy", free(board, anchor, taken), kind, id)
@@ -104,6 +104,12 @@ function enemies(
     }
   })
   return { units, groups }
+}
+
+/** Sends every group, engaged, on the beacon from the start. */
+function raid(units: Unit[], groups: Group[], beacon: Point): void {
+  for (const g of groups) Object.assign(g, { revealed: true, alarmed: true, target: { ...beacon } })
+  for (const u of units) u.alert = "engaged"
 }
 
 /** Kill all, Evac (a zone at the far edge) or Defend (the beacon on the hill the map was built with). */
@@ -157,6 +163,7 @@ export function mission(seed: number): Game {
     if (pad) pad.at = turn(pad.at)
     board = from.turn()
   }
+  if (aim.kind === "defend") raid(units, groups, aim.at)
   const game = Game.start({ seed, board, units: [...team, ...units], groups })
   game.goal = aim
   game.pad = pad?.at ?? null

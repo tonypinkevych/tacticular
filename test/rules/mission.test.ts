@@ -112,6 +112,14 @@ describe("maps for each mission", () => {
     expect(holds.length).toBeGreaterThan(10)
     for (const g of holds) if (g.goal.kind === "defend") expect(g.tile(g.goal.at), `seed ${g.seed}`).toBe("ridge")
   })
+  test("in Defend, every alien group starts engaged with the beacon as its target", () => {
+    for (const g of games) {
+      const goal = g.goal
+      if (goal.kind !== "defend") continue
+      for (const u of g.units.filter((x) => x.side === "enemy")) expect(u.alert, `seed ${g.seed}`).toBe("engaged")
+      for (const group of g.groups) expect(group.target, `seed ${g.seed}`).toEqual(goal.at)
+    }
+  })
 })
 
 describe("biomes", () => {
