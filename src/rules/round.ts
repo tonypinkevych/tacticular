@@ -1,5 +1,6 @@
 import { hurt } from "./combat"
 import { reinforce } from "./drop"
+import { spread } from "./fire"
 import { distance, same } from "./grid"
 import { calm, horn, observe, visibleToSquad } from "./stealth"
 import type { Game, Side, Unit } from "./types"
@@ -85,6 +86,7 @@ function endRound(game: Game): void {
       u.cooldowns[id] = left > 0 ? left : undefined
     }
   }
+  spread(game)
   game.zones = game.zones.map((z) => ({ ...z, rounds: z.rounds - 1 })).filter((z) => z.rounds > 0)
   reinforce(game)
   hold(game)

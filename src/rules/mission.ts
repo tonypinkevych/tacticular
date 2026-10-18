@@ -1,7 +1,7 @@
 import { CLASSES } from "./data"
 import { die, pick, random } from "./dice"
 import { newGame } from "./game"
-import { AROUND, area, climb, distance, inside, key } from "./grid"
+import { AROUND, area, blocksSight, climb, distance, inside, key, passable } from "./grid"
 import type { Biome, Board, EnemyKind, Game, Goal, Group, Point, Tile, Unit } from "./types"
 import { makeUnit } from "./units"
 
@@ -38,7 +38,10 @@ export const SIZE = { width: 16, height: 16 }
 
 const START = 3
 
-/** How a biome fills the map: river chance, house count, rooftop share, clutter, tree share, fence lines, groves. */
+/**
+ * How a biome fills the map: river chance, house count, rooftop share, clutter, high cover share, fence lines,
+ * groves, the share of high cover that is trees and rocks, grass patches and mud on river banks.
+ */
 interface Template {
   river: number
   houses: [number, number]
@@ -47,14 +50,54 @@ interface Template {
   high: number
   lines: number
   groves: boolean
+  trees: number
+  rocks: number
+  grass: number
+  mud: number
 }
 
 export const BIOMES: Biome[] = ["forest", "village", "town"]
 
 const TEMPLATES: Record<Biome, Template> = {
-  forest: { river: 0.5, houses: [0, 1], roofs: 0, clutter: 14, high: 0.7, lines: 0.05, groves: true },
-  village: { river: 0.4, houses: [2, 3], roofs: 0.35, clutter: 24, high: 0.4, lines: 0.45, groves: false },
-  town: { river: 0.2, houses: [3, 4], roofs: 0.35, clutter: 28, high: 0.25, lines: 0.2, groves: false },
+  forest: {
+    river: 0.5,
+    houses: [0, 1],
+    roofs: 0,
+    clutter: 14,
+    high: 0.7,
+    lines: 0.05,
+    groves: true,
+    trees: 0.8,
+    rocks: 0.2,
+    grass: 4,
+    mud: 0.4,
+  },
+  village: {
+    river: 0.4,
+    houses: [2, 3],
+    roofs: 0.35,
+    clutter: 24,
+    high: 0.4,
+    lines: 0.45,
+    groves: false,
+    trees: 0.5,
+    rocks: 0.1,
+    grass: 3,
+    mud: 0.3,
+  },
+  town: {
+    river: 0.2,
+    houses: [3, 4],
+    roofs: 0.35,
+    clutter: 28,
+    high: 0.25,
+    lines: 0.2,
+    groves: false,
+    trees: 0.05,
+    rocks: 0.1,
+    grass: 1,
+    mud: 0,
+  },
 }
 
 const between = (r: Rng, lo: number, hi: number): number => lo + die(r, hi - lo + 1) - 1
@@ -67,9 +110,6 @@ function shuffle<T>(r: Rng, items: T[]): T[] {
   }
   return out
 }
-
-const passable = (t: Tile): boolean =>
-  t === "floor" || t === "open" || t === "bridge" || t === "door" || t === "ridge" || t === "roof" || t === "ladder"
 
 class Draft {
   tiles: Tile[]
@@ -164,7 +204,9 @@ function clutter(r: Rng, d: Draft, t: Template): void {
   const count = Math.floor((d.width * d.height) / t.clutter)
   for (let i = 0; i < count; i++) {
     const at = { x: between(r, 1, d.width - 2), y: between(r, 0, d.height - 1) }
-    const tile: Tile = random(r) < t.high ? "high" : "low"
+    const roll = random(r)
+    const tile: Tile =
+      random(r) >= t.high ? "low" : roll < t.trees ? "tree" : roll < t.trees + t.rocks ? "rock" : "high"
     const step = pick(r, [
       { x: 1, y: 0 },
       { x: 0, y: 1 },
@@ -172,7 +214,7 @@ function clutter(r: Rng, d: Draft, t: Template): void {
     const spots =
       random(r) < t.lines
         ? Array.from({ length: between(r, 2, 4) }, (_, j) => ({ x: at.x + step.x * j, y: at.y + step.y * j }))
-        : tile === "high" && t.groves
+        : tile !== "low" && t.groves
           ? [
               at,
               ...shuffle(r, AROUND)
@@ -183,6 +225,31 @@ function clutter(r: Rng, d: Draft, t: Template): void {
     for (const p of spots) {
       const near = AROUND.map((s) => d.get({ x: p.x + s.x, y: p.y + s.y }))
       if (d.get(p) === "floor" && !near.includes("door") && !near.includes("bridge")) d.set(p, tile)
+    }
+  }
+}
+
+/** Patches of tall grass that grow over open ground. */
+function meadows(r: Rng, d: Draft, t: Template): void {
+  for (let i = 0; i < t.grass; i++) {
+    const patch = [{ x: between(r, 0, d.width - 1), y: between(r, 0, d.height - 1) }]
+    const size = between(r, 4, 9)
+    for (let tries = 0; patch.length < size && tries < 40; tries++) {
+      const from = pick(r, patch)
+      const p = { x: from.x + pick(r, [-1, 0, 1]), y: from.y + pick(r, [-1, 0, 1]) }
+      if (d.get(p) === "floor" && !patch.some((q) => q.x === p.x && q.y === p.y)) patch.push(p)
+    }
+    for (const p of patch) if (d.get(p) === "floor") d.set(p, "grass")
+  }
+}
+
+/** Mud on open ground next to water. */
+function banks(r: Rng, d: Draft, t: Template): void {
+  for (let y = 0; y < d.height; y++) {
+    for (let x = 0; x < d.width; x++) {
+      const p = { x, y }
+      const wet = AROUND.slice(0, 4).some((s) => d.get({ x: x + s.x, y: y + s.y }) === "water")
+      if (wet && d.get(p) === "floor" && random(r) < t.mud) d.set(p, "mud")
     }
   }
 }
@@ -217,10 +284,12 @@ export function map(r: Rng, biome: Biome = pick(r, BIOMES), width = SIZE.width, 
     const houses = between(r, ...t.houses)
     for (let i = 0; i < houses; i++) building(r, d, random(r) < t.roofs)
     clutter(r, d, t)
+    meadows(r, d, t)
+    banks(r, d, t)
     const ridges = between(r, 1, 2)
     for (let i = 0; i < ridges; i++) ridge(r, d)
     for (let y = 0; y < height; y++)
-      for (let x = 0; x < START; x++) if (d.get({ x, y }) === "high") d.set({ x, y }, "low")
+      for (let x = 0; x < START; x++) if (blocksSight(d.get({ x, y }))) d.set({ x, y }, "low")
     const start = { x: 1, y: Math.floor(height / 2) }
     d.set(start, "floor")
     const all = walkables(d)

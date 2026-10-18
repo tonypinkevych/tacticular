@@ -2,6 +2,7 @@ import { attack, canReach, hurt, push } from "./combat"
 import { breakCover, inCover } from "./cover"
 import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, WEAPONS } from "./data"
 import { d20, EDGE, failChance, rollDice } from "./dice"
+import { ignite, scorch } from "./fire"
 import { AROUND, adjacent, area, distance, inside, key, plus, reach, same, tileAt, unitAt, walkable } from "./grid"
 import { endPhase } from "./round"
 import { lineOfSight, sees } from "./sight"
@@ -77,6 +78,8 @@ export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
     )
     u.pos = { ...step }
     if (tileAt(game, step) === "door") game.board.tiles[step.y * game.board.width + step.x] = "open"
+    scorch(game, u)
+    if (!alive(u)) return
     stepped(game, u)
     for (const x of game.units) {
       if (!alive(u)) return
@@ -300,12 +303,12 @@ function ability(game: Game, u: Unit, id: AbilityId, targetId?: string, at?: Poi
   else u.ap -= 1
 }
 
-/** A Grenadier blast: sure damage to everyone in 3×3, it sets them burning and burns away cover. */
+/** A Grenadier blast: sure damage to everyone in 3×3; it sets them burning, sets grass and trees on fire and breaks cover. */
 export function blast(game: Game, u: Unit, at: Point): void {
   game.log.push({ key: "log.flask", params: { unit: u.id } })
   for (const p of area(at, 1)) {
     if (!inside(game.board, p)) continue
-    breakCover(game, p)
+    if (!ignite(game, p)) breakCover(game, p)
     const hit = unitAt(game, p)
     if (!hit) continue
     game.log.push({ key: "log.burn", params: { target: hit.id, dmg: 3 } })

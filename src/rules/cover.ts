@@ -41,13 +41,13 @@ export function shelter(game: Game, at: Point, p: Point): number {
   return tileAt(game, at) === "roof" && tileAt(game, p) === "roof" ? 0 : coverAt(game, p)
 }
 
-/** Damages cover on a tile: high cover becomes low, low cover is gone; walls and doors stay. */
+/** Damages cover on a tile: high cover and trees become low, low cover is gone; walls, doors and rocks stay. */
 export function breakCover(game: Game, p: Point): void {
   if (!inside(game.board, p)) return
   const i = p.y * game.board.width + p.x
   const tile = game.board.tiles[i]
   if (tile === "low") game.board.tiles[i] = "floor"
-  if (tile === "high") game.board.tiles[i] = "low"
+  if (tile === "high" || tile === "tree") game.board.tiles[i] = "low"
 }
 
 export function inCover(game: Game, p: Point): boolean {

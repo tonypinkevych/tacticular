@@ -74,7 +74,7 @@ describe("biomes", () => {
   test("a forest has more trees than a town, and a town has more walls", () => {
     const by = (b: Biome) => seeds.map((s) => map({ rng: s }, b))
     const avg = (b: Biome, t: string) => by(b).reduce((n, m) => n + count(m.tiles, t), 0) / seeds.length
-    expect(avg("forest", "high")).toBeGreaterThan(avg("town", "high"))
+    expect(avg("forest", "tree")).toBeGreaterThan(avg("town", "tree"))
     expect(avg("town", "wall")).toBeGreaterThan(avg("forest", "wall"))
     expect(avg("village", "wall")).toBeGreaterThan(avg("forest", "wall"))
   })

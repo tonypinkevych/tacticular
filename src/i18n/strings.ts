@@ -139,7 +139,6 @@ const en = {
   "info.hunker": "Needs cover. Attacks on you have disadvantage. Ends turn.",
   "info.reload": "Refill ammo.",
 
-
   "action.overwatch": "Overwatch",
   "action.hunker": "Hunker",
   "action.reload": "Reload",
@@ -190,6 +189,9 @@ const en = {
   "log.spot": "{unit} tags {target}",
   "log.rally": "{unit} orders {target}: +1 AP",
   "log.push": "{target} is pushed back",
+  "log.slam": "{target} slams into an obstacle for {dmg}",
+  "log.fall": "{target} falls off the roof for {dmg}",
+  "log.fire": "{target} burns in the fire for {dmg}",
   "log.dies": "{unit} dies",
   "log.down": "{unit} is down and bleeding out",
   "log.revive": "{unit} gets {target} up with {amount} HP",
@@ -380,7 +382,6 @@ const ru: Record<Key, string> = {
   "info.hunker": "Нужно укрытие. Атаки по вам с помехой. Конец хода.",
   "info.reload": "Пополнить патроны.",
 
-
   "action.overwatch": "Дозор",
   "action.hunker": "Залечь",
   "action.reload": "Перезарядка",
@@ -431,6 +432,9 @@ const ru: Record<Key, string> = {
   "log.spot": "{unit} метит {target}",
   "log.rally": "{unit} отдаёт приказ {target}: +1 ОД",
   "log.push": "{target} отброшен",
+  "log.slam": "{target} врезается в препятствие: урон {dmg}",
+  "log.fall": "{target} падает с крыши: урон {dmg}",
+  "log.fire": "{target} горит в огне: урон {dmg}",
   "log.dies": "{unit} погибает",
   "log.down": "{unit} ранен и истекает кровью",
   "log.revive": "{unit} поднимает {target}: {amount} ОЗ",

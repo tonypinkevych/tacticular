@@ -42,6 +42,10 @@ const LEGEND: Record<string, Tile> = {
   "^": "ridge",
   R: "roof",
   L: "ladder",
+  g: "grass",
+  T: "tree",
+  o: "rock",
+  m: "mud",
 }
 
 /** Reads a board from text rows; any unknown symbol is floor. */

@@ -3,6 +3,7 @@ import { canReach, odds } from "../rules/combat"
 import { coverAgainst, inCover } from "../rules/cover"
 import { PROFILES, RANGE, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
+import { burning } from "../rules/fire"
 import { area, distance, inside, key, reach, same, unitAt } from "../rules/grid"
 import { lineOfSight, sees } from "../rules/sight"
 import type { Action, Game, Point, Unit, WeaponId } from "../rules/types"
@@ -62,7 +63,7 @@ function bestAttack(game: Game, u: Unit, targets: Unit[]): Choice | null {
 function tileValue(game: Game, u: Unit, p: Point, foesKnown: Unit[]): number {
   const from = u.pos
   u.pos = p
-  let value = jitter(game, u, p)
+  let value = jitter(game, u, p) - (burning(game, p) ? 3 : 0)
   const w = WEAPONS[u.weapon]
   const flanks = !w.melee && !w.ignoresCover
   for (const f of foesKnown) {

@@ -15,6 +15,10 @@ export type Tile =
   | "ridge"
   | "roof"
   | "ladder"
+  | "grass"
+  | "tree"
+  | "rock"
+  | "mud"
 
 /** The kind of land a mission takes place in; it shapes the map and its look. */
 export type Biome = "forest" | "village" | "town"
@@ -142,7 +146,7 @@ export interface Unit {
 }
 
 export interface Zone {
-  kind: "smoke" | "bulwark"
+  kind: "smoke" | "bulwark" | "fire"
   tiles: Point[]
   rounds: number
 }

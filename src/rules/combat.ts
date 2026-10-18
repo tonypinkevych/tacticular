@@ -1,7 +1,8 @@
 import { breakCover, coverAgainst, coverTile } from "./cover"
 import { WEAPONS } from "./data"
 import { chance, d20, EDGE, failChance, rollDice } from "./dice"
-import { adjacent, distance, same, tileAt, unitAt, up, walkable } from "./grid"
+import { scorch } from "./fire"
+import { adjacent, climb, distance, same, tileAt, unitAt, up, walkable } from "./grid"
 import type { Game, Unit, Weapon, WeaponId } from "./types"
 import { addStatus, alive, foes, groupAim, has, sideOf, wallOf } from "./units"
 
@@ -203,16 +204,30 @@ export function attack(
   if (w.push && !killed) push(game, attacker, target)
 }
 
-/** Pushes a target 1 tile away when the tile is free, and staggers it either way. */
+/**
+ * Pushes a target 1 tile away and staggers it. A push into anything solid or a unit does 2 damage instead of a
+ * move; a push off a roof does 2 damage; a push into fire burns.
+ */
 export function push(game: Game, from: Unit, target: Unit): void {
   addStatus(target, { id: "staggered", rounds: 1, source: from.id })
   const to = {
     x: target.pos.x + Math.sign(target.pos.x - from.pos.x),
     y: target.pos.y + Math.sign(target.pos.y - from.pos.y),
   }
-  if (!walkable(tileAt(game, to)) || unitAt(game, to)) return
+  const here = tileAt(game, target.pos)
+  const there = tileAt(game, to)
+  if (!walkable(there) || !climb(here, there) || unitAt(game, to)) {
+    game.log.push({ key: "log.slam", params: { target: target.id, dmg: 2 } })
+    hurt(game, target, 2)
+    return
+  }
   target.pos = to
   game.log.push({ key: "log.push", params: { target: target.id } })
+  if (here === "roof" && there !== "roof") {
+    game.log.push({ key: "log.fall", params: { target: target.id, dmg: 2 } })
+    if (hurt(game, target, 2)) return
+  }
+  scorch(game, target)
 }
 
 /** Applies damage and the effects of a fall; returns true when the target falls. A soldier goes down for 2 rounds. */
