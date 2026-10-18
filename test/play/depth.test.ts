@@ -210,20 +210,38 @@ describe("objectives", () => {
     expect(a.phase).toBe("squad")
     expect(a.apply({ type: "move", unit: "s", to: { x: 4, y: 0 } }).phase).toBe("won")
   })
-  test("Defend is lost when an alien stands on the beacon at round end", () => {
-    const s = squad("s", "warden", { x: 0, y: 0 })
-    const e = enemy("e", "orc", { x: 5, y: 3 }, "unaware")
-    const g = setup(open(6, 4), [s, e])
-    g.goal = { kind: "defend", at: { x: 5, y: 3 }, rounds: 6 }
+  test("Defend is lost when aliens outnumber soldiers on and around the beacon at 2 round ends in a row", () => {
+    const s = squad("s", "warden", { x: 3, y: 2 })
+    const g = setup(open(8, 5), [s, enemy("e", "orc", { x: 4, y: 3 }, "unaware"), enemy("f", "orc", { x: 2, y: 1 })])
+    g.goal = { kind: "defend", at: { x: 3, y: 2 }, rounds: 6, held: 0 }
+    const end = () => {
+      g.phase = "enemy"
+      g.turn.end()
+    }
+    end()
+    expect(g.phase).toBe("squad")
+    expect(g.goal).toMatchObject({ held: 1 })
+    end()
+    expect(g.phase).toBe("lost")
+  })
+  test("Defend control resets when the soldiers match the aliens around the beacon", () => {
+    const g = setup(open(8, 5), [
+      squad("s", "warden", { x: 3, y: 2 }),
+      squad("t", "warden", { x: 2, y: 2 }),
+      enemy("e", "orc", { x: 4, y: 3 }, "unaware"),
+      enemy("f", "orc", { x: 2, y: 1 }, "unaware"),
+    ])
+    g.goal = { kind: "defend", at: { x: 3, y: 2 }, rounds: 6, held: 1 }
     g.phase = "enemy"
     g.turn.end()
-    expect(g.phase).toBe("lost")
+    expect(g.phase).toBe("squad")
+    expect(g.goal).toMatchObject({ held: 0 })
   })
   test("Defend is won after the last round", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 5, y: 3 }, "unaware")
     const g = setup(open(6, 4), [s, e])
-    g.goal = { kind: "defend", at: { x: 2, y: 2 }, rounds: 6 }
+    g.goal = { kind: "defend", at: { x: 2, y: 2 }, rounds: 6, held: 0 }
     g.round = 6
     g.phase = "enemy"
     g.turn.end()
@@ -291,7 +309,7 @@ describe("alarm", () => {
 describe("defend waves", () => {
   test("waves of 2, 3 and 4 aliens land at the edge farthest from the beacon at the end of rounds 2, 4 and 6", () => {
     const g = setup(open(24, 10), [squad("s", "warden", { x: 1, y: 5 }), enemy("e", "orc", { x: 3, y: 9 }, "unaware")])
-    g.goal = { kind: "defend", at: { x: 2, y: 5 }, rounds: 8 }
+    g.goal = { kind: "defend", at: { x: 2, y: 5 }, rounds: 8, held: 0 }
     const sizes: number[] = []
     for (let round = 1; round <= 6; round++) {
       if (round % 2 === 0) expect(g.reinforcements.coming()?.x).toBe(23)
@@ -311,7 +329,7 @@ describe("defend AI", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 15, y: 0 })
     const g = setup(open(16, 1), [s, e])
-    g.goal = { kind: "defend", at: { x: 2, y: 0 }, rounds: 6 }
+    g.goal = { kind: "defend", at: { x: 2, y: 0 }, rounds: 6, held: 0 }
     e.ap = 2
     const a = new Mind(g).decide(e)
     expect(a?.type).toBe("move")

@@ -32,7 +32,7 @@ export type Goal =
   | { kind: "kill" }
   | { kind: "warchief"; tiles: Point[]; slain: boolean }
   | { kind: "evac"; tiles: Point[] }
-  | { kind: "defend"; at: Point; rounds: number }
+  | { kind: "defend"; at: Point; rounds: number; held: number }
   | { kind: "intel"; at: Point; taken: boolean; tiles: Point[] }
   | { kind: "vip"; captive: string; tiles: Point[] }
   | { kind: "relay"; at: Point; planted: number | null; tiles: Point[]; blown: boolean }

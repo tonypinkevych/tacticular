@@ -14,7 +14,7 @@ describe("simulated squad with no foe in sight", () => {
   })
   test("walks to the beacon", () => {
     const g = hidden()
-    g.goal = { kind: "defend", at: { x: 2, y: 1 }, rounds: 6 }
+    g.goal = { kind: "defend", at: { x: 2, y: 1 }, rounds: 6, held: 0 }
     expect(find(new Match(g).simulate(1), "w").pos.x).toBeLessThan(10)
   })
   test("explores the nearest fog in Kill all", () => {

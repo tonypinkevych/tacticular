@@ -1,5 +1,5 @@
 import { WEAPONS } from "../combat/weapons"
-import { distance, pointOf, same } from "../map/point"
+import { distance, pointOf } from "../map/point"
 import type { Side, Unit } from "../units/unit"
 import type { Game } from "./game"
 
@@ -43,12 +43,19 @@ export class Turn {
     game.stealth.observe()
   }
 
-  /** Defend: an alien on the beacon at round end loses the mission; holding it to the last round wins. */
+  /**
+   * Defend: aliens that outnumber soldiers on the beacon and its 8 tiles at 2 round ends in a row take it and win;
+   * holding it to the last round wins.
+   */
   private hold(): void {
     const game = this.game
     const goal = game.goal
     if (goal.kind !== "defend") return
-    if (game.units.some((u) => u.alive() && u.side === "enemy" && same(u.pos, goal.at))) {
+    const near = game.units.filter((u) => u.alive() && distance(u.pos, goal.at) <= 1)
+    const aliens = near.filter((u) => u.allegiance() === "enemy").length
+    const soldiers = near.filter((u) => u.allegiance() === "squad").length
+    goal.held = aliens > soldiers ? goal.held + 1 : 0
+    if (goal.held >= 2) {
       game.log.push({ key: "log.beacon", params: {} })
       game.phase = "lost"
     } else if (game.round >= goal.rounds) game.phase = "won"

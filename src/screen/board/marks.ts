@@ -160,7 +160,12 @@ export class Marks {
     }
     if ("tiles" in g && (g.kind !== "warchief" || g.slain) && (g.kind !== "relay" || g.blown))
       this.evac(new Set(g.tiles.map(key)))
-    if (g.kind === "defend") post(g.at, BEACON)
+    if (g.kind === "defend") {
+      const area = new Set<number>()
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) area.add(key(plus(g.at, { x: dx, y: dy })))
+      this.zone(area, g.held > 0 ? ALIEN : BEACON)
+      post(g.at, BEACON)
+    }
     if (g.kind === "intel" && !g.taken) post(g.at, AMBER)
     if (g.kind === "relay") post(g.at, g.planted === null ? AMBER : ALIEN)
     const captive = g.kind === "vip" ? game.units.find((u) => u.id === g.captive) : undefined

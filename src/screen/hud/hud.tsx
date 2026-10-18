@@ -12,7 +12,8 @@ import { Target } from "./odds"
 /** The mission goal in a few words, with the rounds left to hold a beacon and the step an objective is at. */
 function goal(g: Game): string {
   const goal = g.goal
-  if (goal.kind === "defend") return t("ui.goal.defend", { left: goal.rounds - g.round + 1 })
+  if (goal.kind === "defend")
+    return t(goal.held > 0 ? "ui.goal.defendLosing" : "ui.goal.defend", { left: goal.rounds - g.round + 1 })
   if (goal.kind === "intel" && goal.taken) return t("ui.goal.intelTaken")
   if (goal.kind === "warchief" && goal.slain) return t("ui.goal.warchiefSlain")
   if (goal.kind === "relay" && goal.blown) return t("ui.goal.relayBlown")
