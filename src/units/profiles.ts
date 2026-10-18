@@ -123,7 +123,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: null,
   },
   bomber: {
-    hp: 5,
+    hp: 4,
     aim: 2,
     defense: 12,
     mobility: 4,
@@ -134,7 +134,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: null,
   },
   ogre: {
-    hp: 12,
+    hp: 9,
     aim: 4,
     defense: 10,
     mobility: 5,
@@ -145,7 +145,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: null,
   },
   shieldwall: {
-    hp: 9,
+    hp: 7,
     aim: 2,
     defense: 14,
     mobility: 3,
@@ -156,7 +156,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: null,
   },
   assassin: {
-    hp: 6,
+    hp: 5,
     aim: 5,
     defense: 13,
     mobility: 4,
@@ -167,7 +167,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: null,
   },
   warchief: {
-    hp: 10,
+    hp: 8,
     aim: 4,
     defense: 13,
     mobility: 4,
@@ -178,7 +178,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: null,
   },
   whisperer: {
-    hp: 6,
+    hp: 5,
     aim: 3,
     defense: 11,
     mobility: 4,
