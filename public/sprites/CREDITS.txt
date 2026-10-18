@@ -1,2 +1,0 @@
-Map tiles and action icons (public/sprites/1bit.png): 1-Bit Pack by Kenney (www.kenney.nl), CC0.
-Unit sprites (public/sprites/units.png, units-gear.png): drawn for this game.

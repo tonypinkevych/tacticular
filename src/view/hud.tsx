@@ -1,4 +1,4 @@
-import { createEffect, For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
+import { For, Index, type JSX, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../i18n/strings"
 import type { Part } from "../rules/combat"
 import { WEAPONS } from "../rules/data"
@@ -6,34 +6,18 @@ import { chance, EDGE } from "../rules/dice"
 import type { Game } from "../rules/game"
 import type { Unit } from "../rules/unit"
 import { Board } from "./board"
+import { css } from "./color"
+import { ICONS, UNITS } from "./glyphs"
+import { Icon } from "./icon"
+import type { Forecast } from "./kit"
+import { Kit } from "./kit"
 import { Log } from "./log"
-import { type Forecast, forecast, type Model, slots } from "./model"
+import type { Model } from "./model"
 import { SPEEDS } from "./motion"
-import { type Cell, figures, gear, SLOT_CELLS, type Sprites, sprites, tone, UNIT_CELLS } from "./sprites"
-
-/** One cell drawn at twice its size from each sheet in turn, each with its color or as it is. */
-function Pixel(props: { layers: [Sprites, string | null][]; cell: Cell; class: string }) {
-  let canvas!: HTMLCanvasElement
-  createEffect(() => {
-    const { layers, cell } = props
-    Promise.all(layers.map(([sheet]) => sheet.loaded)).then(() => {
-      const g = canvas.getContext("2d")!
-      g.clearRect(0, 0, 32, 32)
-      for (const [sheet, color] of layers) sheet.draw(g, cell, color, 0, 0, 32)
-    })
-  })
-  return <canvas ref={canvas} class={props.class} width={32} height={32} />
-}
+import { tone } from "./picture"
 
 const Portrait = (props: { unit: Unit }) => (
-  <Pixel
-    layers={[
-      [figures, tone(props.unit)],
-      [gear, null],
-    ]}
-    cell={UNIT_CELLS[props.unit.kind]}
-    class="portrait"
-  />
+  <Icon glyph={UNITS[props.unit.kind]} color={css(tone(props.unit))} class="portrait" />
 )
 
 const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
@@ -266,7 +250,7 @@ function Target(props: { model: Model }) {
   }
   const odds = () => {
     const x = armed()
-    return x ? forecast(g(), x.u, x.a, m.hover()) : null
+    return x ? new Kit(g(), x.u).forecast(x.a, m.hover()) : null
   }
   return (
     <Show when={shown()}>
@@ -375,7 +359,7 @@ function Bar(props: { model: Model }) {
   const m = props.model
   const list = () => {
     const u = m.unit()
-    return u ? slots(m.game(), u) : []
+    return u ? new Kit(m.game(), u).slots() : []
   }
   return (
     <nav id="bar">
@@ -399,7 +383,7 @@ function Bar(props: { model: Model }) {
                     <Show when={s().badge}>
                       <span class="badge">{s().badge}</span>
                     </Show>
-                    <Pixel layers={[[sprites, "#d6e4ea"]]} cell={SLOT_CELLS[s().id] ?? [36, 13]} class="glyph" />
+                    <Icon glyph={ICONS[s().id] ?? ICONS.unknown} color="#d6e4ea" class="glyph" />
                   </span>
                 </button>
               )}
@@ -427,7 +411,7 @@ function Tip(props: { model: Model }) {
     if (h) return h
     const a = m.armed()
     const u = m.unit()
-    return a && u ? slots(m.game(), u).find((s) => s.id === a.slot) : undefined
+    return a && u ? new Kit(m.game(), u).slots().find((s) => s.id === a.slot) : undefined
   }
   return (
     <Show when={shown() || m.message()}>
@@ -461,8 +445,9 @@ function Help(props: { model: Model }) {
 /** The whole screen; it renders again from scratch when the language changes. */
 export function App(props: { model: Model }): JSX.Element {
   const m = props.model
-  onMount(() => window.addEventListener("keydown", m.key))
-  onCleanup(() => window.removeEventListener("keydown", m.key))
+  const key = (e: KeyboardEvent) => m.key(e)
+  onMount(() => window.addEventListener("keydown", key))
+  onCleanup(() => window.removeEventListener("keydown", key))
   return (
     <Show when={m.lang()} keyed>
       <main classList={{ logged: m.logOpen(), alien: m.shown().phase === "enemy", extended: m.extended() }}>

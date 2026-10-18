@@ -29,7 +29,10 @@ pnpm build      # type-check and build to dist/
 
 - Click a soldier, then click a tile to move, or click an enemy to see the hit chance. Click the enemy again to attack.
 - Use the panel for abilities, items, Overwatch, Hunker, Reload and End turn.
-- `Tab` selects the next soldier. `Esc` or a right click cancels. `Z` shows enemy zones.
+- Point at a tile to see where the soldier can move, the path, its cover and who flanks it there. Point at an
+  alien to see the hit chance.
+- `Tab` selects the next soldier. `Esc` or a right click cancels. `Z` shows where aliens spot or fire.
+- Drag or use the arrow keys to move the camera; the wheel zooms.
 - The EN/RU switch changes the language. The game remembers your choice.
 
 ## Save and action log
@@ -41,14 +44,13 @@ local key, so the log can go to relays later. If an event is changed, the game r
 ## Layout
 
 ```
-src/rules/   game model: data, dice, grid, sight, cover, combat, actions, stealth, rounds, missions
-src/ai/      enemy decisions
-src/play.ts  one player action, then reactions and the enemy phase
-src/sim.ts   AI-against-AI missions for balance runs
-src/save/    Nostr event log and the saved session
-src/i18n/    English and Russian strings
-src/view/    canvas board and side panel
-test/        Vitest specs
+src/rules/    the game: Game and its parts (Sight, Cover, Stealth, Fire, Combat, Turn, Orders, Abilities), maps
+src/ai/       Mind: the alien side's decisions
+src/match.ts  Match: one player action, then reactions and the enemy phase; AI-against-AI balance runs
+src/save/     Journal (signed Nostr event log) and the saved Session
+src/i18n/     Locale: English and Russian strings
+src/view/     the isometric glyph board (Projection, Camera, Picture, Marks, Light) and the HUD
+test/         Vitest specs, one folder per source folder; test/play/ holds cases that cross modules
 ```
 
 The rules have no rendering code and use a seeded random stream, so the same seed and actions always give the
@@ -56,5 +58,5 @@ same game.
 
 ## Credits
 
-Map tiles and action icons are from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack) (CC0).
-Unit sprites are drawn for this game. See [public/sprites/CREDITS.txt](public/sprites/CREDITS.txt).
+All glyphs, tiles and icons are drawn for this game as 1-bit bitmaps in `src/view/glyphs.ts`. The time of day
+comes from the mission seed and changes only the look.

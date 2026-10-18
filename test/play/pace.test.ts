@@ -1,7 +1,8 @@
 import { Mind } from "../../src/ai/mind"
 import { WEAPONS } from "../../src/rules/data"
 import { chance } from "../../src/rules/dice"
-import { slots, spent } from "../../src/view/model"
+import { Kit } from "../../src/view/kit"
+import { spent } from "../../src/view/model"
 import { enemy, open, setup, squad } from "../fixture"
 
 describe("edge", () => {
@@ -31,7 +32,7 @@ describe("weapons and keys", () => {
   test("weapon 1, skills Q W E, ultimate R, Reload T, Overwatch Y, Hunker U", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const g = setup(open(4, 4), [v])
-    expect(slots(g, v).map((x) => `${x.id}=${x.key}`)).toEqual([
+    expect(new Kit(g, v).slots().map((x) => `${x.id}=${x.key}`)).toEqual([
       "weapon:shotgun=1",
       "ability:shove=Q",
       "ability:charge=W",

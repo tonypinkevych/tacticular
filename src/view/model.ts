@@ -1,129 +1,19 @@
-import { batch, createSignal } from "solid-js"
+import { type Accessor, batch, createSignal, type Setter } from "solid-js"
 import { type Lang, locale, t } from "../i18n/strings"
-import { canReach, type Odds } from "../rules/combat"
-import { PROFILES, RANGE, ULT, WEAPONS } from "../rules/data"
-import { failChance } from "../rules/dice"
 import type { Game } from "../rules/game"
 import { Illegal } from "../rules/orders"
-import { AROUND, adjacent, distance, key, type Point, same } from "../rules/point"
-import { walkable } from "../rules/tile"
-import type { AbilityId, Action, WeaponId } from "../rules/types"
+import { AROUND, type Point, same } from "../rules/point"
+import type { AbilityId, Action } from "../rules/types"
 import type { Unit } from "../rules/unit"
 import type { Session } from "../save/session"
+import { type Armed, Kit, type Slot } from "./kit"
 import { Playback, SPEEDS, type Speed } from "./motion"
 
-/** Keys of the bar: weapons on digits, skills on Q W E, the ultimate on R, stances on T Y U. */
-const SKILL_KEYS = "QWE"
-const STANCE_KEYS = { reload: "T", overwatch: "Y", hunker: "U" } as const
+const SPEED_KEY = "tacticular.speed"
 
-/** What an action needs before it can be confirmed. */
-export type Aim = "unit" | "tile" | "none"
-
-/** One button of the action bar. */
-export interface Slot {
-  id: string
-  group: "weapon" | "skill" | "ult" | "stance"
-  key: string
-  label: string
-  info: string
-  badge: string
-  disabled: boolean
-  aim: Aim
-}
-
-/** The action the player has picked and not yet confirmed. */
-export interface Armed {
-  slot: string
-  target: string | null
-  at: Point | null
-}
-
-const UNIT_ABILITIES: AbilityId[] = [
-  "charge",
-  "rampage",
-  "dominate",
-  "volley",
-  "heal",
-  "fear",
-  "rouse",
-  "shove",
-  "rally",
-  "guard",
-  "hook",
-  "tag",
-  "swap",
-]
-const TILE_ABILITIES: AbilityId[] = [
-  "blink",
-  "breach",
-  "grapple",
-  "rocket",
-  "smoke",
-  "barricade",
-  "drone",
-  "mine",
-  "saturation",
-  "turret",
-]
 /** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
 const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard"]
 const ANY: AbilityId[] = ["swap"]
-const SPEED_KEY = "tacticular.speed"
-
-const dice = (w: WeaponId): string => {
-  const d = WEAPONS[w].dice
-  return `${d.count + d.bonus}–${d.count * d.sides + d.bonus}`
-}
-
-const point = (k: number): Point => ({ x: k % 1000, y: Math.floor(k / 1000) })
-
-/** The action bar of a soldier, in bar order. */
-export function slots(game: Game, u: Unit): Slot[] {
-  const out: Slot[] = []
-  const none = u.ap <= 0 || game.phase !== "squad"
-  const p = PROFILES[u.kind]
-  const weapons = [u.weapon, p.sidearm].filter((x): x is WeaponId => !!x && x !== "none")
-  weapons.forEach((w, i) => {
-    const weapon = WEAPONS[w]
-    const range = weapon.melee ? t("ui.melee") : `${t("ui.range")} ${weapon.min}–${weapon.max}`
-    const ammo = weapon.ammo !== null && w === u.weapon ? ` · ${t("ui.ammo")} ${u.ammo}/${weapon.ammo}` : ""
-    out.push({
-      id: `weapon:${w}`,
-      group: "weapon",
-      key: String(i + 1),
-      label: t(`weapon.${w}`),
-      info: `${t("ui.damage")} ${dice(w)} · ${range}${ammo}`,
-      badge: w === "axes" ? `×${u.axes}` : weapon.ammo !== null && w === u.weapon ? `${u.ammo}` : "",
-      disabled: none || (w === "axes" && u.axes <= 0) || (weapon.twoAp === true && (u.ap < 2 || u.moved)),
-      aim: "unit",
-    })
-  })
-  const skill = (a: AbilityId, group: Slot["group"], key: string, badge: string, blocked: boolean) =>
-    out.push({
-      id: `ability:${a}`,
-      group,
-      key,
-      label: t(`ability.${a}`),
-      info: t(`info.${a}`),
-      badge,
-      disabled: none || blocked,
-      aim: UNIT_ABILITIES.includes(a) ? "unit" : TILE_ABILITIES.includes(a) ? "tile" : "none",
-    })
-  p.abilities.forEach((a, i) => {
-    const cd = u.cooldowns[a] ?? 0
-    skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : "", cd > 0)
-  })
-  if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
-    skill("rouse", "skill", String(weapons.length + 1), "", false)
-  if (p.ultimate) skill(p.ultimate, "ult", "R", u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
-  if (u.kind === "drone") return out
-  for (const id of ["reload", "overwatch", "hunker"] as const) {
-    if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
-    const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" as const }
-    out.push({ ...s, group: "stance", key: STANCE_KEYS[id] })
-  }
-  return out
-}
 
 /** True in the squad phase when no soldier the player controls has AP left. */
 export function spent(game: Game): boolean {
@@ -133,272 +23,150 @@ export function spent(game: Game): boolean {
   )
 }
 
-/** Tiles an armed action can reach, for the range outline on the board. */
-export function range(game: Game, u: Unit, slot: string): Set<number> {
-  const [kind, id] = slot.split(":")
-  const seen = game.sight.tiles(u)
-  const within = (lo: number, hi: number) =>
-    new Set([...seen].filter((k) => distance(u.pos, point(k)) >= lo && distance(u.pos, point(k)) <= hi))
-  const around = () => new Set([key(u.pos), ...AROUND.map((d) => key({ x: u.pos.x + d.x, y: u.pos.y + d.y }))])
-  if (kind === "weapon") {
-    const w = WEAPONS[id as WeaponId]
-    return w.melee ? around() : within(w.min, w.max)
-  }
-  if (kind === "overwatch") return seen
-  if (kind !== "ability") return new Set()
-  switch (id as AbilityId) {
-    case "charge":
-    case "rampage":
-      return new Set(game.reach(u, u.mobility).cost.keys())
-    case "dominate":
-      return within(0, RANGE.dominate)
-    case "saturation":
-      return within(1, RANGE.saturation)
-    case "hospital":
-      return within(0, RANGE.hospital)
-    case "turret":
-    case "heal":
-    case "rouse":
-    case "shove":
-    case "breach":
-    case "barricade":
-    case "drone":
-      return around()
-    case "tag":
-      return within(1, RANGE.tag)
-    case "guard":
-      return within(1, RANGE.guard)
-    case "hook":
-      return within(1, RANGE.hook)
-    case "swap":
-      return within(1, RANGE.swap)
-    case "rocket":
-      return within(0, RANGE.rocket)
-    case "smoke":
-      return within(0, RANGE.smoke)
-    case "mine":
-      return within(1, RANGE.mine)
-    case "grapple":
-      return new Set([...within(1, RANGE.grapple)].filter((k) => ["roof", "ridge"].includes(game.tile(point(k)))))
-    case "rally":
-      return within(1, RANGE.rally)
-    case "fear":
-      return within(0, RANGE.fear)
-    case "volley":
-      return within(0, RANGE.volley)
-    case "blink":
-      return new Set([...within(1, RANGE.blink)].filter((k) => walkable(game.tile(point(k)))))
-    default:
-      return new Set()
-  }
-}
-
-/** A sensible first target, so a second press can confirm at once. */
-function defaultTarget(game: Game, u: Unit, slot: string): string | null {
-  const [kind, id] = slot.split(":")
-  const foes = game.units.filter((e) => e.allegiance() === "enemy" && (e.side === "squad" || game.stealth.visible(e)))
-  const friends = game.units.filter((x) => x.alive() && x.allegiance() === "squad")
-  if (kind === "weapon") {
-    const w = id as WeaponId
-    const ok = foes.filter((e) => game.orders.canTarget(u, e) && (!WEAPONS[w].melee || distance(u.pos, e.pos) <= 1))
-    return ok.sort((a, b) => game.combat.odds(u, b, w).chance - game.combat.odds(u, a, w).chance)[0]?.id ?? null
-  }
-  if (kind !== "ability") return null
-  const a = id as AbilityId
-  if (a === "heal") {
-    const near = game.units.filter(
-      (x) => (x.down > 0 || (x.alive() && x.hp < x.maxHp)) && x.allegiance() === "squad" && distance(u.pos, x.pos) <= 1,
-    )
-    return near.sort((x, y) => x.hp / x.maxHp - y.hp / y.maxHp)[0]?.id ?? null
-  }
-  if (a === "guard") return friends.filter((x) => x !== u).sort((x, y) => x.hp - y.hp)[0]?.id ?? null
-  if (a === "rally") {
-    const near = friends.filter((x) => x !== u && distance(u.pos, x.pos) <= RANGE.rally && x.ap < 3)
-    return near.sort((x, y) => x.ap - y.ap)[0]?.id ?? null
-  }
-  if (a === "shove") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
-  if (a === "rouse")
-    return game.units.find((x) => x.side === "squad" && x.has("dominated") && distance(u.pos, x.pos) <= 1)?.id ?? null
-  const reachable = foes.filter((e) => game.orders.canTarget(u, e))
-  return reachable.sort((x, y) => distance(u.pos, x.pos) - distance(u.pos, y.pos))[0]?.id ?? null
-}
-
-/** The action an armed slot stands for, or null when it still needs a target. */
-export function action(u: Unit, armed: Armed): Action | null {
-  const [kind, id] = armed.slot.split(":")
-  if (kind === "weapon")
-    return armed.target ? { type: "attack", unit: u.id, target: armed.target, weapon: id as WeaponId } : null
-  if (kind === "ability") {
-    const a = id as AbilityId
-    if (a === "charge" && armed.target)
-      return { type: "ability", unit: u.id, ability: a, target: armed.target, ...(armed.at ? { at: armed.at } : {}) }
-    if (UNIT_ABILITIES.includes(a))
-      return armed.target ? { type: "ability", unit: u.id, ability: a, target: armed.target } : null
-    if (TILE_ABILITIES.includes(a)) return armed.at ? { type: "ability", unit: u.id, ability: a, at: armed.at } : null
-    return { type: "ability", unit: u.id, ability: a }
-  }
-  return { type: kind as "overwatch" | "hunker" | "reload", unit: u.id }
-}
-
-/** The armed action with its tile filled in from the cursor: tile actions follow it, Charge lands where it points. */
-export function aimFor(game: Game, u: Unit, armed: Armed, hover: Point | null): Armed {
-  if (armed.slot === "ability:charge") {
-    const target = game.units.find((x) => x.id === armed.target)
-    if (!target) return armed
-    const spots = game.orders.landings(u, target)
-    const at = hover && spots.some((p) => same(p, hover)) ? hover : (armed.at ?? spots[0] ?? null)
-    return { ...armed, at }
-  }
-  const tile = TILE_ABILITIES.includes(armed.slot.slice(8) as AbilityId)
-  if (!tile) return armed
-  return { ...armed, at: hover && range(game, u, armed.slot).has(key(hover)) ? hover : armed.at }
-}
-
-/** The armed action aimed at the unit under the cursor when it is a valid target, else unchanged. */
-export function retarget(game: Game, u: Unit, armed: Armed, hover: Point | null): Armed {
-  const [kind, id] = armed.slot.split(":")
-  const unitAim = kind === "weapon" || UNIT_ABILITIES.includes(id as AbilityId)
-  const t = hover && unitAim ? game.unitAt(hover) : undefined
-  if (!t?.alive() || t.id === armed.target) return armed
-  const friendly = FRIENDLY.includes(id as AbilityId)
-  const ok = ANY.includes(id as AbilityId)
-    ? t !== u && range(game, u, armed.slot).has(key(t.pos))
-    : friendly
-      ? (id === "rouse" ? t.side === u.side && t.has("dominated") : t.allegiance() === u.allegiance()) &&
-        range(game, u, armed.slot).has(key(t.pos))
-      : game.orders.canTarget(u, t) &&
-        (kind === "weapon"
-          ? canReach(u, t, WEAPONS[id as WeaponId])
-          : id === "charge" || id === "rampage"
-            ? game.orders.landings(u, t).length > 0
-            : range(game, u, armed.slot).has(key(t.pos)))
-  return ok ? { ...armed, target: t.id, at: null } : armed
-}
-
-/** What an armed action would do to its target: hit odds for attacks and Charge, save odds for mind spells. */
-export type Forecast =
-  | { kind: "attack"; label: string; target: Unit; odds: Odds }
-  | { kind: "save"; label: string; target: Unit; will: number; dc: number; edge: number; chance: number }
-
-export function forecast(game: Game, u: Unit, armed: Armed, hover: Point | null): Forecast | null {
-  const aimed = aimFor(game, u, armed, hover)
-  const target = game.units.find((x) => x.id === aimed.target)
-  if (!target?.alive()) return null
-  const [kind, id] = aimed.slot.split(":")
-  if (kind === "weapon" && target.allegiance() !== u.allegiance()) {
-    return { kind: "attack", label: t(`weapon.${id}`), target, odds: game.combat.odds(u, target, id as WeaponId) }
-  }
-  if (aimed.slot === "ability:charge" && aimed.at) {
-    const from = u.at(aimed.at)
-    return { kind: "attack", label: t("ability.charge"), target, odds: game.combat.odds(from, target, u.weapon) }
-  }
-  if (kind === "ability" && (id === "fear" || id === "dread" || id === "dominate")) {
-    const dc = 10 + u.will
-    const edge = target.stance === "hunker" ? 1 : 0
-    return {
-      kind: "save",
-      label: t(`ability.${id}`),
-      target,
-      will: target.will,
-      dc,
-      edge,
-      chance: failChance(target.will, dc, edge),
-    }
-  }
-  return null
-}
-
 /** All UI state as signals, and the commands that change it. */
-export function createModel(session: Session, store: Storage) {
-  const read = (k: string) => {
-    try {
-      return store.getItem(k)
-    } catch {
-      return null
-    }
-  }
-  const saved = Number(read(SPEED_KEY) ?? 1)
-  const playback = new Playback((SPEEDS as readonly number[]).includes(saved) ? (saved as Speed) : 1, session.game)
-  const [game, setGame] = createSignal(session.game, { equals: false })
-  const [shown, setShown] = createSignal(session.game, { equals: false })
-  const [selected, setSelected] = createSignal<string | null>(null)
-  const [armed, setArmed] = createSignal<Armed | null>(null)
-  const [hover, setHover] = createSignal<Point | null>(null, { equals: (a, b) => !!a && !!b && same(a, b) })
-  const [hint, setHint] = createSignal<Slot | null>(null)
-  const [message, setMessage] = createSignal("")
-  const [zones, setZones] = createSignal(false)
-  const [speed, setSpeedSignal] = createSignal<Speed>(playback.speed)
-  const [lang, setLang] = createSignal<Lang>(locale.lang)
-  const [confirmNew, setConfirmNew] = createSignal(false)
-  const [logOpen, setLogOpen] = createSignal(true)
-  const [look, setLook] = createSignal<Point | null>(null, { equals: false })
-  const [help, setHelp] = createSignal(false)
-  const [menu, setMenu] = createSignal(false)
-  const [extended, setExtended] = createSignal(false)
+export class Model {
+  readonly playback: Playback
+  readonly game: Accessor<Game>
+  readonly shown: Accessor<Game>
+  readonly setShown: Setter<Game>
+  readonly selected: Accessor<string | null>
+  readonly armed: Accessor<Armed | null>
+  readonly hover: Accessor<Point | null>
+  readonly hint: Accessor<Slot | null>
+  readonly setHint: Setter<Slot | null>
+  readonly message: Accessor<string>
+  readonly zones: Accessor<boolean>
+  readonly setZones: Setter<boolean>
+  readonly speed: Accessor<Speed>
+  readonly lang: Accessor<Lang>
+  readonly confirmNew: Accessor<boolean>
+  readonly logOpen: Accessor<boolean>
+  readonly setLogOpen: Setter<boolean>
+  /** A tile the camera should bring into view. */
+  readonly look: Accessor<Point | null>
+  readonly help: Accessor<boolean>
+  readonly setHelp: Setter<boolean>
+  readonly menu: Accessor<boolean>
+  readonly setMenu: Setter<boolean>
+  readonly extended: Accessor<boolean>
+  readonly setExtended: Setter<boolean>
+  private readonly setGame: Setter<Game>
+  private readonly setSelected: Setter<string | null>
+  private readonly setArmed: Setter<Armed | null>
+  private readonly setPointer: Setter<Point | null>
+  private readonly setMessage: Setter<string>
+  private readonly setSpeedSignal: Setter<Speed>
+  private readonly setLang: Setter<Lang>
+  private readonly setConfirmNew: Setter<boolean>
+  private readonly setLook: Setter<Point | null>
 
-  const unit = (): Unit | null => {
-    const u = game().units.find((x) => x.id === selected())
+  constructor(
+    readonly session: Session,
+    private readonly store: Storage,
+  ) {
+    const saved = Number(this.read(SPEED_KEY) ?? 1)
+    this.playback = new Playback((SPEEDS as readonly number[]).includes(saved) ? (saved as Speed) : 1, session.game)
+    ;[this.game, this.setGame] = createSignal(session.game, { equals: false })
+    ;[this.shown, this.setShown] = createSignal(session.game, { equals: false })
+    ;[this.selected, this.setSelected] = createSignal<string | null>(null)
+    ;[this.armed, this.setArmed] = createSignal<Armed | null>(null)
+    ;[this.hover, this.setPointer] = createSignal<Point | null>(null, { equals: (a, b) => !!a && !!b && same(a, b) })
+    ;[this.hint, this.setHint] = createSignal<Slot | null>(null)
+    ;[this.message, this.setMessage] = createSignal("")
+    ;[this.zones, this.setZones] = createSignal(false)
+    ;[this.speed, this.setSpeedSignal] = createSignal<Speed>(this.playback.speed)
+    ;[this.lang, this.setLang] = createSignal<Lang>(locale.lang)
+    ;[this.confirmNew, this.setConfirmNew] = createSignal(false)
+    ;[this.logOpen, this.setLogOpen] = createSignal(true)
+    ;[this.look, this.setLook] = createSignal<Point | null>(null, { equals: false })
+    ;[this.help, this.setHelp] = createSignal(false)
+    ;[this.menu, this.setMenu] = createSignal(false)
+    ;[this.extended, this.setExtended] = createSignal(false)
+  }
+
+  /** The model with the first soldier selected. */
+  static open(session: Session, store: Storage): Model {
+    const m = new Model(session, store)
+    m.selectNext(false)
+    return m
+  }
+
+  /** The selected soldier, when it stands and fights for the squad. */
+  unit(): Unit | null {
+    const u = this.game().units.find((x) => x.id === this.selected())
     return u?.alive() && u.allegiance() === "squad" ? u : null
   }
 
-  const foeAt = (p: Point): Unit | undefined => {
-    const g = game()
+  /** The kit of the selected soldier. */
+  kit(): Kit | null {
+    const u = this.unit()
+    return u ? new Kit(this.game(), u) : null
+  }
+
+  /** A foe the player sees on a tile. */
+  foeAt(p: Point): Unit | undefined {
+    const g = this.game()
     const u = g.unitAt(p)
     if (u?.allegiance() !== "enemy") return undefined
     return u.side === "squad" || g.stealth.visible(u) ? u : undefined
   }
 
+  inside(p: Point): boolean {
+    return this.game().board.inside(p)
+  }
+
   /** Selects the next soldier; with all set, any living soldier, else only those with AP left. */
-  const selectNext = (all: boolean, back = false, fallback = true) => {
-    const squad = game().units.filter((u) => u.alive() && u.allegiance() === "squad" && (all || u.ap > 0))
+  selectNext(all: boolean, back = false, fallback = true): void {
+    const squad = this.game().units.filter((u) => u.alive() && u.allegiance() === "squad" && (all || u.ap > 0))
     if (squad.length === 0) {
-      if (!all && fallback) selectNext(true)
+      if (!all && fallback) this.selectNext(true)
       return
     }
-    const at = squad.findIndex((u) => u.id === selected())
+    const at = squad.findIndex((u) => u.id === this.selected())
     const step = back ? squad.length - 1 : 1
     const next = squad[at < 0 ? 0 : (at + step) % squad.length]
     batch(() => {
-      setSelected(next.id)
-      setLook(next.pos)
-      setArmed(null)
-      setMessage("")
+      this.setSelected(next.id)
+      this.setLook(next.pos)
+      this.setArmed(null)
+      this.setMessage("")
     })
   }
 
-  const act = (a: Action) => {
+  act(a: Action): void {
+    const { session, playback } = this
     const before = session.game
     try {
       playback.add(before, session.act(a))
       if (a.type !== "endTurn" && spent(session.game)) playback.add(session.game, session.act({ type: "endTurn" }))
       batch(() => {
-        setGame(session.game)
-        setArmed(null)
-        setMessage("")
-        const u = unit()
-        if (!u || u.ap === 0) selectNext(false)
+        this.setGame(session.game)
+        this.setArmed(null)
+        this.setMessage("")
+        const u = this.unit()
+        if (!u || u.ap === 0) this.selectNext(false)
       })
     } catch (e) {
       if (!(e instanceof Illegal)) throw e
-      setMessage(t(`illegal.${e.message}`))
+      this.setMessage(t(`illegal.${e.message}`))
     }
   }
 
   /** First press arms a slot with a default target; a second press of the same slot confirms it. */
-  const press = (slot: Slot) => {
-    const u = unit()
-    if (!u || slot.disabled) return
-    const current = armed()
+  press(slot: Slot): void {
+    const kit = this.kit()
+    if (!kit || slot.disabled) return
+    const current = this.armed()
     if (current?.slot === slot.id) {
-      const a = action(u, aimFor(game(), u, current, hover()))
-      if (a) act(a)
-      else setMessage(slot.aim === "tile" ? t("ui.pickTile") : t("ui.pickTarget"))
+      const a = kit.action(kit.aim(current, this.hover()))
+      if (a) this.act(a)
+      else this.setMessage(slot.aim === "tile" ? t("ui.pickTile") : t("ui.pickTarget"))
       return
     }
     batch(() => {
-      const target = slot.aim === "unit" ? defaultTarget(game(), u, slot.id) : null
-      setArmed({ slot: slot.id, target, at: null })
-      setMessage(
+      const target = slot.aim === "unit" ? kit.target(slot.id) : null
+      this.setArmed({ slot: slot.id, target, at: null })
+      this.setMessage(
         slot.aim === "none" || target
           ? t("ui.pressAgain", { key: slot.key })
           : slot.aim === "tile"
@@ -409,203 +177,169 @@ export function createModel(session: Session, store: Storage) {
   }
 
   /** A click on the board: picks targets, selects soldiers, opens doors, or moves. */
-  const click = (p: Point) => {
-    const g = game()
+  click(p: Point): void {
+    const g = this.game()
     if (g.phase !== "squad") return
-    const u = unit()
+    const kit = this.kit()
+    const u = kit?.unit
     const here = g.unitAt(p)
-    const current = armed()
-    const slot = current && u ? slots(g, u).find((s) => s.id === current.slot) : undefined
-    if (u && current && slot) {
+    const current = this.armed()
+    const slot = current && kit ? kit.slots().find((s) => s.id === current.slot) : undefined
+    if (kit && u && current && slot) {
       const friendly = FRIENDLY.includes(current.slot.slice(8) as AbilityId)
       const ally =
         here && (current.slot === "ability:rouse" ? here.side === u.side : here.allegiance() === u.allegiance())
       if (slot.aim === "unit" && here && (ally === friendly || ANY.includes(current.slot.slice(8) as AbilityId))) {
-        if (current.target === here.id) act(action(u, aimFor(g, u, current, hover()))!)
-        else setArmed({ ...current, target: here.id, at: null })
+        if (current.target === here.id) this.act(kit.action(kit.aim(current, this.hover()))!)
+        else this.setArmed({ ...current, target: here.id, at: null })
         return
       }
       const target = current.target ? g.units.find((x) => x.id === current.target) : undefined
       if (current.slot === "ability:charge" && target && g.orders.landings(u, target).some((q) => same(q, p))) {
-        if (current.at && same(current.at, p)) act(action(u, current)!)
-        else setArmed({ ...current, at: p })
+        if (current.at && same(current.at, p)) this.act(kit.action(current)!)
+        else this.setArmed({ ...current, at: p })
         return
       }
       if (slot.aim === "tile") {
-        if (current.at && same(current.at, p)) act(action(u, current)!)
-        else setArmed({ ...current, at: p })
+        if (current.at && same(current.at, p)) this.act(kit.action(current)!)
+        else this.setArmed({ ...current, at: p })
         return
       }
     }
     if (here && here.side === "squad" && here.allegiance() === "squad") {
       batch(() => {
-        setSelected(here.id)
-        setArmed(null)
-        setMessage("")
+        this.setSelected(here.id)
+        this.setArmed(null)
+        this.setMessage("")
       })
       return
     }
-    if (!u) return
-    const foe = foeAt(p)
+    if (!kit || !u) return
+    const foe = this.foeAt(p)
     if (foe) {
-      const s = slots(g, u)[0]
-      if (current?.slot === s.id && current.target === foe.id) act(action(u, current)!)
-      else setArmed({ slot: s.id, target: foe.id, at: null })
+      const s = kit.slots()[0]
+      if (current?.slot === s.id && current.target === foe.id) this.act(kit.action(current)!)
+      else this.setArmed({ slot: s.id, target: foe.id, at: null })
       return
     }
     if (current) {
-      setArmed(null)
+      this.setArmed(null)
       return
     }
     if (g.tile(p) === "door" && AROUND.some((d) => u.pos.x + d.x === p.x && u.pos.y + d.y === p.y)) {
-      act({ type: "door", unit: u.id, at: p })
+      this.act({ type: "door", unit: u.id, at: p })
       return
     }
-    act({ type: "move", unit: u.id, to: p })
+    this.act({ type: "move", unit: u.id, to: p })
   }
 
-  const key2 = (e: KeyboardEvent) => {
+  key(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey) return
     if (e.key === "Escape") {
       batch(() => {
-        setArmed(null)
-        setMessage("")
-        setHelp(false)
-        setMenu(false)
+        this.setArmed(null)
+        this.setMessage("")
+        this.setHelp(false)
+        this.setMenu(false)
       })
       return
     }
     if (e.key === "?") {
-      setHelp(!help())
+      this.setHelp(!this.help())
       return
     }
     if (e.key === "F1") {
       e.preventDefault()
-      setExtended(!extended())
+      this.setExtended(!this.extended())
       return
     }
     if (e.key === "Tab") {
       e.preventDefault()
-      selectNext(false, e.shiftKey, false)
+      this.selectNext(false, e.shiftKey, false)
       return
     }
     if (e.key === "Enter") {
       e.preventDefault()
-      if (game().phase === "squad") act({ type: "endTurn" })
+      if (this.game().phase === "squad") this.act({ type: "endTurn" })
       return
     }
     if (e.code === "Space") {
       e.preventDefault()
-      setShown(playback.skip(performance.now()))
+      this.setShown(this.playback.skip(performance.now()))
       return
     }
     if (e.code === "KeyZ") {
-      setZones(!zones())
+      this.setZones(!this.zones())
       return
     }
     const digit = e.code.startsWith("Digit") ? e.code.slice(5) : e.code.startsWith("Key") ? e.code.slice(3) : ""
-    const u = unit()
-    const slot = u && digit ? slots(game(), u).find((s) => s.key === digit) : undefined
+    const kit = this.kit()
+    const slot = kit && digit ? kit.slots().find((s) => s.key === digit) : undefined
     if (slot) {
       e.preventDefault()
-      press(slot)
+      this.press(slot)
     }
   }
 
-  const setSpeed = (s: Speed) => {
-    playback.speed = s
-    setSpeedSignal(s)
+  setSpeed(s: Speed): void {
+    this.playback.speed = s
+    this.setSpeedSignal(s)
     try {
-      store.setItem(SPEED_KEY, String(s))
+      this.store.setItem(SPEED_KEY, String(s))
     } catch {
       return
     }
   }
 
-  const setLanguage = (l: Lang) => {
+  setLanguage(l: Lang): void {
     locale.use(l)
-    locale.remember(store)
-    setLang(l)
-    setGame(session.game)
-    setShown(shown())
+    locale.remember(this.store)
+    this.setLang(l)
+    this.setGame(this.session.game)
+    this.setShown(this.shown())
   }
 
-  const undo = () => {
-    session.undo()
-    playback.reset(session.game)
+  undo(): void {
+    this.session.undo()
+    this.playback.reset(this.session.game)
     batch(() => {
-      setGame(session.game)
-      setShown(session.game)
+      this.setGame(this.session.game)
+      this.setShown(this.session.game)
     })
   }
 
-  const newMission = () => {
-    if (!confirmNew()) {
-      setConfirmNew(true)
+  /** Starts a new mission on the second press. */
+  newMission(): void {
+    if (!this.confirmNew()) {
+      this.setConfirmNew(true)
       return
     }
-    session.start(Math.floor(Math.random() * 2 ** 31))
-    playback.reset(session.game)
+    this.session.start(Math.floor(Math.random() * 2 ** 31))
+    this.playback.reset(this.session.game)
     batch(() => {
-      setConfirmNew(false)
-      setGame(session.game)
-      setShown(session.game)
-      setSelected(null)
-      selectNext(false)
+      this.setConfirmNew(false)
+      this.setGame(this.session.game)
+      this.setShown(this.session.game)
+      this.setSelected(null)
+      this.selectNext(false)
     })
   }
 
   /** Moves the cursor; an armed action follows it onto a valid target. */
-  const point = (p: Point | null) => {
+  setHover(p: Point | null): void {
     batch(() => {
-      setHover(p)
-      const u = unit()
-      const current = armed()
-      if (u && current) setArmed(retarget(game(), u, current, p))
+      this.setPointer(p)
+      const kit = this.kit()
+      const current = this.armed()
+      if (kit && current) this.setArmed(kit.retarget(current, p))
     })
   }
 
-  selectNext(false)
-
-  return {
-    session,
-    playback,
-    game,
-    shown,
-    setShown,
-    selected,
-    look,
-    armed,
-    hover,
-    setHover: point,
-    logOpen,
-    setLogOpen,
-    help,
-    setHelp,
-    menu,
-    setMenu,
-    extended,
-    setExtended,
-    hint,
-    setHint,
-    message,
-    zones,
-    setZones,
-    speed,
-    setSpeed,
-    lang,
-    setLanguage,
-    confirmNew,
-    unit,
-    foeAt,
-    act,
-    press,
-    click,
-    key: key2,
-    undo,
-    newMission,
-    inside: (p: Point) => game().board.inside(p),
+  private read(k: string): string | null {
+    try {
+      return this.store.getItem(k)
+    } catch {
+      return null
+    }
   }
 }
-
-export type Model = ReturnType<typeof createModel>

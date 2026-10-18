@@ -174,8 +174,8 @@ h2 {
   border: 1px solid var(--line);
 }
 .slot .glyph {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   image-rendering: pixelated;
 }
 .slot .key {
@@ -278,9 +278,9 @@ header {
   color: var(--muted);
 }
 .portrait {
-  width: 40px;
-  height: 40px;
-  padding: 4px;
+  width: 48px;
+  height: 48px;
+  padding: 6px 10px;
   image-rendering: pixelated;
   background: var(--well);
   border: 1px solid var(--line);
