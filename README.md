@@ -8,13 +8,17 @@ loses.
 
 - Each soldier has 2 action points (AP). A move costs 1 AP. An attack, Overwatch or Hunker ends the turn.
 - An attack is d20 + Aim against Defense; cover adds Defense. A flank or an unaware target is an advantage.
-  More advantages than disadvantages give a sure critical hit; otherwise each disadvantage left costs 3.
+  More advantages than disadvantages give a sure critical hit; otherwise each disadvantage left costs 3. Melee
+  aliens and hunkered units never take a sure hit: the flank gives an edge instead.
 - A unit at half HP or less is wounded: it attacks shaken and cannot dash.
-- Aliens show whom they will shoot next. Hover an alien to see where it can go next turn.
-- Soldiers start concealed. Enemies patrol, hear noise and investigate. An alarm rises each round; at 4, 7
-  and 10 the aliens get help. A "?" marks where the squad heard an alien it cannot see.
-- Missions: kill the Warchief and then leave or kill the rest, take the intel and leave, free a captive, bomb a
-  relay, or hold a beacon for 8 rounds against growing waves.
+- Aliens show whom they will shoot next and the tile they will fire from. Hover an alien to see where it can go
+  next turn; plan a move to see which aliens could flank that tile next turn. Aliens avoid known overwatch.
+- Soldiers start concealed. Enemies patrol, hear noise and investigate; a group that calms down stays wary. The
+  alarm rises every second round and after each round with a loud shot or blast; at 4, 7 and 10 the aliens get
+  help. A "?" marks where the squad heard an alien it cannot see.
+- Missions: kill the Warchief, or bomb a relay, and then leave or kill the rest; take the intel and leave; free a
+  captive; or hold a beacon for 8 rounds against growing waves. A downed soldier left outside the evac zone is
+  lost.
 
 ## The run
 
