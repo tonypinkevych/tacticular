@@ -51,6 +51,7 @@ describe("ultimates", () => {
       const a = ult(s, "v", "rampage", { target: "a" })
       if (find(a, "a").hp > 0) continue
       expect(find(a, "b").hp).toBe(0)
+      expect(find(a, "v").ult).toBe(0)
       return
     }
     throw new Error("no kill")

@@ -44,7 +44,10 @@ const BAD: StatusId[] = ["shaken", "burning", "exposed"]
 export class Abilities {
   constructor(private readonly game: Game) {}
 
-  /** Uses an ability or an ultimate, with its target or its place, then spends its AP and starts its cooldown. */
+  /**
+   * Uses an ability or an ultimate, with its target or its place, then spends its AP and starts its cooldown. An
+   * ultimate's own hits do not charge the meter again.
+   */
   use(u: Unit, id: AbilityId, targetId?: string, at?: Point): void {
     const game = this.game
     const p = PROFILES[u.kind]
@@ -304,6 +307,7 @@ export class Abilities {
         break
       }
     }
+    if (ultimate) u.ult = 0
     u.cooldowns[id] = ABILITIES[id].cooldown || undefined
     if (ABILITIES[id].endsTurn) u.ap = 0
     else if (!ABILITIES[id].free) u.ap -= 1
