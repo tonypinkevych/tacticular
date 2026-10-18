@@ -71,7 +71,8 @@ export type Forecast =
 
 /** An alien a soldier can target: its hit chance in percent and whether it stands flanked. */
 export interface Contact {
-  unit: Unit
+  unit: Unit | null
+  at: Point
   chance: number
   flanked: boolean
 }
@@ -130,18 +131,23 @@ export class Kit {
     return out
   }
 
-  /** The foes the soldier could target from a tile, its own by default, best chance first. */
+  /** The foes the soldier could target from a tile, its own by default, best chance first, then the barrels its gun reaches. */
   sights(from: Point = this.unit.pos): Contact[] {
     const { game } = this
     const viewer = this.unit.at(from)
-    return game.units
+    const w = viewer.arms()
+    const foes = game.units
       .filter((e) => e.allegiance() !== viewer.allegiance() && (e.side === "squad" || game.stealth.visible(e)))
       .filter((e) => game.orders.canTarget(viewer, e))
       .map((e) => {
         const o = game.combat.odds(viewer, e)
-        return { unit: e, chance: Math.round(o.chance * 100), flanked: o.advantages.includes("flanked") }
+        return { unit: e, at: e.pos, chance: Math.round(o.chance * 100), flanked: o.advantages.includes("flanked") }
       })
       .sort((a, b) => b.chance - a.chance)
+    const barrels = this.barrels()
+      .filter((p) => !w.melee && distance(from, p) <= w.max && game.sight.sees(viewer, p))
+      .map((p) => ({ unit: null, at: p, chance: 100, flanked: false }))
+    return [...foes, ...barrels]
   }
 
   /** The slot a key presses, by its key or its alias. */
@@ -301,9 +307,7 @@ export class Kit {
   targets(armed: Armed): Armed[] {
     const { game, unit: u } = this
     const empty = { ...armed, target: null, at: null }
-    const { width, tiles } = game.board
-    const barrels = tiles.flatMap((t, i) => (t === "barrel" ? [{ x: i % width, y: Math.floor(i / width) }] : []))
-    const spots = [...game.units.filter((x) => x.alive()).map((x) => x.pos), ...barrels]
+    const spots = [...game.units.filter((x) => x.alive()).map((x) => x.pos), ...this.barrels()]
     return spots
       .sort((a, b) => distance(u.pos, a) - distance(u.pos, b))
       .map((p) => this.retarget(empty, p))
@@ -337,5 +341,10 @@ export class Kit {
       }
     }
     return null
+  }
+
+  private barrels(): Point[] {
+    const { width, tiles } = this.game.board
+    return tiles.flatMap((t, i) => (t === "barrel" ? [{ x: i % width, y: Math.floor(i / width) }] : []))
   }
 }

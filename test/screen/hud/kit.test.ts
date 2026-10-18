@@ -55,7 +55,7 @@ describe("sights", () => {
 
   test("the foes a soldier can target, with the hit chance and whether they are flanked", () => {
     const [s] = new Kit(g, w).sights()
-    expect(s.unit.id).toBe("e")
+    expect(s.unit?.id).toBe("e")
     expect(s.chance).toBeGreaterThan(0)
     expect(s.flanked).toBe(true)
   })
@@ -64,7 +64,7 @@ describe("sights", () => {
     const spotter = squad("s", "rogue", { x: 7, y: 0 })
     const walled = setup(["....#...", "....#...", "....#...", "........"], [w, far, spotter])
     expect(new Kit(walled, w).sights()).toEqual([])
-    expect(new Kit(walled, w).sights({ x: 3, y: 3 }).map((s) => s.unit.id)).toEqual(["f"])
+    expect(new Kit(walled, w).sights({ x: 3, y: 3 }).map((s) => s.unit?.id)).toEqual(["f"])
   })
 })
 
@@ -81,6 +81,11 @@ describe("a barrel", () => {
     const kit = new Kit(g, w)
     const all = kit.targets({ slot: "weapon:repeater", target: null, at: null })
     expect(all.map((x) => x.target ?? x.at)).toEqual([{ x: 5, y: 1 }, "e"])
+  })
+  test("shows in the sights after the foes, sure to blow up", () => {
+    const sights = new Kit(g, w).sights()
+    expect(sights.map((c) => c.unit?.id ?? c.at)).toEqual(["e", { x: 5, y: 1 }])
+    expect(sights[1].chance).toBe(100)
   })
 })
 

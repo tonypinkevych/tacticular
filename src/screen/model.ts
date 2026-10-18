@@ -6,7 +6,7 @@ import { type Action, Illegal } from "../mission/orders"
 import type { Session } from "../save/session"
 import type { Unit } from "../units/unit"
 import type { Expedition } from "./expedition"
-import { type Armed, Kit, type Slot } from "./hud/kit"
+import { type Armed, type Contact, Kit, type Slot } from "./hud/kit"
 import { Playback, SPEEDS, type Speed } from "./playback/motion"
 import { Sound } from "./playback/sound"
 
@@ -177,22 +177,23 @@ export class Model {
     })
   }
 
-  /** Aims the weapon at a foe; a second call on the same foe fires. */
-  aimAt(id: string): void {
+  /** Aims the weapon at a foe or a barrel; a second call on the same one fires. */
+  aimAt(contact: Contact): void {
     const kit = this.kit()
     const weapon = kit?.slots().find((s) => s.group === "weapon")
     if (!kit || !weapon || weapon.disabled) return
     const current = this.armed()
-    if (current?.slot === weapon.id && current.target === id) {
+    const target = contact.unit?.id ?? null
+    const at = contact.unit ? null : contact.at
+    if (current?.slot === weapon.id && current.target === target && (!at || (current.at && same(current.at, at)))) {
       const a = kit.action(current)
       if (a) this.act(a)
       return
     }
-    const foe = this.game().units.find((u) => u.id === id)
     batch(() => {
-      this.setArmed({ slot: weapon.id, target: id, at: null })
+      this.setArmed({ slot: weapon.id, target, at })
       this.setMessage(t("ui.pressAgain", { key: weapon.key }))
-      if (foe) this.setLook(foe.pos)
+      this.setLook(contact.at)
     })
   }
 

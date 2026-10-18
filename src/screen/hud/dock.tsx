@@ -1,12 +1,12 @@
 import { For, Index, Show } from "solid-js"
 import { t } from "../../i18n/strings"
-import { key } from "../../map/point"
-import { css } from "../board/color"
-import { ICONS, UNITS } from "../board/glyphs"
+import { key, same } from "../../map/point"
+import { AMBER, css } from "../board/color"
+import { ICONS, TILES, UNITS } from "../board/glyphs"
 import { tone } from "../board/picture"
 import type { Model } from "../model"
 import { Icon } from "./icon"
-import { Kit } from "./kit"
+import { type Contact, Kit } from "./kit"
 
 const GROUPS = ["weapon", "skill", "ult", "stance"] as const
 const FAMILY = { weapon: "#efe4cc", skill: "#7fc8e8", ult: "#ffb347", stance: "#a8c49a" } as const
@@ -74,6 +74,10 @@ function Contacts(props: { model: Model }) {
     const planned = h && u.ap > 0 && !m.armed() && g.reach(u, u.stride()).cost.has(key(h)) ? h : u.pos
     return new Kit(g, u).sights(planned)
   }
+  const aimed = (c: Contact) => {
+    const a = m.armed()
+    return !!a && (c.unit ? a.target === c.unit.id : !!a.at && same(a.at, c.at))
+  }
   return (
     <Show when={list().length > 0}>
       <div id="contacts">
@@ -82,11 +86,15 @@ function Contacts(props: { model: Model }) {
             <button
               type="button"
               class="contact"
-              classList={{ flanked: c.flanked, aimed: m.armed()?.target === c.unit.id }}
-              title={c.unit.name}
-              onClick={() => m.aimAt(c.unit.id)}
+              classList={{ flanked: c.flanked, aimed: aimed(c) }}
+              title={c.unit?.name ?? t("tile.barrel")}
+              onClick={() => m.aimAt(c)}
             >
-              <Icon glyph={UNITS[c.unit.kind]} color={css(tone(c.unit))} class="who" />
+              <Icon
+                glyph={c.unit ? UNITS[c.unit.kind] : TILES.barrel}
+                color={css(c.unit ? tone(c.unit) : AMBER)}
+                class="who"
+              />
               <span class="chance">{c.chance}%</span>
             </button>
           )}
