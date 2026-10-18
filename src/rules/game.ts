@@ -30,6 +30,8 @@ export interface GameData {
   reactions: string[]
   log: Entry[]
   goal: Goal
+  /** Where alien reinforcements land; a map with no pad gets none. */
+  pad: Point | null
   drop: Drop | null
   drops: number
 }
@@ -60,6 +62,7 @@ export class Game implements GameData {
   reactions: string[]
   log: Entry[]
   goal: Goal
+  pad: Point | null
   drop: Drop | null
   drops: number
   readonly dice = new Dice(this)
@@ -87,6 +90,7 @@ export class Game implements GameData {
     this.reactions = data.reactions
     this.log = data.log
     this.goal = data.goal
+    this.pad = data.pad
     this.drop = data.drop
     this.drops = data.drops
   }
@@ -107,6 +111,7 @@ export class Game implements GameData {
       reactions: [],
       log: [],
       goal: { kind: "kill" },
+      pad: null,
       drop: null,
       drops: 0,
     })
@@ -134,6 +139,7 @@ export class Game implements GameData {
       reactions: this.reactions,
       log: this.log,
       goal: this.goal,
+      pad: this.pad,
       drop: this.drop,
       drops: this.drops,
     })

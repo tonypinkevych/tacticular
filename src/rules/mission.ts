@@ -84,7 +84,7 @@ function enemies(
   lead: Point | null,
 ): { units: Unit[]; groups: Group[] } {
   const count = 4
-  const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.6))
+  const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.65))
   const anchors: Point[] = lead ? [lead] : []
   for (let tries = 0; anchors.length < count && tries < 400; tries++) {
     const p = r.pick(field)
@@ -127,7 +127,16 @@ export function mission(seed: number): Game {
   const r = new Dice(state)
   const kind = r.pick(["kill", "evac", "defend"] as const)
   const site = place(r, kind)
-  let board = map(r, undefined, site)
+  const rows = Array.from({ length: SIZE.height - 8 }, (_, i) => i + 4).filter(
+    (y) => !site || Math.abs(y - site.at.y) >= 8,
+  )
+  const pad: Site | null =
+    r.random() < 0.35 ? { kind: "pad", at: { x: Math.floor(SIZE.width * 0.86), y: r.pick(rows) } } : null
+  let board = map(
+    r,
+    undefined,
+    [site, pad].filter((s): s is Site => !!s),
+  )
   const taken = new Set<number>()
   const team = squad(r, board, taken)
   const reachable = [...flood(board, team[0].pos)]
@@ -145,10 +154,12 @@ export function mission(seed: number): Game {
     for (const g of groups) if (g.landing) g.landing = turn(g.landing)
     if (aim.kind === "evac") aim = { ...aim, tiles: aim.tiles.map(turn) }
     if (aim.kind === "defend") aim = { ...aim, at: turn(aim.at) }
+    if (pad) pad.at = turn(pad.at)
     board = from.turn()
   }
   const game = Game.start({ seed, board, units: [...team, ...units], groups })
   game.goal = aim
+  game.pad = pad?.at ?? null
   game.rng = state.rng
   return game
 }

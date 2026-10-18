@@ -1,4 +1,4 @@
-import type { Biome } from "../../src/rules/board"
+import type { Biome, Board } from "../../src/rules/board"
 import { Dice } from "../../src/rules/dice"
 import type { Game } from "../../src/rules/game"
 import { key } from "../../src/rules/point"
@@ -116,6 +116,21 @@ describe("push", () => {
     g.zones.push({ kind: "fire", tiles: [{ x: 2, y: 0 }], rounds: 2 })
     g.combat.push(find(g, "v").pos, find(g, "e"))
     expect(find(g, "e").hp).toBe(e.maxHp - 1)
+  })
+})
+
+const SYMBOL: Record<string, string> = { floor: ".", low: ":", high: "H", wall: "#", door: "+", rock: "o" }
+
+describe("set pieces", () => {
+  test("most maps hold a crashed ship, a checkpoint or a farm", () => {
+    const marks = ["H#oo#H", ":.....:", "#...#.HH"]
+    const maps = Array.from({ length: 40 }, (_, i) => map(new Dice({ rng: i + 1 })))
+    const rows = (b: Board) =>
+      Array.from({ length: b.height }, (_, y) =>
+        Array.from({ length: b.width }, (_, x) => SYMBOL[b.at({ x, y })] ?? "?").join(""),
+      )
+    const held = maps.filter((b) => rows(b).some((r) => marks.some((m) => r.includes(m))))
+    expect(held.length).toBeGreaterThanOrEqual(36)
   })
 })
 

@@ -29,11 +29,20 @@ interface Template {
 
 export const BIOMES: Biome[] = ["forest", "village", "town"]
 
-/** A place a mission asks the map for: a walled yard for the alien leader, or a hill for the beacon. */
+/** A place a mission asks the map for: a walled yard for the alien leader, a hill for the beacon, a landing pad. */
 export interface Site {
-  kind: "yard" | "hill"
+  kind: "yard" | "hill" | "pad"
   at: Point
 }
+
+/** Hand-made pieces a map may hold: a crashed alien ship, a checkpoint and a farm with a silo. */
+const PIECES: string[][] = [
+  ["..HH..", ".H##H.", "H#oo#H", "+....#", "H#..#H", ".H##H."],
+  [":::.:::", ":.....:", ".......", ":.....:", ":::.:::"],
+  ["#####.HH", "#...#.HH", "#...+...", "#####..."],
+]
+
+const PAD = ["o.....o", ".......", ".......", ".......", "o.....o"]
 
 const TEMPLATES: Record<Biome, Template> = {
   forest: {
@@ -83,6 +92,7 @@ const TEMPLATES: Record<Biome, Template> = {
 /** The land of one map while it is laid out: barrier, routes, houses, cover, grass and mud. */
 class Terrain {
   private readonly kept = new Set<number>()
+  private readonly lining = new Set<number>()
 
   constructor(
     private readonly dice: Dice,
@@ -123,21 +133,28 @@ class Terrain {
     return gaps
   }
 
-  /** Keeps a winding way between two points free of clutter: wide and bare when direct, lined with cover on a flank. */
-  route(from: Point, to: Point, flank: boolean): void {
+  /**
+   * Keeps a way along straight legs between points free of clutter: wide and bare when direct, lined with cover
+   * on a flank. A later way clears the cover an earlier one put on its path.
+   */
+  route(points: Point[], flank: boolean): void {
     const { dice: r, board: d } = this
-    let p = from
-    for (let i = 0; i < 200 && !same(p, to); i++) {
-      const across = Math.abs(to.x - p.x)
-      const along = Math.abs(to.y - p.y)
-      const sideways = along > 0 && (across === 0 || r.random() < along / (across + along))
-      p = sideways ? { x: p.x, y: p.y + Math.sign(to.y - p.y) } : { x: p.x + Math.sign(to.x - p.x), y: p.y }
-      this.kept.add(key(p))
-      if (!flank) for (const s of AROUND) this.kept.add(key(plus(p, s)))
-      if (flank && i % 3 === 0) {
-        const side = sideways ? { x: r.pick([-1, 1]), y: 0 } : { x: 0, y: r.pick([-1, 1]) }
-        const c = plus(p, side)
-        if (d.at(c) === "floor" && !this.kept.has(key(c))) d.set(c, r.random() < 0.7 ? "low" : "high")
+    let p = points[0]
+    let step = 0
+    for (const to of points.slice(1)) {
+      while (!same(p, to)) {
+        const along = p.x === to.x
+        p = along ? { x: p.x, y: p.y + Math.sign(to.y - p.y) } : { x: p.x + Math.sign(to.x - p.x), y: p.y }
+        if (this.lining.delete(key(p))) d.set(p, "floor")
+        this.kept.add(key(p))
+        if (!flank) for (const s of AROUND) this.kept.add(key(plus(p, s)))
+        if (flank && step++ % 3 === 0) {
+          const c = plus(p, along ? { x: r.pick([-1, 1]), y: 0 } : { x: 0, y: r.pick([-1, 1]) })
+          if (d.at(c) === "floor" && !this.kept.has(key(c))) {
+            d.set(c, r.random() < 0.7 ? "low" : "high")
+            this.lining.add(key(c))
+          }
+        }
       }
     }
   }
@@ -183,6 +200,29 @@ class Terrain {
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) this.kept.add(key({ x: at.x + dx, y: at.y + dy }))
   }
 
+  /** A landing pad of 7×5 around a point. */
+  pad(at: Point): void {
+    this.stamp(PAD, { x: at.x - 3, y: at.y - 2 })
+  }
+
+  /** One hand-made piece on open ground off the routes; nothing when no place is free. */
+  piece(): void {
+    const { dice: r, board: d } = this
+    const rows = r.pick(PIECES)
+    for (let tries = 0; tries < 100; tries++) {
+      const at = { x: r.between(START + 3, d.width - rows[0].length - 1), y: r.between(1, d.height - rows.length - 1) }
+      let free = true
+      for (let y = -1; y <= rows.length && free; y++)
+        for (let x = -1; x <= rows[0].length && free; x++) {
+          const p = { x: at.x + x, y: at.y + y }
+          if (d.at(p) !== "floor" || this.kept.has(key(p))) free = false
+        }
+      if (!free) continue
+      this.stamp(rows, at)
+      return
+    }
+  }
+
   /** Low cover beside each of the squad's three start tiles. */
   shelter(start: Point): void {
     for (const dy of [-2, 0, 2]) {
@@ -190,6 +230,17 @@ class Terrain {
       this.board.set({ x: start.x + 1, y: start.y + dy }, "low")
       this.kept.add(key({ x: start.x, y: start.y + dy }))
     }
+  }
+
+  /** Copies text rows onto the map from a corner and keeps them and a ring around them from clutter. */
+  private stamp(rows: string[], at: Point): void {
+    const piece = Board.parse(rows)
+    for (let y = -1; y <= piece.height; y++)
+      for (let x = -1; x <= piece.width; x++) {
+        const p = { x: at.x + x, y: at.y + y }
+        if (piece.inside({ x, y })) this.board.set(p, piece.at({ x, y }))
+        this.kept.add(key(p))
+      }
   }
 
   private wall(): Tile {
@@ -255,7 +306,7 @@ class Terrain {
         .slice(0, r.between(3, 7))
         .map((s) => ({ x: at.x + s.x, y: at.y + s.y })),
     ]
-    for (const p of spots) if (d.at(p) === "floor") d.set(p, "ridge")
+    for (const p of spots) if (d.at(p) === "floor" && !this.kept.has(key(p))) d.set(p, "ridge")
   }
 
   clutter(): void {
@@ -301,7 +352,7 @@ class Terrain {
         const p = { x: from.x + r.pick([-1, 0, 1]), y: from.y + r.pick([-1, 0, 1]) }
         if (d.at(p) === "floor" && !patch.some((q) => q.x === p.x && q.y === p.y)) patch.push(p)
       }
-      for (const p of patch) if (d.at(p) === "floor") d.set(p, "grass")
+      for (const p of patch) if (d.at(p) === "floor" && !this.kept.has(key(p))) d.set(p, "grass")
     }
   }
 
@@ -342,12 +393,13 @@ function walkables(d: Board): Point[] {
 /**
  * Builds a map of a biome with the squad's start on the west edge and the aliens' side in the east: a barrier
  * with 2 or 3 gaps between them, a direct route through the gap nearest the squad, flank routes through the
- * others, and the site a mission asks for. Every passable tile can be reached from the start.
+ * others, the sites a mission asks for and 1 or 2 hand-made pieces. Every passable tile can be reached from the
+ * start.
  */
 export function map(
   r: Dice,
   biome: Biome = r.pick(BIOMES),
-  site: Site | null = null,
+  sites: Site[] = [],
   width = SIZE.width,
   height = SIZE.height,
 ): Board {
@@ -357,15 +409,33 @@ export function map(
     const d = new Board(width, height)
     const land = new Terrain(r, d, t)
     const start = { x: 1, y: Math.floor(height / 2) }
-    const avoid = site ? Array.from({ length: 9 }, (_, i) => site.at.y - 4 + i) : []
+    const avoid = sites.flatMap((s) => Array.from({ length: 9 }, (_, i) => s.at.y - 4 + i))
     const gaps = land.barrier(avoid).sort((a, b) => Math.abs(a.y - start.y) - Math.abs(b.y - start.y))
-    if (site?.kind === "yard") land.yard(site.at)
-    if (site?.kind === "hill") land.hill(site.at)
+    for (const site of sites) land[site.kind](site.at)
     gaps.forEach((gap, i) => {
-      land.route({ x: start.x + 2, y: start.y }, { x: gap.x - 2, y: gap.y }, i > 0)
-      land.route({ x: gap.x + 3, y: gap.y }, { x: width - 3, y: r.between(2, height - 3) }, i > 0)
+      const west = start.x + 2 + r.between(0, 3)
+      const east = r.between(Math.floor(width * 0.65), width - 3)
+      land.route(
+        [
+          { x: start.x + 2, y: start.y },
+          { x: west, y: start.y },
+          { x: west, y: gap.y },
+          { x: gap.x - 2, y: gap.y },
+        ],
+        i > 0,
+      )
+      land.route(
+        [
+          { x: gap.x + 3, y: gap.y },
+          { x: east, y: gap.y },
+          { x: east, y: r.between(2, height - 3) },
+        ],
+        i > 0,
+      )
     })
     const houses = Math.round(r.between(...t.houses) * scale * 0.75)
+    const pieces = r.between(1, 2)
+    for (let i = 0; i < pieces; i++) land.piece()
     for (let i = 0; i < houses; i++) land.house(r.random() < t.roofs)
     land.clutter()
     land.meadows(Math.round(t.grass * scale))

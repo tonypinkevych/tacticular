@@ -101,6 +101,12 @@ describe("maps for each mission", () => {
       expect(walled(g, chief!.pos), `seed ${g.seed}`).toBe(true)
     }
   })
+  test("some maps have a landing pad for reinforcements, most do not", () => {
+    const pads = games.filter((g) => g.pad)
+    expect(pads.length).toBeGreaterThan(15)
+    expect(pads.length).toBeLessThan(55)
+    for (const g of pads) expect(g.tile(g.pad!), `seed ${g.seed}`).toBe("floor")
+  })
   test("in Defend, the beacon stands on a ridge", () => {
     const holds = games.filter((g) => g.goal.kind === "defend")
     expect(holds.length).toBeGreaterThan(10)

@@ -1,7 +1,7 @@
 import { Mind } from "../../src/ai/mind"
 import { WEAPONS } from "../../src/rules/data"
 import { mission } from "../../src/rules/mission"
-import { key } from "../../src/rules/point"
+import { distance, key } from "../../src/rules/point"
 import { walkable } from "../../src/rules/tile"
 import { enemy, open, setup, squad } from "../fixture"
 
@@ -232,10 +232,11 @@ describe("objectives", () => {
 })
 
 describe("reinforcements", () => {
-  test("after the alarm, 2 aliens drop every 3 rounds, at most 3 times", () => {
+  test("after the alarm, 2 aliens drop on the landing pad every 3 rounds, at most 3 times", () => {
     const s = squad("s", "warden", { x: 0, y: 5 })
     const e = enemy("e", "orc", { x: 20, y: 5 }, "unaware")
     const g = setup(open(24, 10), [s, e])
+    g.pad = { x: 18, y: 2 }
     g.groups[0].alarmed = true
     const enemies = () => g.units.filter((u) => u.side === "enemy").length
     g.phase = "enemy"
@@ -256,6 +257,19 @@ describe("reinforcements", () => {
     }
     expect(enemies()).toBe(7)
     expect(g.drop).toBeNull()
+    expect(g.units.filter((u) => u.group?.startsWith("d")).every((u) => distance(u.pos, { x: 18, y: 2 }) <= 2)).toBe(
+      true,
+    )
+  })
+  test("a map with no landing pad gets no reinforcements", () => {
+    const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
+    g.groups[0].alarmed = true
+    for (let i = 0; i < 6; i++) {
+      g.phase = "enemy"
+      g.turn.end()
+    }
+    expect(g.drop).toBeNull()
+    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(1)
   })
 })
 
