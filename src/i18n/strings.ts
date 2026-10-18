@@ -232,11 +232,13 @@ const en = {
   "info.overwatch": "Fire at the first enemy that moves in sight. Ends turn.",
   "info.hunker": "Needs cover. Attacks on you have disadvantage. Ends turn.",
   "info.use": "Use the objective next to you: take the intel or plant a charge. 1 AP.",
+  "info.door": "Open or close a door next to you. A closed door blocks sight. 1 AP.",
   "info.reload": "Refill ammo.",
 
   "action.overwatch": "Overwatch",
   "action.hunker": "Hunker",
   "action.use": "Use",
+  "action.door": "Door",
   "action.reload": "Reload",
 
   "status.shaken": "Shaken",
@@ -288,6 +290,7 @@ const en = {
   "log.flask": "{unit} throws an incendiary",
   "log.burn": "{target} is burned for {dmg}",
   "log.door": "{unit} opens a door",
+  "log.close": "{unit} closes a door",
   "log.burning": "{unit} burns for {dmg}",
   "log.round": "— Round {round} —",
   "log.engaged": "A pod is alerted",
@@ -556,11 +559,13 @@ const ru: Record<Key, string> = {
   "info.overwatch": "Огонь по первому врагу, что двинется в поле зрения. Конец хода.",
   "info.hunker": "Нужно укрытие. Атаки по вам с помехой. Конец хода.",
   "info.use": "Использовать цель рядом: забрать данные или заложить заряд. 1 ОД.",
+  "info.door": "Открыть или закрыть дверь рядом. Закрытая дверь закрывает обзор. 1 ОД.",
   "info.reload": "Пополнить патроны.",
 
   "action.overwatch": "Дозор",
   "action.hunker": "Залечь",
   "action.use": "Использовать",
+  "action.door": "Дверь",
   "action.reload": "Перезарядка",
 
   "status.shaken": "Потрясён",
@@ -612,6 +617,7 @@ const ru: Record<Key, string> = {
   "log.flask": "{unit} бросает зажигательную",
   "log.burn": "{target} обожжён на {dmg}",
   "log.door": "{unit} открывает дверь",
+  "log.close": "{unit} закрывает дверь",
   "log.burning": "{unit} горит: урон {dmg}",
   "log.round": "— Раунд {round} —",
   "log.engaged": "Группа поднята по тревоге",

@@ -9,11 +9,17 @@ import type { Action } from "../../mission/orders"
 import { PROFILES } from "../../units/profiles"
 import { ULT, type Unit } from "../../units/unit"
 
-/** Keys of the bar: the weapon on 1, skills on 2 3, the ultimate on 4, then Reload, Overwatch, Hunker and Use with letter aliases. */
+/** Keys of the bar: the weapon on 1, skills on 2 3, the ultimate on 4, then Reload, Overwatch, Hunker, Use and Door with letter aliases. */
 const SKILL_KEYS = "23"
 const ULT_KEY = "4"
 const ROUSE_KEY = "9"
-const STANCE_KEYS = { reload: ["5", "R"], overwatch: ["6", "Y"], hunker: ["7", "H"], use: ["8", "U"] } as const
+const STANCE_KEYS = {
+  reload: ["5", "R"],
+  overwatch: ["6", "Y"],
+  hunker: ["7", "H"],
+  use: ["8", "U"],
+  door: ["0", "O"],
+} as const
 
 /** What an action needs before it can be confirmed. */
 export type Aim = "unit" | "tile" | "none"
@@ -122,10 +128,12 @@ export class Kit {
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
       skill("rouse", "skill", ROUSE_KEY, "", false)
     if (p.ultimate) skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
-    for (const id of ["reload", "overwatch", "hunker", "use"] as const) {
+    for (const id of ["reload", "overwatch", "hunker", "use", "door"] as const) {
       if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
       if (id === "use" && !game.orders.usable(u)) continue
-      const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" as const }
+      if (id === "door" && game.orders.doors(u).length === 0) continue
+      const aim = id === "door" ? ("tile" as const) : ("none" as const)
+      const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim }
       out.push({ ...s, group: "stance", key: STANCE_KEYS[id][0], alias: STANCE_KEYS[id][1] })
     }
     return out
@@ -168,6 +176,7 @@ export class Kit {
       return w.melee ? around() : within(w.min, w.max)
     }
     if (kind === "overwatch") return seen
+    if (kind === "door") return new Set(game.orders.doors(u).map(key))
     if (kind !== "ability") return new Set()
     switch (id as AbilityId) {
       case "charge":
@@ -243,6 +252,11 @@ export class Kit {
     return reachable.sort((x, y) => distance(u.pos, x.pos) - distance(u.pos, y.pos))[0]?.id ?? null
   }
 
+  /** A sensible first tile, so a second press can confirm at once: the first door for the Door slot. */
+  spot(slot: string): Point | null {
+    return slot === "door" ? (this.game.orders.doors(this.unit)[0] ?? null) : null
+  }
+
   /** The action an armed slot stands for, or null when it still needs a target. */
   action(armed: Armed): Action | null {
     const u = this.unit
@@ -258,6 +272,7 @@ export class Kit {
       if (TILE_ABILITIES.includes(a)) return armed.at ? { type: "ability", unit: u.id, ability: a, at: armed.at } : null
       return { type: "ability", unit: u.id, ability: a }
     }
+    if (kind === "door") return armed.at ? { type: "door", unit: u.id, at: armed.at } : null
     return { type: kind as "overwatch" | "hunker" | "reload" | "use", unit: u.id }
   }
 
@@ -271,7 +286,7 @@ export class Kit {
       const at = hover && spots.some((p) => same(p, hover)) ? hover : (armed.at ?? spots[0] ?? null)
       return { ...armed, at }
     }
-    const tile = TILE_ABILITIES.includes(armed.slot.slice(8) as AbilityId)
+    const tile = armed.slot === "door" || TILE_ABILITIES.includes(armed.slot.slice(8) as AbilityId)
     if (!tile) return armed
     return { ...armed, at: hover && this.range(armed.slot).has(key(hover)) ? hover : armed.at }
   }

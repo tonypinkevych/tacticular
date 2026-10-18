@@ -166,9 +166,10 @@ export class Model {
     this.sound.play("select")
     batch(() => {
       const target = slot.aim === "unit" ? kit.target(slot.id) : null
-      this.setArmed({ slot: slot.id, target, at: null })
+      const at = slot.aim === "tile" ? kit.spot(slot.id) : null
+      this.setArmed({ slot: slot.id, target, at })
       this.setMessage(
-        slot.aim === "none" || target
+        slot.aim === "none" || target || at
           ? t("ui.pressAgain", { key: slot.key })
           : slot.aim === "tile"
             ? t("ui.pickTile")

@@ -275,11 +275,23 @@ export class Orders {
     u.ap -= 1
   }
 
+  /** The doors next to the unit it can open or close; a door with a unit in it does not close. */
+  doors(u: Unit): Point[] {
+    const game = this.game
+    return AROUND.map((d) => plus(u.pos, d)).filter(
+      (p) => game.tile(p) === "door" || (game.tile(p) === "open" && !game.unitAt(p)),
+    )
+  }
+
   private door(u: Unit, at: Point): void {
     const game = this.game
-    check(adjacent(u.pos, at) && game.tile(at) === "door", "door")
-    game.board.set(at, "open")
-    game.log.push({ key: "log.door", params: { unit: u.id } })
+    check(
+      this.doors(u).some((p) => same(p, at)),
+      "door",
+    )
+    const closed = game.tile(at) === "door"
+    game.board.set(at, closed ? "open" : "door")
+    game.log.push({ key: closed ? "log.door" : "log.close", params: { unit: u.id } })
     game.stealth.scan()
     u.ap -= 1
   }

@@ -161,6 +161,25 @@ describe("doors", () => {
     expect(find(a, "v").pos).toEqual({ x: 3, y: 1 })
     expect(a.tile({ x: 2, y: 1 })).toBe("open")
   })
+  test("a soldier next to a door opens it, then closes it, for 1 AP each", () => {
+    const g = setup(
+      ["#####", "#.+..", "#####"],
+      [squad("v", "vanguard", { x: 1, y: 1 }), enemy("e", "orc", { x: 4, y: 1 }, "unaware")],
+    )
+    const opened = g.apply({ type: "door", unit: "v", at: { x: 2, y: 1 } })
+    expect(opened.tile({ x: 2, y: 1 })).toBe("open")
+    const closed = opened.apply({ type: "door", unit: "v", at: { x: 2, y: 1 } })
+    expect(closed.tile({ x: 2, y: 1 })).toBe("door")
+    expect(find(closed, "v").ap).toBe(0)
+  })
+  test("a door with a unit in it does not close", () => {
+    const g = setup(
+      ["#####", "#.+..", "#####"],
+      [squad("v", "vanguard", { x: 1, y: 1 }), squad("w", "warden", { x: 2, y: 1 })],
+    )
+    g.board.set({ x: 2, y: 1 }, "open")
+    expect(() => g.apply({ type: "door", unit: "v", at: { x: 2, y: 1 } })).toThrow()
+  })
 })
 
 describe("mission end", () => {

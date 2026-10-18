@@ -101,3 +101,20 @@ describe("objective", () => {
     expect(new Kit(g, s).action({ slot: "use", target: null, at: null })).toEqual({ type: "use", unit: "s" })
   })
 })
+
+describe("door", () => {
+  test("the Door slot shows next to a door, aims at it first and gives the Door action", () => {
+    const s = squad("s", "rogue", { x: 1, y: 1 })
+    const g = setup(["#####", "#.+..", "#####"], [s, enemy("e", "orc", { x: 4, y: 1 }, "unaware")])
+    const kit = new Kit(g, s)
+    expect(kit.slotFor("0")?.id).toBe("door")
+    expect(kit.spot("door")).toEqual({ x: 2, y: 1 })
+    expect(kit.action({ slot: "door", target: null, at: { x: 2, y: 1 } })).toEqual({
+      type: "door",
+      unit: "s",
+      at: { x: 2, y: 1 },
+    })
+    const far = squad("f", "rogue", { x: 4, y: 1 })
+    expect(new Kit(setup(["#####", "#.+..", "#####"], [far]), far).slotFor("0")).toBeUndefined()
+  })
+})
