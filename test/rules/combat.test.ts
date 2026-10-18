@@ -32,7 +32,7 @@ describe("odds", () => {
     const e = enemy("e", "orc", { x: 0, y: 4 }, "unaware")
     const rows = open(3, 6)
     rows[3] = ":.."
-    const o = setup(rows, [w, e]).combat.odds(w, e, "repeater", { reaction: true })
+    const o = setup(rows, [w, e]).combat.odds(w, e, { reaction: true })
     expect(o.advantages).toEqual(["unaware"])
     expect(o.disadvantages).toEqual(["reaction"])
     expect(o.edge).toBe(0)

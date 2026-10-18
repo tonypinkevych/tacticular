@@ -1,4 +1,4 @@
-import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, ROCKET_NOISE, ULT, WEAPONS } from "./data"
+import { ABILITIES, BLAST_NOISE, PROFILES, RANGE, ULT, WEAPONS } from "./data"
 import { EDGE, failChance } from "./dice"
 import type { Game } from "./game"
 import { check } from "./orders"
@@ -37,7 +37,7 @@ export class Abilities {
         u.intent = null
         if (!same(spot, u.pos)) game.orders.walk(u, r.path(spot))
         if (u.alive() && t!.alive()) {
-          game.combat.attack(u, t!, u.weapon)
+          game.combat.attack(u, t!)
           game.stealth.attacked(u, t!, u.weapon)
         }
         break
@@ -215,7 +215,7 @@ export class Abilities {
           if (!spot) break
           if (!same(spot, u.pos)) game.orders.walk(u, game.reach(u, u.mobility).path(spot))
           if (!u.alive() || !next.alive()) break
-          game.combat.attack(u, next, u.weapon)
+          game.combat.attack(u, next)
           game.stealth.attacked(u, next, u.weapon)
           if (next.alive()) break
           next = game.units
@@ -312,7 +312,7 @@ export class Abilities {
       if (game.combat.hurt(x, 2) || same(x.pos, at)) continue
       game.combat.push(at, x, u.id)
     }
-    game.stealth.noise(at, ROCKET_NOISE, u)
+    game.stealth.noise(at, BLAST_NOISE, u)
     for (const x of hits) if (u.foe(x)) game.stealth.attacked(u, x, u.weapon)
   }
 

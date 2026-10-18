@@ -35,7 +35,6 @@ export interface UnitData {
   statuses: Status[]
   cooldowns: Partial<Record<AbilityId, number>>
   ult: number
-  axes: number
   concealed: boolean
   alert: Alert
   patrol: Point[]
@@ -69,7 +68,6 @@ export class Unit implements UnitData {
   statuses!: Status[]
   cooldowns!: Partial<Record<AbilityId, number>>
   ult!: number
-  axes!: number
   concealed!: boolean
   alert!: Alert
   patrol!: Point[]
@@ -115,7 +113,6 @@ export class Unit implements UnitData {
       statuses: [],
       cooldowns: {},
       ult: 0,
-      axes: p.axes,
       concealed: side === "squad" || kind === "assassin",
       alert: "unaware",
       patrol: [],

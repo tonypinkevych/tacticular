@@ -3,18 +3,13 @@ import { PROFILES, RANGE, SEARCH, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
 import type { Game } from "../rules/game"
 import { area, distance, key, type Point, pointOf, same } from "../rules/point"
-import type { Action, WeaponId } from "../rules/types"
+import type { Action } from "../rules/types"
 import type { Unit } from "../rules/unit"
 
 interface Choice {
   action: Action
   value: number
   kill?: boolean
-}
-
-const average = (w: WeaponId): number => {
-  const d = WEAPONS[w].dice
-  return (d.count * (d.sides + 1)) / 2 + d.bonus
 }
 
 /** The enemy side's choices in a game: patrol, investigate, or fight with the best attack, tile or special. */
@@ -75,22 +70,18 @@ export class Mind {
     let best: Choice | null = null
     for (const t of targets) {
       if (!game.orders.canTarget(u, t)) continue
-      for (const w of weapons(u)) {
-        if (w === "none") continue
-        const weapon = WEAPONS[w]
-        if (!canReach(u, t, weapon)) continue
-        if (weapon.twoAp && (u.ap < 2 || u.moved)) continue
-        if (w === u.weapon && weapon.ammo !== null && u.ammo <= 0) continue
-        if (w === "axes" && u.axes <= 0) continue
-        const o = game.combat.odds(u, t, w)
-        const dmg = (o.min + o.max) / 2 || average(w)
-        const value =
-          o.chance * dmg * (dmg >= t.hp ? 2 : 1) +
-          (t.maxHp - t.hp) * 0.3 +
-          (t.kind === "mage" || t.kind === "cleric" ? 0.5 : 0)
-        if (!best || value > best.value)
-          best = { action: { type: "attack", unit: u.id, target: t.id, weapon: w }, value, kill: dmg >= t.hp }
-      }
+      const weapon = u.arms()
+      if (!canReach(u, t, weapon)) continue
+      if (weapon.twoAp && (u.ap < 2 || u.moved)) continue
+      if (weapon.ammo !== null && u.ammo <= 0) continue
+      const o = game.combat.odds(u, t)
+      const dmg = (o.min + o.max) / 2
+      const value =
+        o.chance * dmg * (dmg >= t.hp ? 2 : 1) +
+        (t.maxHp - t.hp) * 0.3 +
+        (t.kind === "mage" || t.kind === "cleric" ? 0.5 : 0)
+      if (!best || value > best.value)
+        best = { action: { type: "attack", unit: u.id, target: t.id }, value, kill: dmg >= t.hp }
     }
     return best
   }
@@ -348,11 +339,6 @@ export class Mind {
     if (game.cover.covered(u.pos)) return { type: "hunker", unit: u.id }
     return { type: "overwatch", unit: u.id }
   }
-}
-
-function weapons(u: Unit): WeaponId[] {
-  const side = PROFILES[u.kind].sidearm
-  return side ? [u.weapon, side] : [u.weapon]
 }
 
 function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark" | "rally" | "ward"): boolean {

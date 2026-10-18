@@ -1,9 +1,9 @@
-import { BLAST_NOISE, ULT, WEAPONS } from "./data"
+import { BLAST_NOISE, ULT } from "./data"
 import { chance, EDGE, failChance } from "./dice"
 import type { Game } from "./game"
 import { adjacent, area, distance, type Point, same } from "./point"
 import { climb, high, walkable } from "./tile"
-import type { Weapon, WeaponId } from "./types"
+import type { Weapon } from "./types"
 import type { Unit } from "./unit"
 
 export type Reason = "flanked" | "unaware" | "range" | "reaction" | "hunkered" | "shaken"
@@ -67,9 +67,9 @@ export class Combat {
     return wall ? 1 : 0
   }
 
-  odds(attacker: Unit, target: Unit, weaponId: WeaponId = attacker.weapon, shot: Shot = {}): Odds {
+  odds(attacker: Unit, target: Unit, shot: Shot = {}): Odds {
     const game = this.game
-    const weapon = WEAPONS[weaponId]
+    const weapon = attacker.arms()
     const adv: Reason[] = []
     const dis: Reason[] = []
     const exposed = target.has("exposed")
@@ -116,12 +116,11 @@ export class Combat {
   }
 
   /** Rolls an attack, logs it in full and applies the damage; a soldier's hit fills its ultimate meter. */
-  attack(attacker: Unit, target: Unit, weaponId: WeaponId = attacker.weapon, shot: Shot = {}): void {
+  attack(attacker: Unit, target: Unit, shot: Shot = {}): void {
     const game = this.game
-    const o = this.odds(attacker, target, weaponId, shot)
+    const o = this.odds(attacker, target, shot)
     const w = o.weapon
-    if (w.ammo !== null && weaponId === attacker.weapon) attacker.ammo -= 1
-    if (weaponId === "axes") attacker.axes -= 1
+    if (w.ammo !== null) attacker.ammo -= 1
     if (w.saveHalf) {
       const edge = target.stance === "hunker" ? 1 : 0
       const roll = game.dice.d20()
@@ -151,7 +150,7 @@ export class Combat {
     const params: Record<string, string | number | boolean> = {
       unit: attacker.id,
       target: target.id,
-      weapon: weaponId,
+      weapon: w.id,
       roll,
       total: roll + o.aim + EDGE * o.edge,
       defense: o.defense,

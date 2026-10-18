@@ -10,8 +10,8 @@ describe("overwatch risk", () => {
     const s = squad("s", "warden", { x: 0, y: 0 })
     const e = enemy("e", "orc", { x: 5, y: 0 })
     const g = setup(open(8, 2), [s, e])
-    expect(g.combat.odds(e, s, e.weapon, { reaction: true }).disadvantages).toContain("reaction")
-    expect(g.combat.odds(e, s, e.weapon, { reaction: true, risky: true }).disadvantages).not.toContain("reaction")
+    expect(g.combat.odds(e, s, { reaction: true }).disadvantages).toContain("reaction")
+    expect(g.combat.odds(e, s, { reaction: true, risky: true }).disadvantages).not.toContain("reaction")
   })
 })
 

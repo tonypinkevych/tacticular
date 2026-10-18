@@ -5,11 +5,9 @@ const d = (count: number, sides: number, bonus = 0): Roll => ({ count, sides, bo
 
 export const WEAPONS: Record<WeaponId, Weapon> = {
   shotgun: { id: "shotgun", dice: d(1, 3, 3), min: 1, max: 3, melee: false, noise: 8, ammo: 3 },
-  axes: { id: "axes", dice: d(1, 2, 1), min: 1, max: 4, melee: false, noise: 4, ammo: null },
   longbow: { id: "longbow", dice: d(1, 3, 4), min: 4, max: 20, melee: false, noise: 8, ammo: 3, twoAp: true },
   repeater: { id: "repeater", dice: d(1, 2, 3), min: 1, max: 6, melee: false, noise: 8, ammo: 3 },
   crossbow: { id: "crossbow", dice: d(1, 2, 3), min: 1, max: 6, melee: false, noise: 8, ammo: 4 },
-  knives: { id: "knives", dice: d(1, 2, 1), min: 1, max: 4, melee: false, noise: 0, ammo: null },
   bolt: { id: "bolt", dice: d(1, 2, 2), min: 1, max: 7, melee: false, noise: 8, ammo: null, ignoresCover: true },
   dagger: { id: "dagger", dice: d(1, 2, 3), min: 1, max: 1, melee: true, noise: 0, ammo: null },
   heavyCrossbow: { id: "heavyCrossbow", dice: d(1, 2, 2), min: 1, max: 6, melee: false, noise: 8, ammo: 4 },
@@ -17,8 +15,6 @@ export const WEAPONS: Record<WeaponId, Weapon> = {
   spear: { id: "spear", dice: d(1, 2, 2), min: 1, max: 1, melee: true, noise: 4, ammo: null },
   blades: { id: "blades", dice: d(1, 3, 2), min: 1, max: 1, melee: true, noise: 0, ammo: null },
   greataxe: { id: "greataxe", dice: d(1, 3, 3), min: 1, max: 1, melee: true, noise: 4, ammo: null },
-  javelin: { id: "javelin", dice: d(1, 2, 2), min: 1, max: 4, melee: false, noise: 4, ammo: null },
-  none: { id: "none", dice: d(0, 1, 0), min: 1, max: 0, melee: true, noise: 0, ammo: null },
   lash: {
     id: "lash",
     dice: d(1, 2, 2),
@@ -40,10 +36,8 @@ export interface Profile {
   vision: number
   will: number
   weapon: WeaponId
-  sidearm: WeaponId | null
   abilities: AbilityId[]
   ultimate: AbilityId | null
-  axes: number
 }
 
 export const PROFILES: Record<Kind, Profile> = {
@@ -55,10 +49,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "shotgun",
-    sidearm: null,
     abilities: ["shove", "charge"],
     ultimate: "rampage",
-    axes: 0,
   },
   ranger: {
     hp: 7,
@@ -68,10 +60,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 7,
     will: 1,
     weapon: "longbow",
-    sidearm: null,
     abilities: ["grapple", "guard"],
     ultimate: "killzone",
-    axes: 0,
   },
   warden: {
     hp: 10,
@@ -81,10 +71,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 2,
     weapon: "repeater",
-    sidearm: null,
     abilities: ["rocket", "volley"],
     ultimate: "saturation",
-    axes: 0,
   },
   cleric: {
     hp: 8,
@@ -94,10 +82,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 3,
     weapon: "crossbow",
-    sidearm: null,
     abilities: ["smoke", "heal"],
     ultimate: "hospital",
-    axes: 0,
   },
   rogue: {
     hp: 7,
@@ -107,10 +93,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "dagger",
-    sidearm: null,
     abilities: ["hook", "tag"],
     ultimate: "ghost",
-    axes: 0,
   },
   mage: {
     hp: 6,
@@ -120,10 +104,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 4,
     weapon: "bolt",
-    sidearm: null,
     abilities: ["swap", "fear"],
     ultimate: "dominate",
-    axes: 0,
   },
   engineer: {
     hp: 8,
@@ -133,10 +115,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "crossbow",
-    sidearm: null,
     abilities: ["barricade", "mine"],
     ultimate: "turret",
-    axes: 0,
   },
   turret: {
     hp: 4,
@@ -146,10 +126,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 0,
     weapon: "repeater",
-    sidearm: null,
     abilities: [],
     ultimate: null,
-    axes: 0,
   },
   orc: {
     hp: 6,
@@ -159,10 +137,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 0,
     weapon: "heavyCrossbow",
-    sidearm: null,
     abilities: [],
     ultimate: null,
-    axes: 0,
   },
   bomber: {
     hp: 5,
@@ -172,10 +148,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 0,
     weapon: "dagger",
-    sidearm: null,
     abilities: ["mark", "blast"],
     ultimate: null,
-    axes: 0,
   },
   ogre: {
     hp: 12,
@@ -185,10 +159,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: -1,
     weapon: "club",
-    sidearm: null,
     abilities: ["mark", "charge"],
     ultimate: null,
-    axes: 0,
   },
   shieldwall: {
     hp: 9,
@@ -198,10 +170,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "spear",
-    sidearm: null,
     abilities: [],
     ultimate: null,
-    axes: 0,
   },
   assassin: {
     hp: 6,
@@ -211,10 +181,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 2,
     weapon: "blades",
-    sidearm: null,
     abilities: [],
     ultimate: null,
-    axes: 0,
   },
   warchief: {
     hp: 10,
@@ -224,10 +192,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 2,
     weapon: "greataxe",
-    sidearm: null,
     abilities: ["rally"],
     ultimate: null,
-    axes: 0,
   },
   whisperer: {
     hp: 6,
@@ -237,10 +203,8 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 4,
     weapon: "lash",
-    sidearm: null,
     abilities: ["dread", "dominate", "ward", "mark"],
     ultimate: null,
-    axes: 0,
   },
 }
 
@@ -288,7 +252,7 @@ export const ABILITIES: Record<AbilityId, AbilityRule> = {
 /** Ultimate meter: a hit adds 1, a kill 2 more; the ultimate needs it full. */
 export const ULT = 4
 
-/** How far a Grenadier blast is heard. */
+/** How far a blast or a Rocket is heard. */
 export const BLAST_NOISE = 10
 
 export const RANGE = {
@@ -310,9 +274,6 @@ export const RANGE = {
   saturation: 6,
   hospital: 3,
 }
-
-/** How far a Rocket is heard. */
-export const ROCKET_NOISE = 10
 
 export const DETECTION = { unaware: 2, investigating: 4, assassin: 2, rogue: 1 }
 

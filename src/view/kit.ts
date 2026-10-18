@@ -87,21 +87,19 @@ export class Kit {
     const out: Slot[] = []
     const none = u.ap <= 0 || game.phase !== "squad"
     const p = PROFILES[u.kind]
-    const weapons = [u.weapon, p.sidearm].filter((x): x is WeaponId => !!x && x !== "none")
-    weapons.forEach((w, i) => {
-      const weapon = WEAPONS[w]
-      const range = weapon.melee ? t("ui.melee") : `${t("ui.range")} ${weapon.min}–${weapon.max}`
-      const ammo = weapon.ammo !== null && w === u.weapon ? ` · ${t("ui.ammo")} ${u.ammo}/${weapon.ammo}` : ""
-      out.push({
-        id: `weapon:${w}`,
-        group: "weapon",
-        key: String(i + 1),
-        label: t(`weapon.${w}`),
-        info: `${t("ui.damage")} ${dice(w)} · ${range}${ammo}`,
-        badge: w === "axes" ? `×${u.axes}` : weapon.ammo !== null && w === u.weapon ? `${u.ammo}` : "",
-        disabled: none || (w === "axes" && u.axes <= 0) || (weapon.twoAp === true && (u.ap < 2 || u.moved)),
-        aim: "unit",
-      })
+    const w = u.weapon
+    const weapon = WEAPONS[w]
+    const range = weapon.melee ? t("ui.melee") : `${t("ui.range")} ${weapon.min}–${weapon.max}`
+    const ammo = weapon.ammo !== null ? ` · ${t("ui.ammo")} ${u.ammo}/${weapon.ammo}` : ""
+    out.push({
+      id: `weapon:${w}`,
+      group: "weapon",
+      key: "1",
+      label: t(`weapon.${w}`),
+      info: `${t("ui.damage")} ${dice(w)} · ${range}${ammo}`,
+      badge: weapon.ammo !== null ? `${u.ammo}` : "",
+      disabled: none || (weapon.twoAp === true && (u.ap < 2 || u.moved)),
+      aim: "unit",
     })
     const skill = (a: AbilityId, group: Slot["group"], key: string, badge: string, blocked: boolean) =>
       out.push({
@@ -212,9 +210,8 @@ export class Kit {
     const foes = game.units.filter((e) => e.allegiance() === "enemy" && (e.side === "squad" || game.stealth.visible(e)))
     const friends = game.units.filter((x) => x.alive() && x.allegiance() === "squad")
     if (kind === "weapon") {
-      const w = id as WeaponId
-      const ok = foes.filter((e) => game.orders.canTarget(u, e) && (!WEAPONS[w].melee || distance(u.pos, e.pos) <= 1))
-      return ok.sort((a, b) => game.combat.odds(u, b, w).chance - game.combat.odds(u, a, w).chance)[0]?.id ?? null
+      const ok = foes.filter((e) => game.orders.canTarget(u, e) && (!u.arms().melee || distance(u.pos, e.pos) <= 1))
+      return ok.sort((a, b) => game.combat.odds(u, b).chance - game.combat.odds(u, a).chance)[0]?.id ?? null
     }
     if (kind !== "ability") return null
     const a = id as AbilityId
@@ -242,8 +239,7 @@ export class Kit {
     const u = this.unit
     const [kind, id] = armed.slot.split(":")
     if (kind === "weapon" && armed.at) return { type: "shoot", unit: u.id, at: armed.at }
-    if (kind === "weapon")
-      return armed.target ? { type: "attack", unit: u.id, target: armed.target, weapon: id as WeaponId } : null
+    if (kind === "weapon") return armed.target ? { type: "attack", unit: u.id, target: armed.target } : null
     if (kind === "ability") {
       const a = id as AbilityId
       if (a === "charge" && armed.target)
@@ -305,11 +301,11 @@ export class Kit {
     if (!target?.alive()) return null
     const [kind, id] = aimed.slot.split(":")
     if (kind === "weapon") {
-      return { kind: "attack", label: t(`weapon.${id}`), target, odds: game.combat.odds(u, target, id as WeaponId) }
+      return { kind: "attack", label: t(`weapon.${id}`), target, odds: game.combat.odds(u, target) }
     }
     if (aimed.slot === "ability:charge" && aimed.at) {
       const from = u.at(aimed.at)
-      return { kind: "attack", label: t("ability.charge"), target, odds: game.combat.odds(from, target, u.weapon) }
+      return { kind: "attack", label: t("ability.charge"), target, odds: game.combat.odds(from, target) }
     }
     if (kind === "ability" && (id === "fear" || id === "dread" || id === "dominate")) {
       const dc = 10 + u.will

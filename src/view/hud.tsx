@@ -77,21 +77,19 @@ function Card(props: { unit: Unit; game: Game; model: Model; children?: JSX.Elem
         </Show>
       </div>
       <Hp unit={u()} />
-      <Show when={u().weapon !== "none"}>
-        <div class="weapon">
-          <span>{t(`weapon.${u().weapon}`)}</span>
-          <span class="muted">
-            {w().dice.count + w().dice.bonus}–{w().dice.count * w().dice.sides + w().dice.bonus}
+      <div class="weapon">
+        <span>{t(`weapon.${u().weapon}`)}</span>
+        <span class="muted">
+          {w().dice.count + w().dice.bonus}–{w().dice.count * w().dice.sides + w().dice.bonus}
+        </span>
+        <Show when={w().ammo !== null}>
+          <span class="ammo">
+            <Index each={Array.from({ length: w().ammo ?? 0 })}>
+              {(_, i) => <span classList={{ full: i < u().ammo }} />}
+            </Index>
           </span>
-          <Show when={w().ammo !== null}>
-            <span class="ammo">
-              <Index each={Array.from({ length: w().ammo ?? 0 })}>
-                {(_, i) => <span classList={{ full: i < u().ammo }} />}
-              </Index>
-            </span>
-          </Show>
-        </div>
-      </Show>
+        </Show>
+      </div>
       <div class="chips">
         <Show when={soldier() && u().concealed}>
           <span class="chip hidden">{t("ui.concealed")}</span>

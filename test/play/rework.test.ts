@@ -1,10 +1,7 @@
-import { CLASSES, ENEMIES, PROFILES } from "../../src/rules/data"
+import { PROFILES } from "../../src/rules/data"
 import { enemy, find, open, setup, squad } from "../fixture"
 
 describe("one weapon per class", () => {
-  test("no soldier or enemy has a sidearm", () => {
-    for (const k of [...CLASSES, ...ENEMIES]) expect(PROFILES[k].sidearm, k).toBeNull()
-  })
   test("the Rogue fights with a melee dagger", () => {
     expect(PROFILES.rogue.weapon).toBe("dagger")
   })

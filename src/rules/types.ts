@@ -14,11 +14,9 @@ export type Kind = ClassId | EnemyKind | Gadget
 
 export type WeaponId =
   | "shotgun"
-  | "axes"
   | "longbow"
   | "repeater"
   | "crossbow"
-  | "knives"
   | "bolt"
   | "dagger"
   | "heavyCrossbow"
@@ -26,9 +24,7 @@ export type WeaponId =
   | "spear"
   | "blades"
   | "greataxe"
-  | "javelin"
   | "lash"
-  | "none"
 
 export interface Weapon {
   id: WeaponId
@@ -132,7 +128,7 @@ export interface Drop {
 
 export type Action =
   | { type: "move"; unit: string; to: Point }
-  | { type: "attack"; unit: string; target: string; weapon?: WeaponId }
+  | { type: "attack"; unit: string; target: string }
   | { type: "ability"; unit: string; ability: AbilityId; target?: string; at?: Point }
   | { type: "reload"; unit: string }
   | { type: "door"; unit: string; at: Point }

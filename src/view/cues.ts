@@ -33,8 +33,6 @@ const WEAPON_CUES: Partial<Record<WeaponId, Cue>> = {
   longbow: "rifle",
   repeater: "lmg",
   crossbow: "smg",
-  axes: "pistol",
-  knives: "knife",
   bolt: "psi",
 }
 
@@ -49,7 +47,7 @@ export function cues(before: Game, frame: Frame): { start: Cue[]; end: Cue[] } {
   if (a.type === "move") start.push("step")
   if (a.type === "ability") start.push("ability")
   if (a.type === "attack") {
-    const w = a.weapon ?? before.units.find((u) => u.id === a.unit)?.weapon ?? "none"
+    const w = before.unit(a.unit).weapon
     start.push(WEAPON_CUES[w] ?? (WEAPONS[w].melee ? "melee" : "alien"))
   }
   const end: Cue[] = []

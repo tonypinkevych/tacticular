@@ -1,8 +1,7 @@
 import { canReach } from "./combat"
-import { PROFILES, WEAPONS } from "./data"
 import type { Game } from "./game"
 import { AROUND, adjacent, distance, key, type Point, plus, same } from "./point"
-import type { Action, WeaponId } from "./types"
+import type { Action } from "./types"
 import type { Unit } from "./unit"
 
 /** An action the rules refuse. */
@@ -37,7 +36,7 @@ export class Orders {
         this.move(u, action.to)
         break
       case "attack":
-        this.strike(u, game.unit(action.target), action.weapon ?? u.weapon)
+        this.strike(u, game.unit(action.target))
         break
       case "ability":
         game.abilities.use(u, action.ability, action.target, action.at)
@@ -101,10 +100,10 @@ export class Orders {
         if (w.melee ? !adjacent(x.pos, u.pos) : !sight.sees(x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
         if (u.kind === "assassin" && u.concealed) continue
         if (!x.has("killzone")) x.stance = "none"
-        combat.attack(x, u, x.weapon, { reaction: true, risky })
+        combat.attack(x, u, { reaction: true, risky })
       }
       for (const x of threats) {
-        if (u.alive() && x.alive()) combat.attack(x, u, x.weapon)
+        if (u.alive() && x.alive()) combat.attack(x, u)
       }
       if (!u.alive()) return
     }
@@ -166,7 +165,7 @@ export class Orders {
       x.lift("guarded")
       const sniper = game.units.find((s) => s.id === g.source)
       if (!sniper?.alive() || !game.sight.sees(sniper, u.pos) || sniper.ammo <= 0) continue
-      game.combat.attack(sniper, u, sniper.weapon, { reaction: true, risky })
+      game.combat.attack(sniper, u, { reaction: true, risky })
     }
   }
 
@@ -177,18 +176,15 @@ export class Orders {
     u.intent = { type: "shot", target: t.id }
   }
 
-  private strike(u: Unit, t: Unit, weaponId: WeaponId): void {
-    const p = PROFILES[u.kind]
-    check((weaponId === u.weapon || weaponId === p.sidearm) && weaponId !== "none", "weapon")
-    const w = WEAPONS[weaponId]
+  private strike(u: Unit, t: Unit): void {
+    const w = u.arms()
     check(this.canTarget(u, t), "target")
     check(canReach(u, t, w), "reach")
     if (w.twoAp) check(u.ap === 2 && !u.moved, "needs 2 AP")
-    if (w.ammo !== null && weaponId === u.weapon) check(u.ammo > 0, "ammo")
-    if (weaponId === "axes") check(u.axes > 0, "axes")
+    if (w.ammo !== null) check(u.ammo > 0, "ammo")
     if (u.intent?.type === "shot") u.intent = null
-    this.game.combat.attack(u, t, weaponId)
-    this.game.stealth.attacked(u, t, weaponId)
+    this.game.combat.attack(u, t)
+    this.game.stealth.attacked(u, t, u.weapon)
     u.ap = 0
   }
 

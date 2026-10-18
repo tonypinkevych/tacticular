@@ -12,7 +12,7 @@ describe("cues", () => {
   }
 
   test("a shot sounds its weapon first, then its result", () => {
-    const f = frame({ type: "attack", unit: "w", target: "e", weapon: "shotgun" }, (a) =>
+    const f = frame({ type: "attack", unit: "w", target: "e" }, (a) =>
       a.log.push({ key: "log.hit", params: { unit: "w", target: "e", dmg: 3 } }),
     )
     expect(cues(g, f)).toEqual({ start: ["shotgun"], end: ["hit"] })
