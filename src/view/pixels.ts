@@ -71,11 +71,12 @@ export class Pixels {
     this.ctx.fillRect(x - r, y - r, r * 2, r * 2)
   }
 
-  /** A pixel line on the 2:1 slope of the tiles; every third pixel when dotted. */
-  line(x0: number, y0: number, x1: number, y1: number, color: Rgb, a: number, dotted = false): void {
+  /** A pixel line on the 2:1 slope of the tiles; every third pixel when dotted, or every n-th for a number. */
+  line(x0: number, y0: number, x1: number, y1: number, color: Rgb, a: number, dotted: boolean | number = false): void {
     const n = Math.abs(x1 - x0)
+    const step = dotted === true ? 3 : dotted || 1
     for (let i = 0; i <= n; i++) {
-      if (dotted && i % 3 !== 0) continue
+      if (i % step !== 0) continue
       this.dot(x0 + Math.sign(x1 - x0) * i, y0 + Math.round(((y1 - y0) * i) / Math.max(1, n)), color, a)
     }
   }
@@ -87,7 +88,7 @@ export class Pixels {
   }
 
   /** The edges of a set of tile keys that face a tile outside the set. */
-  outline(keys: Set<number>, color: Rgb, a: number, dotted = false): void {
+  outline(keys: Set<number>, color: Rgb, a: number, dotted: boolean | number = false): void {
     for (const k of keys) {
       const p = { x: k % 1000, y: Math.floor(k / 1000) }
       EDGES.forEach(([dx, dy], d) => {
@@ -97,7 +98,7 @@ export class Pixels {
   }
 
   /** One tile edge: toward x+1, y+1, x−1 or y−1. */
-  edge(p: Point, d: number, color: Rgb, a: number, dotted = false, lift = 0): void {
+  edge(p: Point, d: number, color: Rgb, a: number, dotted: boolean | number = false, lift = 0): void {
     const g = this.projection.ground(p)
     const y = g.y - lift
     const R = [g.x + TW / 2, y]

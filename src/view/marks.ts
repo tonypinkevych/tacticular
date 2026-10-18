@@ -79,10 +79,9 @@ export class Marks {
     return !!hover && !!selected && (near.has(key(hover)) || far.has(key(hover)))
   }
 
-  /** True when a tile is in the blue area: one move away, or any move when only one is left. */
+  /** True when a tile is in the blue area of the first move. */
   private near(p: Point): boolean {
-    const { near } = this.scene
-    return near.size === 0 || near.has(key(p))
+    return this.scene.near.has(key(p))
   }
 
   private aliens(): Unit[] {
@@ -114,14 +113,14 @@ export class Marks {
     this.px.outline(built, BORDER, 0.35, true)
   }
 
-  /** Dotted borders of the move area: blue within one move, yellow within a dash. */
+  /** Faint dotted borders of the move area: blue for the first move, yellow for the second. */
   private reach(): void {
     const { near, far, selected } = this.scene
     if (!selected || far.size === 0) return
     const seen = (keys: Set<number>) =>
       new Set([key(selected.pos), ...[...keys].filter((k) => this.explored(pointOf(k)))])
-    this.px.outline(seen(far), near.size > 0 ? DASH : MOVE, 0.75, true)
-    if (near.size > 0) this.px.outline(seen(near), MOVE, 0.85, true)
+    this.px.outline(seen(far), DASH, 0.4, 5)
+    if (near.size > 0) this.px.outline(seen(near), MOVE, 0.45, 5)
   }
 
   /** The evac zone, the beacon to hold and the next alien landing. */
