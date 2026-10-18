@@ -106,6 +106,17 @@ describe("hunt", () => {
     expect(find(twice, "e").alert).toBe("unaware")
     expect(twice.groups[0].target).toBeNull()
   })
+  test("a group with no route that calms down patrols toward where the squad landed", () => {
+    const g = setup(open(24, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 20, y: 1 }, "engaged")])
+    g.groups[0].target = { x: 20, y: 1 }
+    g.groups[0].landing = { x: 0, y: 1 }
+    g.phase = "enemy"
+    const calm = g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).apply({ type: "endTurn" })
+    expect(find(calm, "e").patrol).toEqual([
+      { x: 20, y: 1 },
+      { x: 0, y: 1 },
+    ])
+  })
 })
 
 describe("horn", () => {

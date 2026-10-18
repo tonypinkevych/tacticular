@@ -163,6 +163,7 @@ export class Mind {
   private search(u: Unit, goal: Point, next?: Point): Action | null {
     const game = this.game
     if (distance(u.pos, goal) > SEARCH) return this.toward(u, goal, u.mobility * u.ap)
+    if (u.moved) return this.watch(u)
     const side = game.units.filter((x) => x.alive() && x.allegiance() === u.allegiance())
     const hidden = [...game.reach(u, u.mobility).cost.keys()]
       .map(pointOf)
@@ -176,8 +177,12 @@ export class Mind {
       .sort((a, b) => this.jitter(u, b) - this.jitter(u, a))
     if (hidden.length > 0) return { type: "move", unit: u.id, to: hidden[0] }
     if (next && distance(u.pos, next) > SEARCH) return this.toward(u, next, u.mobility * u.ap)
-    if (WEAPONS[u.weapon].ammo === null || u.ammo > 0) return { type: "overwatch", unit: u.id }
-    return null
+    return this.watch(u)
+  }
+
+  /** Overwatch when the weapon can fire, else nothing. */
+  private watch(u: Unit): Action | null {
+    return WEAPONS[u.weapon].ammo === null || u.ammo > 0 ? { type: "overwatch", unit: u.id } : null
   }
 
   /** True when the unit's group is the alien group nearest to the evac zone. */
@@ -203,8 +208,7 @@ export class Mind {
     const score = (p: Point) => game.cover.against(p, facing) + this.jitter(u, p)
     const move = this.bestMove(u, (p) => (distance(p, zone) <= SEARCH ? score(p) : -Infinity))
     if (move && !u.moved) return move.action
-    if (WEAPONS[u.weapon].ammo === null || u.ammo > 0) return { type: "overwatch", unit: u.id }
-    return null
+    return this.watch(u)
   }
 
   private patrol(u: Unit): Action | null {
@@ -323,7 +327,7 @@ export class Mind {
       return null
     }
     const attack = this.bestAttack(u, targets)
-    const back = u.hp * 3 <= u.maxHp && !attack?.kill ? this.fallBack(u, targets) : null
+    const back = u.hp * 3 <= u.maxHp && !u.moved && !attack?.kill ? this.fallBack(u, targets) : null
     if (back) return back
     const options = [attack, sp].filter((c): c is Choice => !!c)
     const now = options.sort((a, b) => b.value - a.value)[0]
@@ -337,7 +341,7 @@ export class Mind {
     if (WEAPONS[u.weapon].ammo !== null && u.ammo <= 0) return { type: "reload", unit: u.id }
     const nearest = targets.sort((a, b) => distance(u.pos, a.pos) - distance(u.pos, b.pos))[0]
     const keep = u.kind === "whisperer" ? 6 : 0
-    const step = !attack && distance(u.pos, nearest.pos) > keep ? this.toward(u, nearest.pos) : null
+    const step = !attack && !u.moved && distance(u.pos, nearest.pos) > keep ? this.toward(u, nearest.pos) : null
     if (step) return step
     if (game.cover.covered(u.pos)) return { type: "hunker", unit: u.id }
     return { type: "overwatch", unit: u.id }

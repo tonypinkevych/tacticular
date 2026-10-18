@@ -17,7 +17,8 @@ export class Reinforcements {
       const id = `d${game.drops + 1}`
       const taken = new Set(game.units.filter((u) => u.alive() || u.down > 0).map((u) => key(u.pos)))
       const target = game.units.find((u) => u.alive() && u.side === "squad")?.pos ?? null
-      game.groups.push({ id, revealed: true, target: target && { ...target }, alarmed: true })
+      const landing = game.groups.find((g) => g.landing)?.landing
+      game.groups.push({ id, revealed: true, target: target && { ...target }, alarmed: true, landing })
       for (const [i, kind] of composition(game.dice, 2).entries()) {
         const u = Unit.of(`${id}-${i + 1}`, kind, "enemy", free(game.board, game.drop.at, taken), kind, id)
         u.alert = "engaged"

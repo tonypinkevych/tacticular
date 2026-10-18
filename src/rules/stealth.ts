@@ -129,7 +129,10 @@ export class Stealth {
     }
   }
 
-  /** Round end: a group that searched its target for 2 rounds and saw no soldier patrols again; beacon raiders do not. */
+  /**
+   * Round end: a group that searched its target for 2 rounds and saw no soldier patrols again, toward where the
+   * squad landed when it has no route; beacon raiders do not.
+   */
   calm(): void {
     const game = this.game
     for (const g of game.groups) {
@@ -147,7 +150,10 @@ export class Stealth {
       if (g.searched < 2) continue
       g.target = null
       g.searched = 0
-      for (const u of units) u.alert = "unaware"
+      for (const u of units) {
+        u.alert = "unaware"
+        if (u.patrol.length === 0 && g.landing) u.patrol = [{ ...u.pos }, { ...g.landing }]
+      }
     }
   }
 
