@@ -8,7 +8,6 @@ import { GOAL } from "./glyphs"
 import { height, tone } from "./picture"
 import type { Pixels } from "./pixels"
 import type { Scene } from "./scene"
-import { shape } from "./shape"
 
 const BORDER = rgb("#94806e")
 
@@ -29,11 +28,6 @@ export class Marks {
     for (const p of scene.path) this.dots.delete(key(p))
     if (hover) this.dots.delete(key(hover))
     for (const k of range) if (this.explored(pointOf(k))) this.dots.set(k, AMBER)
-  }
-
-  /** True when a tile carries a dot, so the ground dot under it is left out. */
-  covers(p: Point): boolean {
-    return this.dots.has(key(p))
   }
 
   under(): void {
@@ -76,13 +70,12 @@ export class Marks {
       this.px.glyph(GOAL, a.x + 1, a.y - up - height(game.tile(p)) - bob, AMBER, 0.95)
     }
     if (selected && !this.scene.mover) {
-      this.bar(selected)
       const a = this.px.projection.anchor(selected.pos)
       const bounce = Math.round(Math.abs(Math.sin(this.t / 260)) * 2)
-      this.px.label("v", a.x - 2, a.y - 34 - height(game.tile(selected.pos)) - bounce, AMBER, 0.95)
+      this.px.label("v", a.x - 2, a.y - 26 - height(game.tile(selected.pos)) - bounce, AMBER, 0.95)
     }
     const hovered = hover && game.unitAt(hover)
-    if (hovered && hovered !== selected && hovered.id !== aim?.target.id && this.shown(hovered)) this.bar(hovered)
+    if (hovered && hovered.id !== aim?.target.id && this.shown(hovered)) this.bar(hovered)
   }
 
   private planning(): boolean {
@@ -124,14 +117,17 @@ export class Marks {
     this.px.outline(built, BORDER, 0.35, true)
   }
 
-  /** Faint dotted borders of the move area: blue for the first move, yellow for the second. */
+  /** A faint fill over the move area, the squad's own tiles included: blue for the first move, yellow for the second. */
   private reach(): void {
-    const { near, far, selected } = this.scene
+    const { near, far, selected, game } = this.scene
     if (!selected || far.size === 0) return
-    const seen = (keys: Set<number>) =>
-      shape(new Set([key(selected.pos), ...[...keys].filter((k) => this.explored(pointOf(k)))]))
-    this.px.outline(seen(far), DASH, 0.4, 5)
-    if (near.size > 0) this.px.outline(seen(near), MOVE, 0.45, 5)
+    const touches = (keys: Set<number>, k: number) => ORTHOGONAL.some((o) => keys.has(key(plus(pointOf(k), o))))
+    const own = game.units.filter((u) => u.alive() && u.side === "squad").map((u) => key(u.pos))
+    const close = new Set([...near, ...own.filter((k) => touches(near, k))])
+    const wide = new Set([...far, ...own.filter((k) => !close.has(k) && touches(far, k))])
+    const seen = (keys: Set<number>) => new Set([...keys].filter((k) => this.explored(pointOf(k))))
+    this.px.fill(new Set([...seen(wide)].filter((k) => !close.has(k))), DASH, 0.045)
+    this.px.fill(seen(close), MOVE, 0.06)
   }
 
   /** Where the alien under the cursor can walk, or strike in melee, next turn. */

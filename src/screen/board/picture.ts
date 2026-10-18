@@ -105,7 +105,6 @@ export class Picture {
     } else if (tile === "grass") {
       if (r < 0.6) this.px.glyph(Math.sin(t / 900 + r * 9) > 0.7 ? TILES.grass2 : TILES.grass, a.x, a.y, c)
     } else if (tile === "mud" || tile === "ridge" || tile === "bridge") this.px.glyph(TILES[tile], a.x, a.y, c)
-    else if (r < 0.5 && !this.marks.covers(p)) this.px.glyph(TILES.dot, a.x, a.y, c)
     if (this.explored(p) && game.zones.some((z) => z.kind === "mine" && z.tiles.some((m) => same(m, p))))
       this.px.glyph(TILES.mine, a.x, a.y, mix(ALIEN, c, 0.2))
   }
@@ -196,7 +195,16 @@ export class Picture {
     const shake = struck ? (Math.floor(now / 40) % 2 ? 1 : -1) : 0
     const spent = u.side === "squad" && u.allegiance() === "squad" && game.phase === "squad" && u.ap === 0
     const alpha = fade ? Math.max(0, 1 - (now - fade.born) / life) : spent ? 0.55 : u.concealed ? 0.75 : 1
-    this.px.glyph(UNITS[u.kind], a.x + kick + shake, a.y - 2 - lift + bob + float, struck ? WHITE : tone(u), alpha)
+    const x = a.x + kick + shake
+    const y = a.y - 2 - lift + bob + float
+    for (const [dx, dy] of [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ])
+      this.px.glyph(UNITS[u.kind], x + dx, y + dy, BLACK, alpha * 0.85)
+    this.px.glyph(UNITS[u.kind], x, y, struck ? WHITE : mix(tone(u), WHITE, 0.15), alpha)
   }
 
   private burning(p: Point): boolean {

@@ -50,3 +50,15 @@ describe("Tab", () => {
     expect(m.armed()?.at).toEqual({ x: 5, y: 1 })
   })
 })
+
+describe("log", () => {
+  test("starts closed", () => {
+    const store = memory()
+    expect(
+      Model.open(
+        Session.open(store, () => 1),
+        store,
+      ).logOpen(),
+    ).toBe(false)
+  })
+})

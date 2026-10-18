@@ -97,6 +97,18 @@ export class Pixels {
     }
   }
 
+  /** The ground diamonds of a set of tile keys, filled. */
+  fill(keys: Set<number>, color: Rgb, a: number): void {
+    this.ctx.fillStyle = css(color, a)
+    for (const k of keys) {
+      const g = this.projection.ground({ x: k % 1000, y: Math.floor(k / 1000) })
+      for (let j = 0; j < TH; j++) {
+        const half = Math.round((TW / 2) * (1 - Math.abs(j + 0.5 - TH / 2) / (TH / 2)))
+        this.ctx.fillRect(Math.round(g.x) - half, Math.round(g.y - TH / 2) + j, half * 2, 1)
+      }
+    }
+  }
+
   /** One tile edge: toward x+1, y+1, x−1 or y−1. */
   edge(p: Point, d: number, color: Rgb, a: number, dotted: boolean | number = false, lift = 0): void {
     const g = this.projection.ground(p)

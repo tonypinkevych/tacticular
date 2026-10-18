@@ -76,7 +76,7 @@ export class Model {
     ;[this.speed, this.setSpeedSignal] = createSignal<Speed>(this.playback.speed)
     ;[this.lang, this.setLang] = createSignal<Lang>(locale.lang)
     ;[this.confirmNew, this.setConfirmNew] = createSignal(false)
-    ;[this.logOpen, this.setLogOpen] = createSignal(true)
+    ;[this.logOpen, this.setLogOpen] = createSignal(false)
     ;[this.look, this.setLook] = createSignal<Point | null>(null, { equals: false })
     ;[this.help, this.setHelp] = createSignal(false)
     ;[this.menu, this.setMenu] = createSignal(false)
