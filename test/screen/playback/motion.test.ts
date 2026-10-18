@@ -22,6 +22,13 @@ describe("enemy turn playback", () => {
     p.add(g, [walk("w", { x: 1, y: 1 })])
     expect(p.at(0).focus).toBeNull()
   })
+  test("a visible alien that takes a stance or uses a skill shows the action's name over it", () => {
+    const p = new Playback(1, g)
+    const watch: Frame = { action: { type: "overwatch", unit: "e" }, game: g.clone() }
+    p.add(g, [watch, walk("e", { x: 4, y: 1 })])
+    p.at(0)
+    expect(p.texts.map((f) => [f.text, f.at])).toEqual([["Overwatch", { x: 5, y: 1 }]])
+  })
   test("a soldier's walk sounds steps; an unseen alien's walk sounds only when heard", () => {
     const p = new Playback(1, g)
     p.add(g, [walk("w", { x: 1, y: 1 })])

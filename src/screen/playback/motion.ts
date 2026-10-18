@@ -133,6 +133,16 @@ function shown(before: Game, frame: Frame): boolean {
   return before.stealth.visible(u) || frame.game.stealth.visible(after)
 }
 
+/** The name of the skill or stance a visible alien takes in a step, for a text over it; null for other steps. */
+function deed(before: Game, frame: Frame): string | null {
+  const a = frame.action
+  const u = a.type === "endTurn" ? undefined : before.units.find((x) => x.id === a.unit)
+  if (u?.allegiance() !== "enemy") return null
+  if (a.type === "ability") return t(`ability.${a.ability}`)
+  if (a.type === "overwatch" || a.type === "hunker" || a.type === "reload") return t(`action.${a.type}`)
+  return null
+}
+
 /** Log entries that hurt a target by a set amount. */
 const HURTS = ["log.hit", "log.lash", "log.burn", "log.shrapnel", "log.slam", "log.fall", "log.fire", "log.mine"]
 
@@ -225,6 +235,9 @@ export class Playback {
     if (this.activity !== null && frame.game.phase !== "enemy" && !instant && this.speed > 0)
       length = Math.max(length, ACTIVITY_MS / this.speed - (now - this.activity))
     this.clip = { before, frame, start: now, length, path, visible }
+    const name = visible && !instant ? deed(before, frame) : null
+    const u = name ? before.units.find((x) => x.id === actor(frame)) : undefined
+    if (name && u) this.texts.push({ text: name, color: "#ff8a7a", at: u.pos, born: now })
     if (!instant) this.sounds.push(...heard(cues(before, frame).start, visible))
   }
 
