@@ -33,6 +33,20 @@ export const climb = (from: Tile, to: Tile): boolean => to !== "roof" || from ==
 /** A tile a walk can pass: walkable ground, or a closed door that opens on the way. */
 export const passable = (tile: Tile): boolean => walkable(tile) || tile === "door"
 
+/** A tile a unit can step onto: passable ground, plus trees and low cover for the Heavy and water for the Engineer. */
+export function enters(unit: Unit, tile: Tile): boolean {
+  if (passable(tile)) return true
+  if (unit.kind === "warden") return tile === "tree" || tile === "low"
+  return unit.kind === "engineer" && tile === "water"
+}
+
+/** A step a unit's class allows: the Scout climbs onto a roof from any side, the Heavy never climbs onto one. */
+export function climbs(unit: Unit, from: Tile, to: Tile): boolean {
+  if (unit.kind === "rogue") return true
+  if (unit.kind === "warden") return to !== "roof" || from === "roof"
+  return climb(from, to)
+}
+
 export const blocksSight = (tile: Tile): boolean =>
   tile === "wall" || tile === "high" || tile === "door" || tile === "tree" || tile === "rock"
 
@@ -83,7 +97,8 @@ export interface Reach {
 
 /** Tiles a unit can walk to within a budget; allies can be passed, nobody can be stood on.
  *
- * A straight step onto low cover vaults it and lands on the tile behind, for 2. A ladder or mud costs 1 more.
+ * A straight step onto low cover vaults it and lands on the tile behind, for 2 (1 for the Assault).
+ * A ladder, mud, or a tile only the unit's class can enter costs 1 more.
  */
 export function reach(game: Game, unit: Unit, budget: number, side = unit.side): Reach {
   const best = new Map<number, number>()
@@ -102,20 +117,21 @@ export function reach(game: Game, unit: Unit, budget: number, side = unit.side):
       const parity = s % 2
       for (const step of AROUND) {
         const diagonal = step.x !== 0 && step.y !== 0
-        const vault = !diagonal && tileAt(game, plus(p, step)) === "low"
+        const vault = !diagonal && tileAt(game, plus(p, step)) === "low" && unit.kind !== "warden"
         const next = vault ? plus(plus(p, step), step) : plus(p, step)
-        if (!passable(tileAt(game, next)) || !climb(tileAt(game, p), tileAt(game, next))) continue
+        const tile = tileAt(game, next)
+        if (!enters(unit, tile) || !climbs(unit, tileAt(game, p), tile)) continue
         if (
           diagonal &&
-          (!passable(tileAt(game, { x: next.x, y: p.y })) || !passable(tileAt(game, { x: p.x, y: next.y })))
+          (!enters(unit, tileAt(game, { x: next.x, y: p.y })) || !enters(unit, tileAt(game, { x: p.x, y: next.y })))
         )
           continue
         const other = unitAt(game, next)
         if (other && other.side !== side) continue
         const nextCost =
           cost +
-          (diagonal ? (parity ? 2 : 1) : vault ? 2 : 1) +
-          (tileAt(game, next) === "ladder" || tileAt(game, next) === "mud" ? 1 : 0)
+          (diagonal ? (parity ? 2 : 1) : vault && unit.kind !== "vanguard" ? 2 : 1) +
+          (tile === "ladder" || tile === "mud" || !passable(tile) ? 1 : 0)
         if (nextCost > budget) continue
         const ns = state(next, diagonal ? 1 - parity : parity)
         if ((best.get(ns) ?? Infinity) <= nextCost) continue

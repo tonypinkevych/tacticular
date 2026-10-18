@@ -73,7 +73,8 @@ export function apply(game: Game, action: Action): Game {
 
 /**
  * Steps tile by tile; each step can trigger fire, a mine, a Guard, overwatch, suppression fire and zone of control.
- * Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it vaults.
+ * Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it vaults,
+ * and a tree or low cover a Heavy walks into turns to floor.
  */
 export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
   for (const step of path) {
@@ -93,6 +94,8 @@ export function walk(game: Game, u: Unit, path: Point[], dash = false): void {
     const from = u.pos
     u.pos = { ...step }
     if (tileAt(game, step) === "door") game.board.tiles[step.y * game.board.width + step.x] = "open"
+    if (tileAt(game, step) === "tree" || tileAt(game, step) === "low")
+      game.board.tiles[step.y * game.board.width + step.x] = "floor"
     scorch(game, u)
     if (!alive(u)) return
     if (sideOf(u) === "enemy" && trip(game, u, from)) return
