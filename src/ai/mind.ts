@@ -9,6 +9,7 @@ import type { Unit } from "../rules/unit"
 interface Choice {
   action: Action
   value: number
+  kill?: boolean
 }
 
 const average = (w: WeaponId): number => {
@@ -87,7 +88,7 @@ export class Mind {
           (t.maxHp - t.hp) * 0.3 +
           (t.kind === "mage" || t.kind === "cleric" ? 0.5 : 0)
         if (!best || value > best.value)
-          best = { action: { type: "attack", unit: u.id, target: t.id, weapon: w }, value }
+          best = { action: { type: "attack", unit: u.id, target: t.id, weapon: w }, value, kill: dmg >= t.hp }
       }
     }
     return best
@@ -106,7 +107,7 @@ export class Mind {
       if (!exposed) continue
       const cover = game.cover.against(p, f.pos)
       value += cover === 0 ? -4 : cover / 2
-      if (flanks && game.cover.against(f.pos, p) === 0) value += 2
+      if (flanks && game.cover.against(f.pos, p) === 0) value += 4
       if (f.stance === "overwatch") value -= 3
     }
     const attack = this.bestAttack(u, foesKnown)
@@ -120,6 +121,15 @@ export class Mind {
     }
     u.pos = from
     return value
+  }
+
+  /** A move to a tile farther from the known foes, behind cover or out of their sight, or null when none is better. */
+  private fallBack(u: Unit, foes: Unit[]): Action | null {
+    const game = this.game
+    const near = (p: Point) => Math.min(...foes.map((f) => distance(p, f.pos)))
+    const shelter = (p: Point) =>
+      foes.reduce((v, f) => v + (!game.sight.sees(f, p) ? 2 : game.cover.against(p, f.pos) === 0 ? -2 : 1), 0)
+    return this.bestMove(u, (p) => near(p) + shelter(p))?.action ?? null
   }
 
   private allowed(u: Unit, p: Point): boolean {
@@ -279,11 +289,14 @@ export class Mind {
     if (targets.length === 0) {
       const beacon = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : null
       if (beacon && !same(u.pos, beacon)) return this.toward(u, beacon, u.mobility * u.ap)
-      if (!beacon && group?.target) return this.search(u, group.target, group.landing)
+      const goal = group?.target ?? (u.waited ? group?.landing : undefined)
+      if (!beacon && goal) return this.search(u, goal, group?.landing)
       if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }
       return null
     }
     const attack = this.bestAttack(u, targets)
+    const back = u.hp * 3 <= u.maxHp && !attack?.kill ? this.fallBack(u, targets) : null
+    if (back) return back
     const options = [attack, sp].filter((c): c is Choice => !!c)
     const now = options.sort((a, b) => b.value - a.value)[0]
     if (u.ap >= 2 || game.reactions.includes(u.id)) {

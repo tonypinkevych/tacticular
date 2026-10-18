@@ -23,3 +23,14 @@ describe("patrol drift", () => {
     expect(find(roam(3), "e").patrol).toEqual(route)
   })
 })
+
+describe("waiting", () => {
+  test("a unit that ended its turn on overwatch starts the next one as waited", () => {
+    const g = setup(open(20, 3), [squad("s", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 15, y: 1 })])
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    const watched = g.apply({ type: "overwatch", unit: "e" })
+    const next = watched.apply({ type: "endTurn" }).apply({ type: "endTurn" })
+    expect(find(next, "e").waited).toBe(true)
+  })
+})

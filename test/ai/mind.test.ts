@@ -104,6 +104,36 @@ describe("search and hunt", () => {
   })
 })
 
+describe("fight", () => {
+  const duel = (d: number) => {
+    const rows = [".".repeat(12), `.H${".".repeat(d - 1)}H${".".repeat(10 - d)}`, ".".repeat(12)]
+    const g = setup(rows, [squad("s", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 2 + d, y: 1 })])
+    find(g, "s").concealed = false
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    return g
+  }
+
+  test("an alien that waited last turn and sees no soldier heads for where the squad landed", () => {
+    const g = duel(6)
+    g.groups[0].landing = { x: 0, y: 1 }
+    expect(new Mind(g).decide(find(g, "e"))?.type).toBe("overwatch")
+    find(g, "e").waited = true
+    expect(new Mind(g).decide(find(g, "e"))?.type).toBe("move")
+  })
+  test("a badly hurt alien with no kill falls back away from the soldiers", () => {
+    const rows = [".".repeat(12), ".H......H...", ".".repeat(12)]
+    const g = setup(rows, [squad("s", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 6, y: 1 })])
+    find(g, "s").concealed = false
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    find(g, "e").hp = 2
+    const a = new Mind(g).decide(find(g, "e"))
+    expect(a?.type).toBe("move")
+    expect(distance((a as { to: { x: number; y: number } }).to, { x: 0, y: 1 })).toBeGreaterThan(6)
+  })
+})
+
 describe("headless missions", () => {
   test("AI against AI ends without errors on 50 seeds", () => {
     const rows = [

@@ -41,6 +41,8 @@ export interface UnitData {
   patrol: Point[]
   patrolIndex: number
   intent: Intent | null
+  /** True when the unit's last turn ended on overwatch or hunker. */
+  waited?: boolean
 }
 
 /** A soldier, an alien or a gadget on the board, with its stats and its state in the fight. */
@@ -73,6 +75,7 @@ export class Unit implements UnitData {
   patrol!: Point[]
   patrolIndex!: number
   intent!: Intent | null
+  waited?: boolean
 
   constructor(data: UnitData) {
     Object.assign(this, data)

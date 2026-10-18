@@ -36,6 +36,7 @@ export class Turn {
       }
       u.ap = 2
       u.moved = false
+      u.waited = u.stance === "overwatch" || u.stance === "hunker"
       u.stance = "none"
       if (u.kind === "warden") u.give({ id: "plated", rounds: 1 })
       if (u.kind === "turret") {
