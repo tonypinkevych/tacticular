@@ -95,19 +95,21 @@ function Card(props: { unit: Unit; game: Game; model: Model; children?: JSX.Elem
         </Show>
       </div>
       <Hp unit={u()} />
-      <div class="weapon">
-        <span>{t(`weapon.${u().weapon}`)}</span>
-        <span class="muted">
-          {w().dice.count + w().dice.bonus}–{w().dice.count * w().dice.sides + w().dice.bonus}
-        </span>
-        <Show when={w().ammo !== null}>
-          <span class="ammo">
-            <Index each={Array.from({ length: w().ammo ?? 0 })}>
-              {(_, i) => <span classList={{ full: i < u().ammo }} />}
-            </Index>
+      <Show when={u().weapon !== "none"}>
+        <div class="weapon">
+          <span>{t(`weapon.${u().weapon}`)}</span>
+          <span class="muted">
+            {w().dice.count + w().dice.bonus}–{w().dice.count * w().dice.sides + w().dice.bonus}
           </span>
-        </Show>
-      </div>
+          <Show when={w().ammo !== null}>
+            <span class="ammo">
+              <Index each={Array.from({ length: w().ammo ?? 0 })}>
+                {(_, i) => <span classList={{ full: i < u().ammo }} />}
+              </Index>
+            </span>
+          </Show>
+        </div>
+      </Show>
       <div class="chips">
         <Show when={soldier() && u().concealed}>
           <span class="chip hidden">{t("ui.concealed")}</span>
@@ -369,14 +371,9 @@ function Panel(props: { model: Model }) {
   )
 }
 
-const GROUPS = ["weapon", "ability", "item", "stance"] as const
+const GROUPS = ["weapon", "skill", "ult", "stance"] as const
 
-const group = (id: string): (typeof GROUPS)[number] => {
-  const kind = id.split(":")[0]
-  return kind === "weapon" || kind === "ability" || kind === "item" ? kind : "stance"
-}
-
-/** Action slots grouped as weapon, abilities, items and stances, then End turn. */
+/** Action slots grouped as weapon, skills, ultimate and stances, then End turn. */
 function Bar(props: { model: Model }) {
   const m = props.model
   const list = () => {
@@ -385,16 +382,16 @@ function Bar(props: { model: Model }) {
   }
   return (
     <nav id="bar">
-      <For each={GROUPS.filter((k) => list().some((s) => group(s.id) === k))}>
+      <For each={GROUPS.filter((k) => list().some((s) => s.group === k))}>
         {(k) => (
           <div class="slots">
-            <Index each={list().filter((s) => group(s.id) === k)}>
+            <Index each={list().filter((s) => s.group === k)}>
               {(s) => (
                 <button
                   type="button"
                   class="slot"
                   aria-label={s().label}
-                  classList={{ active: m.armed()?.slot === s().id }}
+                  classList={{ active: m.armed()?.slot === s().id, ready: s().group === "ult" && !s().disabled }}
                   disabled={s().disabled}
                   onClick={() => m.press(s())}
                   onMouseEnter={() => m.setHint(s())}

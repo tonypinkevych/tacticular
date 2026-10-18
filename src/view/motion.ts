@@ -110,6 +110,9 @@ function shown(before: Game, frame: Frame): boolean {
   return visibleToSquad(before, u) || visibleToSquad(frame.game, after)
 }
 
+/** Log entries that hurt a target by a set amount. */
+const HURTS = ["log.hit", "log.lash", "log.burn", "log.shrapnel", "log.slam", "log.fall", "log.fire", "log.mine"]
+
 /** Floating texts for the log entries a step added. */
 export function floats(before: Game, after: Game, now: number): Float[] {
   const out: Float[] = []
@@ -121,8 +124,7 @@ export function floats(before: Game, after: Game, now: number): Float[] {
   for (const e of after.log.slice(before.log.length)) {
     const p = e.params
     const spell = e.key === "log.fear" || e.key === "log.dread" || e.key === "log.dominate"
-    if (e.key === "log.hit" || e.key === "log.lash" || e.key === "log.burn")
-      add(e, `−${p.dmg}`, "#ff6a5a", p.target, true)
+    if (HURTS.includes(e.key)) add(e, `−${p.dmg}`, "#ff6a5a", p.target, true)
     if (e.key === "log.crit") add(e, `${t("ui.crit")} −${p.dmg}`, "#ffb02e", p.target, true)
     if (e.key === "log.miss") add(e, t("ui.miss"), "#d9dde3")
     if (e.key === "log.heal") add(e, `+${p.amount}`, "#5fd35f")

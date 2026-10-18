@@ -39,7 +39,7 @@ const en = {
   "ui.seed": "Op {seed}",
   "ui.save": "Log: {count} events · key {key}",
   "ui.help":
-    "Click: move or aim · 1–0: action, twice to fire · Y: overwatch · R: reload · Enter: end turn · Tab: next soldier · Esc: cancel · Z: zones · F1: details · Space: skip",
+    "Click: move or aim · 1: weapon, twice to fire · Q W E: skills · R: ultimate · T: reload · Y: overwatch · U: hunker · Arrows: camera · Enter: end turn · Tab: next soldier · Esc: cancel · Z: zones · F1: details · Space: skip",
   "ui.credits": "Tiles and icons: Kenney 1-Bit Pack (CC0)",
   "ui.left": "{left} left",
   "ui.saved": "saved",
@@ -347,7 +347,7 @@ const ru: Record<Key, string> = {
   "ui.seed": "Оп. {seed}",
   "ui.save": "Журнал: {count} событий · ключ {key}",
   "ui.help":
-    "Клик: ход или цель · 1–0: действие, дважды — огонь · Y: дозор · R: перезарядка · Enter: конец хода · Tab: следующий · Esc: отмена · Z: зоны · F1: подробности · Пробел: пропуск",
+    "Клик: ход или цель · 1: оружие, дважды — огонь · Q W E: навыки · R: ульта · T: перезарядка · Y: дозор · U: укрытие · Стрелки: камера · Enter: конец хода · Tab: следующий · Esc: отмена · Z: зоны · F1: подробности · Пробел: пропуск",
   "ui.credits": "Тайлы и иконки: Kenney 1-Bit Pack (CC0)",
   "ui.left": "осталось {left}",
   "ui.saved": "устоял",

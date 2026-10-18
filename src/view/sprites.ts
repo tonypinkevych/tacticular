@@ -19,6 +19,10 @@ export interface Palette {
   water: string
   wave: string
   bridge: string
+  grass: string
+  tree: string
+  rock: string
+  mud: string
 }
 
 export const PALETTES: Record<Biome, Palette> = {
@@ -34,6 +38,10 @@ export const PALETTES: Record<Biome, Palette> = {
     water: "#16304a",
     wave: "#3f78b0",
     bridge: "#8a6a48",
+    grass: "#4f7a3a",
+    tree: "#4fa06c",
+    rock: "#8a8496",
+    mud: "#5a4430",
   },
   village: {
     void: "#0e0b0c",
@@ -47,6 +55,10 @@ export const PALETTES: Record<Biome, Palette> = {
     water: "#172e44",
     wave: "#4a80b4",
     bridge: "#9a7650",
+    grass: "#6a7a3a",
+    tree: "#62a05c",
+    rock: "#948a84",
+    mud: "#604832",
   },
   town: {
     void: "#0b0b0e",
@@ -60,6 +72,10 @@ export const PALETTES: Record<Biome, Palette> = {
     water: "#162a40",
     wave: "#4a7aaa",
     bridge: "#8e7454",
+    grass: "#4a6a44",
+    tree: "#5c8c64",
+    rock: "#9496a8",
+    mud: "#504436",
   },
 }
 
@@ -74,9 +90,9 @@ export const UNIT_CELLS: Record<Kind, Cell> = {
   cleric: [3, 0],
   rogue: [4, 0],
   mage: [5, 0],
-  engineer: [2, 0],
-  drone: [12, 0],
-  turret: [2, 0],
+  engineer: [13, 0],
+  drone: [14, 0],
+  turret: [15, 0],
   orc: [6, 0],
   bomber: [7, 0],
   ogre: [8, 0],
@@ -98,15 +114,33 @@ export const SLOT_CELLS: Record<string, Cell> = {
   "weapon:knives": [25, 11],
   "ability:charge": [29, 21],
   "ability:volley": [26, 11],
-  "ability:bulwark": [40, 3],
   "ability:heal": [43, 10],
   "ability:ward": [38, 3],
+  "ability:breach": [4, 3],
+  "ability:grapple": [28, 21],
+  "ability:guard": [32, 12],
+  "ability:steady": [37, 11],
+  "ability:rocket": [33, 21],
+  "ability:brace": [40, 3],
+  "ability:smoke": [43, 8],
+  "ability:hook": [26, 20],
+  "ability:tag": [37, 13],
+  "ability:swap": [21, 21],
+  "ability:barricade": [1, 3],
+  "ability:drone": [38, 12],
+  "ability:mine": [30, 11],
+  "ability:rampage": [25, 11],
+  "ability:killzone": [33, 12],
+  "ability:saturation": [27, 11],
+  "ability:hospital": [42, 11],
+  "ability:ghost": [32, 20],
+  "ability:turret": [43, 9],
+  "ability:dominate": [27, 12],
   "ability:vanish": [24, 14],
   "ability:fear": [38, 14],
   "ability:blink": [28, 12],
   "ability:rouse": [36, 13],
   "ability:shove": [29, 20],
-  "ability:spot": [37, 11],
   "ability:rally": [24, 13],
   overwatch: [35, 12],
   hunker: [37, 4],
@@ -125,19 +159,30 @@ const COBBLES: Cell[] = [
   [4, 0],
 ]
 
+/** Cells for the natural tiles, the same in every biome. */
+const NATURE: { grass: Cell; tree: Cell[]; rock: Cell; mud: Cell } = {
+  grass: [0, 2],
+  tree: [
+    [0, 1],
+    [1, 1],
+    [2, 1],
+    [4, 1],
+    [4, 2],
+  ],
+  rock: [5, 2],
+  mud: [1, 0],
+}
+
+/** The flame cell drawn over burning tiles. */
+export const FLAME: Cell = [28, 11]
+
+/** The cell drawn on a planted mine. */
+export const MINE: Cell = [30, 11]
+
 const GLYPHS: Record<Biome, { low: Cell[]; high: Cell[]; wall: Cell }> = {
   forest: {
-    low: [
-      [5, 2],
-      [0, 2],
-    ],
-    high: [
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [4, 1],
-      [4, 2],
-    ],
+    low: [[1, 2]],
+    high: [[6, 5]],
     wall: [16, 0],
   },
   village: {
@@ -145,11 +190,7 @@ const GLYPHS: Record<Biome, { low: Cell[]; high: Cell[]; wall: Cell }> = {
       [1, 3],
       [2, 3],
     ],
-    high: [
-      [4, 2],
-      [2, 1],
-      [0, 1],
-    ],
+    high: [[6, 5]],
     wall: [16, 0],
   },
   town: {
@@ -157,10 +198,7 @@ const GLYPHS: Record<Biome, { low: Cell[]; high: Cell[]; wall: Cell }> = {
       [7, 5],
       [6, 4],
     ],
-    high: [
-      [6, 5],
-      [4, 2],
-    ],
+    high: [[6, 5]],
     wall: [17, 0],
   },
 }
@@ -195,6 +233,14 @@ export function glyph(biome: Biome, tile: Tile, p: Point): { cell: Cell; color: 
       return { cell: [8, 5], color: c.wave }
     case "bridge":
       return { cell: [4, 6], color: c.bridge }
+    case "grass":
+      return { cell: NATURE.grass, color: c.grass }
+    case "tree":
+      return { cell: one(NATURE.tree, p), color: c.tree }
+    case "rock":
+      return { cell: NATURE.rock, color: c.rock }
+    case "mud":
+      return { cell: NATURE.mud, color: c.mud }
     default:
       return null
   }

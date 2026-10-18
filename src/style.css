@@ -194,6 +194,10 @@ h2 {
   font-weight: 700;
   text-shadow: 0 0 2px #000;
 }
+.slot.ready .face {
+  border-color: var(--crit);
+  box-shadow: inset 0 0 0 1px var(--crit);
+}
 .slot.active .face {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);

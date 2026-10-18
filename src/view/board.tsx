@@ -13,13 +13,9 @@ const MARGIN = 320
 const PAN_SPEED = 900
 const WHEEL_STEP = 50
 const PAN_KEYS: Record<string, Point> = {
-  KeyW: { x: 0, y: -1 },
   ArrowUp: { x: 0, y: -1 },
-  KeyS: { x: 0, y: 1 },
   ArrowDown: { x: 0, y: 1 },
-  KeyA: { x: -1, y: 0 },
   ArrowLeft: { x: -1, y: 0 },
-  KeyD: { x: 1, y: 0 },
   ArrowRight: { x: 1, y: 0 },
 }
 

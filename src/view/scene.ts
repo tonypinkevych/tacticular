@@ -2,11 +2,11 @@ import { coverAgainst, flankers, shelter } from "../rules/cover"
 import { DETECTION, WEAPONS } from "../rules/data"
 import { AROUND, distance, inside, key, ORTHOGONAL, plus, same, tileAt, unitAt } from "../rules/grid"
 import { sees, visibleTiles } from "../rules/sight"
-import { seen as spotted, visibleToSquad } from "../rules/stealth"
+import { detection, seen as spotted, visibleToSquad } from "../rules/stealth"
 import type { Game, Point, Unit } from "../rules/types"
 import { alive, sideOf } from "../rules/units"
 import type { Float } from "./motion"
-import { figures, gear, glyph, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
+import { FLAME, figures, gear, glyph, MINE, PALETTES, sprites, tone, UNIT_CELLS } from "./sprites"
 
 /** What the board shows besides the game: selection, reach, hover and overlays. */
 export interface Scene {
@@ -472,8 +472,13 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
     }
   }
   for (const z of game.zones) {
-    if (z.kind === "smoke")
-      tint(ctx, s, z.tiles.filter((p) => game.explored[p.y * width + p.x]).map(key), "rgba(200,200,210,0.35)")
+    const tiles = z.tiles.filter((p) => game.explored[p.y * width + p.x])
+    if (z.kind === "smoke") tint(ctx, s, tiles.map(key), "rgba(200,200,210,0.35)")
+    if (z.kind === "fire") {
+      tint(ctx, s, tiles.map(key), "rgba(255,90,20,0.25)")
+      for (const p of tiles) sprites.draw(ctx, FLAME, "#ff8a3c", p.x * s, p.y * s, s)
+    }
+    if (z.kind === "mine") for (const p of tiles) sprites.draw(ctx, MINE, "#ff3b3b", p.x * s, p.y * s, s)
   }
   const enemies = game.units.filter((u) => alive(u) && u.side === "enemy" && visibleToSquad(game, u))
   if (sc.zones) zones(ctx, s, game, enemies)
@@ -512,6 +517,10 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
         AROUND.concat({ x: 0, y: 0 }).map((d) => key(plus(intent.at, d))),
         "rgba(255,60,0,0.35)",
       )
+    if (intent?.type === "psi") {
+      const t = game.units.find((x) => x.id === intent.target)
+      if (t && alive(t)) arrow(ctx, s, e.pos, t.pos, "#c08bff", true)
+    }
     if (intent?.type === "charge") {
       const t = game.units.find((x) => x.id === intent.target)
       if (t && alive(t)) arrow(ctx, s, e.pos, t.pos, "#ff5a3c", true)
@@ -580,8 +589,8 @@ export function draw(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const sel = sc.selected
   if (hover && sel && (sc.near.has(key(hover)) || sc.far.has(key(hover)))) {
     cover(ctx, s, game, hover)
-    const radius = (e: Unit) => (e.alert === "unaware" ? DETECTION.unaware : DETECTION.investigating)
-    if (sel.concealed && enemies.some((e) => sees(game, e, hover, radius(e)))) {
+    const radius = (e: Unit) => detection(game, e, { ...sel, pos: hover })
+    if (sel.concealed && enemies.some((e) => radius(e) >= 0 && sees(game, e, hover, radius(e)))) {
       sprites.draw(ctx, [36, 13], "#ff3b3b", hover.x * s + s / 4, hover.y * s + s / 4, s / 2)
     }
   }

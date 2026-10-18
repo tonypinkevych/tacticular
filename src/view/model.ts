@@ -2,7 +2,7 @@ import { batch, createSignal } from "solid-js"
 import { type Lang, language, remember, t, use } from "../i18n/strings"
 import { canTarget, Illegal, landings } from "../rules/actions"
 import { canReach, type Odds, odds } from "../rules/combat"
-import { PROFILES, RANGE, WEAPONS } from "../rules/data"
+import { PROFILES, RANGE, ULT, WEAPONS } from "../rules/data"
 import { failChance } from "../rules/dice"
 import { AROUND, adjacent, distance, inside, key, reach, same, tileAt, unitAt, walkable } from "../rules/grid"
 import { visibleTiles } from "../rules/sight"
@@ -12,8 +12,9 @@ import { alive, has, sideOf } from "../rules/units"
 import type { Session } from "../save/session"
 import { Playback, SPEEDS, type Speed } from "./motion"
 
-export const KEYS = "1234567890"
-const LETTERS: Record<string, string> = { overwatch: "Y", reload: "R" }
+/** Keys of the bar: weapons on digits, skills on Q W E, the ultimate on R, stances on T Y U. */
+const SKILL_KEYS = "QWE"
+const STANCE_KEYS = { reload: "T", overwatch: "Y", hunker: "U" } as const
 
 /** What an action needs before it can be confirmed. */
 export type Aim = "unit" | "tile" | "none"
@@ -21,6 +22,7 @@ export type Aim = "unit" | "tile" | "none"
 /** One button of the action bar. */
 export interface Slot {
   id: string
+  group: "weapon" | "skill" | "ult" | "stance"
   key: string
   label: string
   info: string
@@ -38,6 +40,8 @@ export interface Armed {
 
 const UNIT_ABILITIES: AbilityId[] = [
   "charge",
+  "rampage",
+  "dominate",
   "volley",
   "heal",
   "fear",
@@ -49,7 +53,18 @@ const UNIT_ABILITIES: AbilityId[] = [
   "tag",
   "swap",
 ]
-const TILE_ABILITIES: AbilityId[] = ["blink", "breach", "grapple", "rocket", "smoke", "barricade", "drone", "mine"]
+const TILE_ABILITIES: AbilityId[] = [
+  "blink",
+  "breach",
+  "grapple",
+  "rocket",
+  "smoke",
+  "barricade",
+  "drone",
+  "mine",
+  "saturation",
+  "turret",
+]
 /** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
 const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard"]
 const ANY: AbilityId[] = ["swap"]
@@ -64,41 +79,50 @@ const point = (k: number): Point => ({ x: k % 1000, y: Math.floor(k / 1000) })
 
 /** The action bar of a soldier, in bar order. */
 export function slots(game: Game, u: Unit): Slot[] {
-  const out: Omit<Slot, "key">[] = []
+  const out: Slot[] = []
   const none = u.ap <= 0 || game.phase !== "squad"
   const p = PROFILES[u.kind]
-  for (const w of [u.weapon, p.sidearm].filter((x): x is WeaponId => !!x)) {
+  const weapons = [u.weapon, p.sidearm].filter((x): x is WeaponId => !!x && x !== "none")
+  weapons.forEach((w, i) => {
     const weapon = WEAPONS[w]
     const range = weapon.melee ? t("ui.melee") : `${t("ui.range")} ${weapon.min}–${weapon.max}`
     const ammo = weapon.ammo !== null && w === u.weapon ? ` · ${t("ui.ammo")} ${u.ammo}/${weapon.ammo}` : ""
     out.push({
       id: `weapon:${w}`,
+      group: "weapon",
+      key: String(i + 1),
       label: t(`weapon.${w}`),
       info: `${t("ui.damage")} ${dice(w)} · ${range}${ammo}`,
       badge: w === "axes" ? `×${u.axes}` : weapon.ammo !== null && w === u.weapon ? `${u.ammo}` : "",
       disabled: none || (w === "axes" && u.axes <= 0) || (weapon.twoAp === true && (u.ap < 2 || u.moved)),
       aim: "unit",
     })
-  }
-  const dominated = game.units.some((x) => alive(x) && x.side === "squad" && sideOf(x) === "enemy")
-  for (const a of p.abilities) {
-    if (a === "rouse" && !dominated) continue
-    const cd = u.cooldowns[a] ?? 0
+  })
+  const skill = (a: AbilityId, group: Slot["group"], key: string, badge: string, blocked: boolean) =>
     out.push({
       id: `ability:${a}`,
+      group,
+      key,
       label: t(`ability.${a}`),
       info: t(`info.${a}`),
-      badge: cd ? `⟳${cd}` : "",
-      disabled: none || cd > 0,
+      badge,
+      disabled: none || blocked,
       aim: UNIT_ABILITIES.includes(a) ? "unit" : TILE_ABILITIES.includes(a) ? "tile" : "none",
     })
-  }
-  for (const id of ["overwatch", "hunker", "reload"] as const) {
+  p.abilities.forEach((a, i) => {
+    const cd = u.cooldowns[a] ?? 0
+    skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : "", cd > 0)
+  })
+  if (game.units.some((x) => alive(x) && x.side === "squad" && sideOf(x) === "enemy") && u.side === "squad")
+    skill("rouse", "skill", String(weapons.length + 1), "", false)
+  if (p.ultimate) skill(p.ultimate, "ult", "R", u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
+  if (u.kind === "drone") return out
+  for (const id of ["reload", "overwatch", "hunker"] as const) {
     if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
-    out.push({ id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" })
+    const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" as const }
+    out.push({ ...s, group: "stance", key: STANCE_KEYS[id] })
   }
-  let i = 0
-  return out.map((s) => ({ ...s, key: LETTERS[s.id] ?? KEYS[i++] ?? "" }))
+  return out
 }
 
 /** True in the squad phase when no soldier the player controls has AP left. */
@@ -124,7 +148,15 @@ export function range(game: Game, u: Unit, slot: string): Set<number> {
   if (kind !== "ability") return new Set()
   switch (id as AbilityId) {
     case "charge":
+    case "rampage":
       return new Set(reach(game, u, u.mobility).cost.keys())
+    case "dominate":
+      return within(0, RANGE.dominate)
+    case "saturation":
+      return within(1, RANGE.saturation)
+    case "hospital":
+      return within(0, RANGE.hospital)
+    case "turret":
     case "heal":
     case "rouse":
     case "shove":
@@ -237,9 +269,9 @@ export function retarget(game: Game, u: Unit, armed: Armed, hover: Point | null)
       : canTarget(game, u, t) &&
         (kind === "weapon"
           ? canReach(u, t, WEAPONS[id as WeaponId])
-          : id === "charge"
+          : id === "charge" || id === "rampage"
             ? landings(game, u, t).length > 0
-            : id === "spot" || range(game, u, armed.slot).has(key(t.pos)))
+            : range(game, u, armed.slot).has(key(t.pos)))
   return ok ? { ...armed, target: t.id, at: null } : armed
 }
 

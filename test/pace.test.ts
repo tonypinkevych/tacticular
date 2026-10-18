@@ -30,14 +30,19 @@ describe("weapons and keys", () => {
   test("the sniper rifle has a magazine of 3", () => {
     expect(WEAPONS.longbow.ammo).toBe(3)
   })
-  test("Overwatch is Y and Reload is R; other slots keep digits", () => {
+  test("weapon 1, skills Q W E, ultimate R, Reload T, Overwatch Y, Hunker U", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const g = setup(open(4, 4), [v])
-    const s = slots(g, v)
-    expect(s.find((x) => x.id === "overwatch")?.key).toBe("Y")
-    expect(s.find((x) => x.id === "reload")?.key).toBe("R")
-    expect(s[0].key).toBe("1")
-    expect(s.find((x) => x.id === "hunker")?.key).toMatch(/^[0-9]$/)
+    expect(slots(g, v).map((x) => `${x.id}=${x.key}`)).toEqual([
+      "weapon:shotgun=1",
+      "ability:shove=Q",
+      "ability:charge=W",
+      "ability:breach=E",
+      "ability:rampage=R",
+      "reload=T",
+      "overwatch=Y",
+      "hunker=U",
+    ])
   })
   test("the squad is spent when no soldier has AP", () => {
     const a = squad("a", "vanguard", { x: 0, y: 0 })

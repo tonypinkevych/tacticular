@@ -23,7 +23,7 @@ export function visibleToSquad(game: Game, e: Unit): boolean {
 }
 
 /** Detection radius of an enemy against a concealed soldier; -1 means it cannot detect it at all. Grass hides a soldier from all but next tiles. */
-function detection(game: Game, e: Unit, s: Unit): number {
+export function detection(game: Game, e: Unit, s: Unit): number {
   if (s.kind === "rogue" && e.alert === "unaware") return -1
   const radius = s.kind === "rogue" ? DETECTION.rogue : DETECTION[e.alert === "unaware" ? "unaware" : "investigating"]
   return tileAt(game, s.pos) === "grass" ? Math.min(1, radius) : radius
