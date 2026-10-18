@@ -1,13 +1,16 @@
 import { Dice } from "../combat/dice"
+import type { Biome } from "../map/board"
+import { BIOMES } from "../map/terrain"
 
 /** What a mission on the chart is, and what winning it changes. */
 export type Task = "intel" | "vip" | "relay" | "captain" | "defend" | "fortress"
 
-/** One mission on the chart and the missions it leads to. */
+/** One mission on the chart, its biome and the missions it leads to. */
 export interface Node {
   id: number
   layer: number
   kind: Task
+  biome: Biome
   next: number[]
 }
 
@@ -15,7 +18,7 @@ const KINDS: Task[] = ["intel", "vip", "relay", "captain", "defend"]
 
 const LAYERS = 4
 
-/** The map of one act: 4 layers of 2–3 missions, each leading to 1–2 of the next, then the fortress. */
+/** The map of one act: 4 layers of 2–3 missions in random biomes, each leading to 1–2 of the next, then the fortress. */
 export class Chart {
   constructor(
     readonly seed: number,
@@ -29,11 +32,11 @@ export class Chart {
     const layers: Node[][] = []
     for (let layer = 0; layer < LAYERS; layer++) {
       const kinds = r.shuffle(KINDS).slice(0, r.between(2, 3))
-      const row = kinds.map((kind, i): Node => ({ id: nodes.length + i, layer, kind, next: [] }))
+      const row = kinds.map((kind, i): Node => ({ id: nodes.length + i, layer, kind, biome: "forest", next: [] }))
       nodes.push(...row)
       layers.push(row)
     }
-    const fortress: Node = { id: nodes.length, layer: LAYERS, kind: "fortress", next: [] }
+    const fortress: Node = { id: nodes.length, layer: LAYERS, kind: "fortress", biome: "forest", next: [] }
     nodes.push(fortress)
     layers.push([fortress])
     for (let layer = 0; layer < LAYERS; layer++) {
@@ -51,6 +54,7 @@ export class Chart {
         here[j].next.push(m.id)
       }
     }
+    for (const n of nodes) n.biome = r.pick(BIOMES)
     return new Chart(seed, nodes)
   }
 

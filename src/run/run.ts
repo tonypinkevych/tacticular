@@ -122,6 +122,7 @@ export class Run {
       groups: 2 + Math.floor(t / 2),
       size: t >= 6 ? 3 : 2,
       alarm: Math.min(3, Math.floor(t / 2)),
+      biome: node.biome,
     }
     if (node.kind === "captain") return { ...base, goal: "warchief", pad: false }
     if (node.kind === "vip") return { ...base, goal: "vip", captive: this.captive ?? undefined }

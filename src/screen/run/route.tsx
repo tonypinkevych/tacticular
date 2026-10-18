@@ -78,7 +78,7 @@ export function Route(props: { expedition: Expedition }) {
         <Show when={hover()} fallback={<span class="muted">{t("run.pick")}</span>}>
           {(n) => (
             <>
-              <b>{t(`run.task.${n().kind}`)}</b> · {t(`run.effect.${n().kind}`)}
+              <b>{t(`run.task.${n().kind}`)}</b> · {t(`biome.${n().biome}`)} · {t(`run.effect.${n().kind}`)}
             </>
           )}
         </Show>

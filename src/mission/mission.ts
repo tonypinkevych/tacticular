@@ -1,6 +1,6 @@
 import type { Group } from "../aliens/stealth"
 import { Dice } from "../combat/dice"
-import type { Board } from "../map/board"
+import type { Biome, Board } from "../map/board"
 import { area, distance, key, type Point } from "../map/point"
 import { flood, map, SIZE, type Site } from "../map/terrain"
 import { CLASSES, type EnemyKind } from "../units/profiles"
@@ -176,6 +176,7 @@ export interface Conditions {
   /** Each alien group starts marked by a heard noise. */
   scouted?: boolean
   alarm?: number
+  biome?: Biome
 }
 
 /** A new mission from a seed: map, squad at one edge and alien groups toward the opposite edge. */
@@ -193,7 +194,7 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
     (conditions.pad ?? landing) ? { kind: "pad", at: { x: Math.floor(SIZE.width * 0.86), y: r.pick(rows) } } : null
   let board = map(
     r,
-    undefined,
+    conditions.biome,
     [site, pad].filter((s): s is Site => !!s),
   )
   const taken = new Set<number>()

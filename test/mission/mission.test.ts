@@ -205,6 +205,9 @@ describe("conditions", () => {
   test("set where the alarm starts", () => {
     expect(mission(1, { alarm: 3 }).alarm).toBe(3)
   })
+  test("set the biome", () => {
+    for (let s = 1; s <= 10; s++) expect(mission(s, { biome: "town" }).board.biome).toBe("town")
+  })
   test("a scouted mission starts with a heard noise on each alien group", () => {
     const g = mission(1, { scouted: true })
     for (const group of g.groups) {

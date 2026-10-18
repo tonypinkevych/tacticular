@@ -32,6 +32,10 @@ describe("chart", () => {
       }
     expect([...kinds].sort()).toEqual(["captain", "defend", "intel", "relay", "vip"])
   })
+  test("every mission has a biome, and every biome comes up", () => {
+    const biomes = new Set(charts.flatMap((c) => c.nodes.map((n) => n.biome)))
+    expect([...biomes].sort()).toEqual(["forest", "town", "village"])
+  })
   test("the same seed gives the same chart", () => {
     expect(Chart.of(7)).toEqual(Chart.of(7))
   })

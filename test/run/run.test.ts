@@ -57,6 +57,12 @@ describe("chart", () => {
     run.finish({ won: true, hp })
     expect(run.failed).toEqual([lost])
   })
+  test("a mission is in the biome of its node", () => {
+    const run = drafted()
+    const node = first(run)
+    run.go(node, ids(run))
+    expect(run.conditions().biome).toBe(run.chart.node(node).biome)
+  })
   test("needs 3 soldiers, or the whole roster when it has fewer", () => {
     const run = drafted()
     expect(() => run.go(first(run), ids(run).slice(0, 2))).toThrow()
