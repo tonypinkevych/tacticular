@@ -191,5 +191,3 @@ export const PROFILES: Record<Kind, Profile> = {
 }
 
 export const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric", "rogue", "mage", "engineer"]
-
-export const ENEMIES: EnemyKind[] = ["orc", "bomber", "ogre", "shieldwall", "assassin", "warchief", "whisperer"]

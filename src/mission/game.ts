@@ -64,22 +64,22 @@ export interface Setup {
  * and leaves this one as it is.
  */
 export class Game implements GameData {
-  seed: number
-  rng: number
-  round: number
-  phase: Phase
-  board: Board
-  units: Unit[]
-  zones: Zone[]
-  groups: Group[]
-  explored: boolean[]
-  noises: Noise[]
-  reactions: string[]
-  log: Entry[]
-  goal: Goal
-  pad: Point | null
-  drop: Drop | null
-  drops: number
+  seed!: number
+  rng!: number
+  round!: number
+  phase!: Phase
+  board!: Board
+  units!: Unit[]
+  zones!: Zone[]
+  groups!: Group[]
+  explored!: boolean[]
+  noises!: Noise[]
+  reactions!: string[]
+  log!: Entry[]
+  goal!: Goal
+  pad!: Point | null
+  drop!: Drop | null
+  drops!: number
   readonly dice = new Dice(this)
   readonly sight = new Sight(this)
   readonly cover = new Cover(this)
@@ -92,22 +92,7 @@ export class Game implements GameData {
   readonly abilities = new Abilities(this)
 
   constructor(data: GameData) {
-    this.seed = data.seed
-    this.rng = data.rng
-    this.round = data.round
-    this.phase = data.phase
-    this.board = data.board
-    this.units = data.units
-    this.zones = data.zones
-    this.groups = data.groups
-    this.explored = data.explored
-    this.noises = data.noises
-    this.reactions = data.reactions
-    this.log = data.log
-    this.goal = data.goal
-    this.pad = data.pad
-    this.drop = data.drop
-    this.drops = data.drops
+    Object.assign(this, data)
   }
 
   /** A new game in the squad phase, with the squad's first view of the board explored. */
