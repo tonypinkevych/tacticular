@@ -4,6 +4,7 @@ import type { Game } from "../rules/game"
 import { key, type Point, same } from "../rules/point"
 import type { Entry } from "../rules/types"
 import type { Unit } from "../rules/unit"
+import { type Cue, cues } from "./cues"
 
 export const SPEEDS = [1, 2, 4, 0] as const
 
@@ -96,6 +97,11 @@ function target(before: Game, frame: Frame): Point | null {
   return null
 }
 
+/** The sounds the player hears of a step: all of a step in sight, else only the alarms and the heard steps. */
+function heard(sounds: Cue[], visible: boolean): Cue[] {
+  return visible ? sounds : sounds.filter((c) => c === "activity" || c === "heard" || c === "spotted")
+}
+
 function actor(frame: Frame): string | null {
   return frame.action.type === "endTurn" ? null : frame.action.unit
 }
@@ -144,6 +150,8 @@ export class Playback {
   private clip: Clip | null = null
   private activity: number | null = null
   texts: Float[] = []
+  /** Sounds due now, for the board to play and clear. */
+  sounds: Cue[] = []
 
   constructor(
     public speed: Speed,
@@ -178,12 +186,14 @@ export class Playback {
     this.clip = null
     this.activity = null
     this.texts = []
+    this.sounds = []
     this.shownGame = game
   }
 
   private next(now: number, instant = false): void {
     if (this.clip) {
       this.texts.push(...floats(this.clip.before, this.clip.frame.game, now))
+      if (!instant) this.sounds.push(...heard(cues(this.clip.before, this.clip.frame).end, this.clip.visible))
       this.shownGame = this.clip.frame.game
       this.clip = null
     }
@@ -199,6 +209,7 @@ export class Playback {
     if (this.activity !== null && frame.game.phase !== "enemy" && !instant && this.speed > 0)
       length = Math.max(length, ACTIVITY_MS / this.speed - (now - this.activity))
     this.clip = { before, frame, start: now, length, path, visible }
+    if (!instant) this.sounds.push(...heard(cues(before, frame).start, visible))
   }
 
   /** The picture at a moment; advances through finished steps. */

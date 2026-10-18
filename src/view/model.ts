@@ -8,6 +8,7 @@ import type { Unit } from "../rules/unit"
 import type { Session } from "../save/session"
 import { type Armed, Kit, type Slot } from "./kit"
 import { Playback, SPEEDS, type Speed } from "./motion"
+import { Sound } from "./sound"
 
 const SPEED_KEY = "tacticular.speed"
 
@@ -26,6 +27,7 @@ export function spent(game: Game): boolean {
 /** All UI state as signals, and the commands that change it. */
 export class Model {
   readonly playback: Playback
+  readonly sound = new Sound()
   readonly game: Accessor<Game>
   readonly shown: Accessor<Game>
   readonly setShown: Setter<Game>
@@ -148,6 +150,7 @@ export class Model {
       })
     } catch (e) {
       if (!(e instanceof Illegal)) throw e
+      this.sound.play("denied")
       this.setMessage(t(`illegal.${e.message}`))
     }
   }
@@ -163,6 +166,7 @@ export class Model {
       else this.setMessage(slot.aim === "tile" ? t("ui.pickTile") : t("ui.pickTarget"))
       return
     }
+    this.sound.play("select")
     batch(() => {
       const target = slot.aim === "unit" ? kit.target(slot.id) : null
       this.setArmed({ slot: slot.id, target, at: null })
@@ -289,6 +293,11 @@ export class Model {
     }
     if (e.code === "KeyZ") {
       this.setZones(!this.zones())
+      return
+    }
+    if (e.code === "KeyM") {
+      this.sound.toggle()
+      this.setMessage(t(this.sound.muted ? "ui.soundOff" : "ui.soundOn"))
       return
     }
     const digit = e.code.startsWith("Digit") ? e.code.slice(5) : e.code.startsWith("Key") ? e.code.slice(3) : ""

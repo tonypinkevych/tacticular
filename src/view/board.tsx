@@ -189,6 +189,7 @@ export function Board(props: { model: Model }) {
       camera.pan(dx, dy)
     }
     const sc = scene(performance.now())
+    for (const cue of m.playback.sounds.splice(0)) m.sound.play(cue)
     const dpr = window.devicePixelRatio || 1
     const w = canvas.clientWidth
     const h = canvas.clientHeight

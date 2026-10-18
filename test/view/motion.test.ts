@@ -22,6 +22,21 @@ describe("enemy turn playback", () => {
     p.add(g, [walk("w", { x: 1, y: 1 })])
     expect(p.at(0).focus).toBeNull()
   })
+  test("a soldier's walk sounds steps; an unseen alien's walk sounds only when heard", () => {
+    const p = new Playback(1, g)
+    p.add(g, [walk("w", { x: 1, y: 1 })])
+    p.at(0)
+    expect(p.sounds.splice(0)).toEqual(["step"])
+    const unseen = setup(open(20, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 18, y: 1 })])
+    const heard = unseen.clone()
+    heard.units.find((u) => u.id === "e")!.pos = { x: 17, y: 1 }
+    heard.noises.push({ at: { x: 17, y: 1 }, radius: 0, round: 1 })
+    const q = new Playback(1, unseen)
+    q.add(unseen, [{ action: { type: "move", unit: "e", to: { x: 17, y: 1 } }, game: heard }])
+    q.at(0)
+    q.at(10)
+    expect(q.sounds).toEqual(["heard"])
+  })
   test("an alien turn with nothing in sight still shows for 1.5 s", () => {
     const turn = g.clone()
     turn.phase = "enemy"
