@@ -222,7 +222,7 @@ export class Model {
         return
       }
     }
-    if (here && here.side === "squad" && here.allegiance() === "squad") {
+    if (here?.alive() && here.allegiance() === "squad") {
       batch(() => {
         this.setSelected(here.id)
         this.setArmed(null)
