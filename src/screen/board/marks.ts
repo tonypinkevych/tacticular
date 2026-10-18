@@ -13,6 +13,9 @@ const BORDER = rgb("#94806e")
 
 const ZONE = 0.06
 
+/** The aliens that flank the last planned tile next turn, kept while the game and the tile stay the same. */
+let cache: { game: Game; at: number; ids: string[] } | null = null
+
 /** The information marks of a frame: ranges, paths, zones and rings under the units; cover, aim and moods over them. */
 export class Marks {
   private readonly dots = new Map<number, Rgb>()
@@ -55,6 +58,7 @@ export class Marks {
     }
     if (this.planning() && hover && selected) {
       this.shields(hover, height(game.tile(hover)))
+      this.later(hover)
       this.flanks(hover, selected)
       const radius = (e: Unit) => game.stealth.detection(e, selected.at(hover))
       if (selected.concealed && this.aliens().some((e) => radius(e) >= 0 && game.sight.sees(e, hover, radius(e)))) {
@@ -295,6 +299,28 @@ export class Marks {
     }
   }
 
+  /** Faint lines to the seen aliens that could flank a soldier on the tile next turn. */
+  private later(p: Point): void {
+    const { game } = this.scene
+    const k = key(p)
+    if (!cache || cache.game !== game || cache.at !== k) {
+      const mind = new Mind(game)
+      cache = {
+        game,
+        at: k,
+        ids: this.aliens()
+          .filter((e) => mind.flanks(e, p))
+          .map((e) => e.id),
+      }
+    }
+    const from = this.px.projection.ground(p)
+    for (const id of cache.ids) {
+      const e = game.unit(id)
+      const to = this.px.projection.ground(e.pos)
+      this.px.trace(from.x, from.y - 4, to.x, to.y - 4 - height(game.tile(e.pos)), ALIEN, 0.25, 4)
+    }
+  }
+
   /** The aim line, the hit chance, the target's cover and its health. */
   private aim(): void {
     const aim = this.scene.aim!
@@ -350,7 +376,7 @@ export class Marks {
     }
   }
 
-  /** Telegraphs: the Psion's mark and the Brute's charge as dotted lines, the bomb's blast area. */
+  /** Telegraphs: aim lines from the tile an alien will fire from, the Psion's mark, the Brute's charge, the bomb's area. */
   private intents(): void {
     const { game } = this.scene
     for (const e of this.aliens()) {
@@ -365,10 +391,18 @@ export class Marks {
       }
       const t = game.units.find((x) => x.id === intent.target)
       if (!t?.alive()) continue
-      const a = this.px.projection.ground(e.pos)
+      const from = intent.type === "shot" && intent.from ? intent.from : e.pos
+      if (!same(from, e.pos)) {
+        this.zone(new Set([key(from)]), ALIEN)
+        this.px.ring(from, ALIEN, 0.5 + 0.3 * Math.sin(this.t / 250))
+        const s = this.px.projection.ground(e.pos)
+        const f = this.px.projection.ground(from)
+        this.px.line(s.x, s.y, f.x, f.y, ALIEN, 0.45, true)
+      }
+      const a = this.px.projection.ground(from)
       const b = this.px.projection.ground(t.pos)
       const color = intent.type === "psi" ? DOMINATED : ALIEN
-      this.px.trace(a.x, a.y - 6 - height(game.tile(e.pos)), b.x, b.y - 6 - height(game.tile(t.pos)), color, 0.7, 6)
+      this.px.trace(a.x, a.y - 6 - height(game.tile(from)), b.x, b.y - 6 - height(game.tile(t.pos)), color, 0.7, 6)
     }
   }
 

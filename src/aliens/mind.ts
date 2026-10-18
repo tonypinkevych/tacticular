@@ -44,10 +44,19 @@ export class Mind {
 
   /** Tiles an alien can walk to next turn, with the tiles next to them when it fights in melee. */
   threat(u: Unit): Set<number> {
-    const budget = u.wounded() ? u.mobility : u.mobility * 2
-    const walk = [key(u.pos), ...this.game.reach(u, budget).cost.keys()]
+    const walk = [key(u.pos), ...this.game.reach(u, stride(u)).cost.keys()]
     if (!u.arms().melee) return new Set(walk)
     return new Set(walk.flatMap((k) => [k, ...AROUND.map((d) => key(plus(pointOf(k), d)))]))
+  }
+
+  /** True when the alien can walk next turn, within a budget, to a tile from which it flanks a soldier at p. */
+  flanks(u: Unit, p: Point, budget = stride(u)): boolean {
+    const game = this.game
+    const tiles = [u.pos, ...[...game.reach(u, budget).cost.keys()].map(pointOf)]
+    if (u.arms().melee) return tiles.some((q) => distance(q, p) <= 1)
+    return tiles.some(
+      (q) => !same(q, p) && distance(q, p) <= u.vision && game.cover.against(p, q) === 0 && game.sight.sees(u.at(q), p),
+    )
   }
 
   /**
@@ -390,6 +399,11 @@ export class Mind {
     if (game.cover.covered(u.pos)) return { type: "hunker", unit: u.id }
     return { type: "overwatch", unit: u.id }
   }
+}
+
+/** How far an alien can walk next turn: two moves, one when wounded. */
+function stride(u: Unit): number {
+  return u.wounded() ? u.mobility : u.mobility * 2
 }
 
 function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark" | "rally" | "ward"): boolean {

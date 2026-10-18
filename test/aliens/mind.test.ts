@@ -309,6 +309,17 @@ describe("patrols", () => {
   })
 })
 
+describe("next-turn flank", () => {
+  test("an alien flanks a tile next turn when it can walk to a tile that sees it with no cover between", () => {
+    const rows = open(14, 7)
+    rows[3] = "..:..........."
+    const g = setup(rows, [squad("w", "warden", { x: 0, y: 0 }), enemy("e", "orc", { x: 6, y: 3 })])
+    const mind = new Mind(g)
+    expect(mind.flanks(find(g, "e"), { x: 1, y: 3 })).toBe(true)
+    expect(mind.flanks(find(g, "e"), { x: 1, y: 3 }, 0)).toBe(false)
+  })
+})
+
 describe("threat", () => {
   test("covers the tiles an alien can walk to next turn, and for a melee alien the tiles next to them", () => {
     const orc = enemy("o", "orc", { x: 1, y: 1 })
