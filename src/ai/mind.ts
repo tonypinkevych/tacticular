@@ -204,9 +204,24 @@ export class Mind {
     return this.toward(u, goal)
   }
 
+  /** The soldier an alien aims at for its next phase: the one it would attack now, or null. */
+  aim(u: Unit): Action | null {
+    if (!u.alive() || u.allegiance() !== "enemy" || (u.intent && u.intent.type !== "shot")) return null
+    const best = this.bestAttack(u, this.known(u))?.action
+    return best?.type === "attack" ? { type: "aim", unit: u.id, target: best.target } : null
+  }
+
   /** Special moves of the enemy types: telegraphs, then the strike they promised. */
   private special(u: Unit, targets: Unit[]): Choice | null {
     const game = this.game
+    if (u.intent?.type === "shot") {
+      const t = game.units.find((x) => x.id === (u.intent as { target: string }).target)
+      if (t?.alive() && game.orders.canTarget(u, t) && canReach(u, t, WEAPONS[u.weapon])) {
+        if (WEAPONS[u.weapon].ammo !== null && u.ammo <= 0)
+          return { action: { type: "reload", unit: u.id }, value: 100 }
+        return { action: { type: "attack", unit: u.id, target: t.id }, value: 100 }
+      }
+    }
     if (u.intent?.type === "charge") {
       const t = game.units.find((x) => x.id === (u.intent as { target: string }).target)
       if (t?.alive() && ready(u, "charge") && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= u.mobility + 1) {

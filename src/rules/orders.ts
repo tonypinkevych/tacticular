@@ -27,6 +27,10 @@ export class Orders {
     const u = game.unit(action.unit)
     check(u.alive(), "dead")
     check(u.allegiance() === game.phase || game.reactions.includes(u.id), "not your turn")
+    if (action.type === "aim") {
+      this.aim(u, game.unit(action.target))
+      return
+    }
     check(u.ap > 0, "no AP")
     switch (action.type) {
       case "move":
@@ -163,6 +167,13 @@ export class Orders {
     }
   }
 
+  /** An alien marks the soldier it will shoot in its next phase, for no AP. */
+  private aim(u: Unit, t: Unit): void {
+    check(u.allegiance() === "enemy" && (!u.intent || u.intent.type === "shot"), "aim")
+    check(this.canTarget(u, t), "target")
+    u.intent = { type: "shot", target: t.id }
+  }
+
   private strike(u: Unit, t: Unit, weaponId: WeaponId): void {
     const p = PROFILES[u.kind]
     check((weaponId === u.weapon || weaponId === p.sidearm) && weaponId !== "none", "weapon")
@@ -172,6 +183,7 @@ export class Orders {
     if (w.twoAp) check(u.ap === 2 && !u.moved, "needs 2 AP")
     if (w.ammo !== null && weaponId === u.weapon) check(u.ammo > 0, "ammo")
     if (weaponId === "axes") check(u.axes > 0, "axes")
+    if (u.intent?.type === "shot") u.intent = null
     this.game.combat.attack(u, t, weaponId)
     this.game.stealth.attacked(u, t, weaponId)
     u.ap = 0

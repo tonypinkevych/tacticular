@@ -85,7 +85,11 @@ export type Stance = "none" | "overwatch" | "hunker"
 
 export type Alert = "unaware" | "investigating" | "engaged"
 
-export type Intent = { type: "charge"; target: string } | { type: "bomb"; at: Point } | { type: "psi"; target: string }
+export type Intent =
+  | { type: "charge"; target: string }
+  | { type: "bomb"; at: Point }
+  | { type: "psi"; target: string }
+  | { type: "shot"; target: string }
 
 export interface Zone {
   kind: "smoke" | "fire" | "mine"
@@ -134,4 +138,5 @@ export type Action =
   | { type: "door"; unit: string; at: Point }
   | { type: "overwatch"; unit: string }
   | { type: "hunker"; unit: string }
+  | { type: "aim"; unit: string; target: string }
   | { type: "endTurn" }

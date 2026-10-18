@@ -195,3 +195,28 @@ describe("wounds", () => {
     expect(() => g.apply({ type: "move", unit: "v", to: { x: v.mobility + 1, y: 0 } })).toThrow("unreachable")
   })
 })
+
+describe("aim", () => {
+  test("an alien aims at a soldier it sees, for no AP", () => {
+    const g = setup(open(10, 2), [squad("w", "warden", { x: 0, y: 0 }), enemy("e", "orc", { x: 5, y: 0 })])
+    g.phase = "enemy"
+    find(g, "e").ap = 0
+    const a = g.apply({ type: "aim", unit: "e", target: "w" })
+    expect(find(a, "e").intent).toEqual({ type: "shot", target: "w" })
+  })
+  test("an alien cannot aim at a soldier it does not see", () => {
+    const g = setup(
+      ["...#......", "...#......"],
+      [squad("w", "warden", { x: 0, y: 0 }), enemy("e", "orc", { x: 6, y: 0 })],
+    )
+    g.phase = "enemy"
+    expect(() => g.apply({ type: "aim", unit: "e", target: "w" })).toThrow(Illegal)
+  })
+  test("an attack spends the aim", () => {
+    const g = setup(open(10, 2), [squad("w", "warden", { x: 0, y: 0 }), enemy("e", "orc", { x: 5, y: 0 })])
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    const a = g.apply({ type: "aim", unit: "e", target: "w" }).apply({ type: "attack", unit: "e", target: "w" })
+    expect(find(a, "e").intent).toBeNull()
+  })
+})

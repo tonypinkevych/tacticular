@@ -88,6 +88,10 @@ export class Match {
         }
       }
     }
+    for (const { id } of order(last(out))) {
+      const aim = last(out).phase === "enemy" ? new Mind(last(out)).aim(last(out).unit(id)) : null
+      if (aim) out.push({ action: aim, game: last(out).apply(aim) })
+    }
     if (last(out).phase === "enemy")
       out.push({ action: { type: "endTurn" }, game: last(out).apply({ type: "endTurn" }) })
   }

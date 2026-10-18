@@ -9,6 +9,29 @@ import { enemy, find, open, setup, squad } from "../fixture"
 const enemyTurn = (g: Game) => g.apply({ type: "endTurn" })
 
 describe("enemy AI", () => {
+  test("an alien shoots the soldier it aimed at, not the easier target", () => {
+    const rows = open(12, 5)
+    rows[1] = "....:......."
+    const g = enemyTurn(
+      setup(rows, [
+        squad("a", "warden", { x: 4, y: 0 }),
+        squad("b", "mage", { x: 5, y: 4 }),
+        enemy("e", "orc", { x: 8, y: 2 }),
+      ]),
+    )
+    for (const id of ["a", "b"]) find(g, id).concealed = false
+    find(g, "e").intent = { type: "shot", target: "a" }
+    expect(new Mind(g).decide(find(g, "e"))).toMatchObject({ type: "attack", target: "a" })
+  })
+  test("an alien aims at the soldier it would attack", () => {
+    const g = enemyTurn(setup(open(10, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 5, y: 1 })]))
+    find(g, "w").concealed = false
+    expect(new Mind(g).aim(find(g, "e"))).toEqual({ type: "aim", unit: "e", target: "w" })
+  })
+  test("an alien that sees no soldier aims at nobody", () => {
+    const g = enemyTurn(setup(open(30, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 29, y: 1 })]))
+    expect(new Mind(g).aim(find(g, "e"))).toBeNull()
+  })
   test("an exposed enemy moves into cover against a soldier it sees", () => {
     const rows = open(14, 7)
     rows[2] = "..........:..."
