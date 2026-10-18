@@ -151,3 +151,13 @@ describe("fog", () => {
     expect(g.explored[1 * 30 + 20]).toBe(false)
   })
 })
+
+describe("captive", () => {
+  test("aliens do not notice a captive soldier next to them", () => {
+    const c = squad("c", "mage", { x: 3, y: 1 })
+    c.give({ id: "captive", rounds: 99 })
+    const g = setup(open(8, 3), [c, enemy("e", "orc", { x: 4, y: 1 }, "unaware")])
+    g.stealth.scan()
+    expect(find(g, "e").alert).toBe("unaware")
+  })
+})

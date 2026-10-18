@@ -78,3 +78,16 @@ describe("a barrel", () => {
     expect(kit.action(armed)).toEqual({ type: "shoot", unit: "w", at: { x: 5, y: 1 } })
   })
 })
+
+describe("objective", () => {
+  test("the Use slot shows next to an unused objective and gives the Use action", () => {
+    const s = squad("s", "rogue", { x: 1, y: 1 })
+    const g = setup(open(8, 3), [s, enemy("e", "orc", { x: 7, y: 1 }, "unaware")])
+    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: null }
+    expect(new Kit(g, s).slots().some((x) => x.id === "use")).toBe(false)
+    g.goal = { kind: "relay", at: { x: 2, y: 1 }, planted: null }
+    const use = new Kit(g, s).slotFor("8")
+    expect(use?.id).toBe("use")
+    expect(new Kit(g, s).action({ slot: "use", target: null, at: null })).toEqual({ type: "use", unit: "s" })
+  })
+})

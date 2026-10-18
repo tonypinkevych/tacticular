@@ -122,6 +122,40 @@ describe("maps for each mission", () => {
   })
 })
 
+describe("objective missions", () => {
+  const goals = (goal: "intel" | "vip" | "relay") => Array.from({ length: 30 }, (_, i) => mission(i + 1, { goal }))
+  test("Intel and Relay put the objective inside a ring of low cover, and Intel has an evac zone", () => {
+    for (const g of [...goals("intel"), ...goals("relay")]) {
+      const goal = g.goal
+      if (goal.kind !== "intel" && goal.kind !== "relay") throw new Error(goal.kind)
+      expect(g.tile(goal.at), `seed ${g.seed}`).toBe("floor")
+      const ring = [-2, -1, 0, 1, 2].flatMap((d) => [
+        { x: goal.at.x + d, y: goal.at.y - 2 },
+        { x: goal.at.x + d, y: goal.at.y + 2 },
+      ])
+      expect(ring.filter((p) => g.tile(p) === "low").length, `seed ${g.seed}`).toBeGreaterThan(4)
+      if (goal.kind === "intel") expect(goal.tiles.length).toBeGreaterThan(0)
+    }
+  })
+  test("VIP puts a captive soldier of a class not in the squad inside a walled yard", () => {
+    for (const g of goals("vip")) {
+      const goal = g.goal
+      if (goal.kind !== "vip") throw new Error(goal.kind)
+      const c = g.unit(goal.captive)
+      expect(c.has("captive")).toBe(true)
+      expect(c.side).toBe("squad")
+      const others = g.units.filter((u) => u.side === "squad" && u !== c).map((u) => u.kind)
+      expect(others).not.toContain(c.kind)
+      expect(goal.tiles.length).toBeGreaterThan(0)
+    }
+  })
+  test("the run can name the captive", () => {
+    const recruit = { id: "v1", kind: "engineer" as const, name: "Kane", spread: { hp: 0, aim: 0, will: 0 }, hp: 8 }
+    const g = mission(3, { goal: "vip", captive: recruit })
+    expect(g.unit("v1").name).toBe("Kane")
+  })
+})
+
 describe("biomes", () => {
   const seeds = Array.from({ length: 60 }, (_, i) => i + 1)
   const count = (tiles: string[], t: string) => tiles.filter((x) => x === t).length

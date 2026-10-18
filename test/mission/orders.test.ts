@@ -255,3 +255,61 @@ describe("shooting a barrel", () => {
     expect(() => g.apply({ type: "shoot", unit: "g", at: { x: 3, y: 0 } })).toThrow(Illegal)
   })
 })
+
+describe("objectives", () => {
+  const far = () => enemy("e", "orc", { x: 11, y: 2 }, "unaware")
+  test("Use next to the terminal takes the intel for 1 AP; then the evac zone wins", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), far()])
+    g.goal = { kind: "intel", at: { x: 2, y: 1 }, taken: false, tiles: [{ x: 4, y: 1 }] }
+    const a = g.apply({ type: "use", unit: "s" })
+    expect(a.goal).toMatchObject({ taken: true })
+    expect(find(a, "s").ap).toBe(1)
+    expect(a.apply({ type: "move", unit: "s", to: { x: 4, y: 1 } }).phase).toBe("won")
+  })
+  test("the evac zone does not win before the intel is taken", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), far()])
+    g.goal = { kind: "intel", at: { x: 8, y: 1 }, taken: false, tiles: [{ x: 2, y: 1 }] }
+    expect(g.apply({ type: "move", unit: "s", to: { x: 2, y: 1 } }).phase).toBe("squad")
+  })
+  test("Use away from the objective is refused", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), far()])
+    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: null }
+    expect(() => g.apply({ type: "use", unit: "s" })).toThrow(Illegal)
+  })
+  test("Use next to the relay plants a charge", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), far()])
+    g.goal = { kind: "relay", at: { x: 2, y: 2 }, planted: null }
+    expect(g.apply({ type: "use", unit: "s" }).goal).toEqual({ kind: "relay", at: { x: 2, y: 2 }, planted: 1 })
+  })
+  const captive = () => {
+    const c = squad("c", "mage", { x: 5, y: 1 })
+    c.give({ id: "captive", rounds: 99 })
+    return c
+  }
+  test("a soldier who steps next to the captive frees it", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), captive(), far()])
+    g.goal = { kind: "vip", captive: "c", tiles: [{ x: 6, y: 0 }] }
+    const a = g.apply({ type: "move", unit: "s", to: { x: 4, y: 1 } })
+    expect(find(a, "c").has("captive")).toBe(false)
+    expect(a.log.some((x) => x.key === "log.freed")).toBe(true)
+  })
+  test("the mission is lost when every soldier falls while the captive is held", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), captive(), far()])
+    g.goal = { kind: "vip", captive: "c", tiles: [{ x: 6, y: 0 }] }
+    find(g, "s").hp = 0
+    g.orders.settle()
+    expect(g.phase).toBe("lost")
+  })
+  test("an alien cannot target a captive", () => {
+    const g = setup(open(12, 3), [captive(), enemy("e", "orc", { x: 7, y: 1 })])
+    expect(g.orders.canTarget(find(g, "e"), find(g, "c"))).toBe(false)
+  })
+  test("the freed captive in the evac zone wins; its death loses", () => {
+    const g = setup(open(12, 3), [squad("s", "rogue", { x: 1, y: 1 }), squad("c", "mage", { x: 5, y: 1 }), far()])
+    g.goal = { kind: "vip", captive: "c", tiles: [{ x: 6, y: 1 }] }
+    expect(g.apply({ type: "move", unit: "c", to: { x: 6, y: 1 } }).phase).toBe("won")
+    find(g, "c").hp = 0
+    g.orders.settle()
+    expect(g.phase).toBe("lost")
+  })
+})

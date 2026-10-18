@@ -232,7 +232,7 @@ export class Combat {
     return true
   }
 
-  /** Damages cover on a tile; a barrel there blows up: 3 damage to everyone in 3×3, and the blast smashes the tiles. */
+  /** Damages cover on a tile; a barrel there blows up. */
   smash(p: Point): void {
     const game = this.game
     if (game.tile(p) !== "barrel") {
@@ -241,6 +241,12 @@ export class Combat {
     }
     game.board.set(p, "floor")
     game.log.push({ key: "log.barrel", params: {} })
+    this.explode(p)
+  }
+
+  /** A blast: 3 damage to everyone in 3×3; it sets grass and trees on fire, smashes the tiles around and is heard far. */
+  explode(p: Point): void {
+    const game = this.game
     for (const q of area(p, 1)) {
       const hit = game.unitAt(q)
       if (hit?.alive()) {

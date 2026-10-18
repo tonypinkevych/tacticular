@@ -27,12 +27,15 @@ export interface Entry {
 
 export type Phase = "squad" | "enemy" | "won" | "lost"
 
-/** What wins the mission besides killing every alien: reach the evac zone, or hold the beacon. */
+/** What wins the mission besides killing every alien. */
 export type Goal =
   | { kind: "kill" }
   | { kind: "warchief" }
   | { kind: "evac"; tiles: Point[] }
   | { kind: "defend"; at: Point; rounds: number }
+  | { kind: "intel"; at: Point; taken: boolean; tiles: Point[] }
+  | { kind: "vip"; captive: string; tiles: Point[] }
+  | { kind: "relay"; at: Point; planted: number | null }
 
 /** The saved fields of a game. */
 export interface GameData {

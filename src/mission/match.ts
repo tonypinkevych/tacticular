@@ -95,18 +95,23 @@ export class Match {
       out.push({ action: { type: "endTurn" }, game: last(out).apply({ type: "endTurn" }) })
   }
 
-  /** Squad policy with no enemy in sight: walk to the beacon or to a free evac tile, else to the nearest fog. */
+  /** Squad policy with no enemy in sight: use or reach the objective, the captive or a free evac tile, else the nearest fog. */
   private explore(u: Unit): Action | null {
     const game = this.game
+    if (game.orders.usable(u)) return { type: "use", unit: u.id }
     if (u.moved && u.ap < 2) return null
     const goal = game.goal
     const free = (p: Point) => same(p, u.pos) || !game.units.some((x) => x.alive() && same(x.pos, p))
+    const captive = goal.kind === "vip" ? game.unit(goal.captive) : null
+    const pending = (goal.kind === "intel" && !goal.taken) || (goal.kind === "relay" && goal.planted === null)
     const spot =
-      goal.kind === "defend"
+      "at" in goal && (goal.kind === "defend" || pending)
         ? goal.at
-        : goal.kind === "evac"
-          ? goal.tiles.filter(free).sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
-          : null
+        : captive?.has("captive")
+          ? captive.pos
+          : "tiles" in goal
+            ? goal.tiles.filter(free).sort((a, b) => distance(u.pos, a) - distance(u.pos, b))[0]
+            : null
     if (spot) return same(spot, u.pos) ? null : new Mind(game).toward(u, spot)
     const w = game.board.width
     const open = game.reach(u, 400).cost

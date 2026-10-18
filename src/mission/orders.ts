@@ -14,7 +14,10 @@ export type Action =
   | { type: "hunker"; unit: string }
   | { type: "aim"; unit: string; target: string }
   | { type: "shoot"; unit: string; at: Point }
+  | { type: "use"; unit: string }
   | { type: "endTurn" }
+
+const inside = (p: Point, tiles: Point[]): boolean => tiles.some((t) => same(t, p))
 
 /** An action the rules refuse. */
 export class Illegal extends Error {}
@@ -68,10 +71,14 @@ export class Orders {
       case "shoot":
         this.shoot(u, action.at)
         break
+      case "use":
+        this.use(u)
+        break
     }
     game.stealth.scan()
     game.stealth.observe()
     if (action.type === "move") game.stealth.hear(u)
+    this.release()
     this.settle()
   }
 
@@ -131,7 +138,7 @@ export class Orders {
 
   canTarget(u: Unit, t: Unit): boolean {
     const { sight, units } = this.game
-    if (!t.alive() || !(u.foe(t) || (t.has("dominated") && t.side !== u.allegiance()))) return false
+    if (!t.alive() || t.has("captive") || !(u.foe(t) || (t.has("dominated") && t.side !== u.allegiance()))) return false
     if (t.kind === "assassin" && t.concealed && distance(u.pos, t.pos) > 3) return false
     if (sight.sees(u, t.pos)) return true
     return u.kind === "ranger" && units.some((a) => a.alive() && a !== u && !a.foe(u) && sight.sees(a, t.pos))
@@ -140,13 +147,54 @@ export class Orders {
   /** Checks the end of the mission after each action: the Warchief's death wins a Warchief mission. */
   settle(): void {
     const game = this.game
-    const standing = game.units.filter((u) => u.alive() && u.soldier())
+    const standing = game.units.filter((u) => u.alive() && u.soldier() && !u.has("captive"))
     const goal = game.goal
     const chief = goal.kind === "warchief" && !game.units.some((u) => u.alive() && u.kind === "warchief")
     if (chief) game.log.push({ key: "log.retreat", params: {} })
     if (chief || !game.units.some((u) => u.alive() && u.side === "enemy")) game.phase = "won"
     else if (standing.length === 0) game.phase = "lost"
-    else if (goal.kind === "evac" && standing.every((u) => goal.tiles.some((p) => same(p, u.pos)))) game.phase = "won"
+    else if (goal.kind === "vip" && !game.unit(goal.captive).alive()) game.phase = "lost"
+    else if (
+      goal.kind === "vip" &&
+      inside(game.unit(goal.captive).pos, goal.tiles) &&
+      !game.unit(goal.captive).has("captive")
+    )
+      game.phase = "won"
+    else if (
+      (goal.kind === "evac" || (goal.kind === "intel" && goal.taken)) &&
+      standing.every((u) => inside(u.pos, goal.tiles))
+    )
+      game.phase = "won"
+  }
+
+  /** A soldier next to a captive sets it free. */
+  private release(): void {
+    const game = this.game
+    for (const c of game.units) {
+      if (!c.alive() || !c.has("captive")) continue
+      if (!game.units.some((s) => s !== c && s.alive() && s.soldier() && !s.has("captive") && adjacent(s.pos, c.pos)))
+        continue
+      c.lift("captive")
+      game.log.push({ key: "log.freed", params: { unit: c.id } })
+    }
+  }
+
+  /** True when an unused terminal or relay stands on or next to the unit. */
+  usable(u: Unit): boolean {
+    const goal = this.game.goal
+    const open = (goal.kind === "intel" && !goal.taken) || (goal.kind === "relay" && goal.planted === null)
+    return open && distance(u.pos, goal.at) <= 1
+  }
+
+  /** Uses the objective on or next to the unit: takes the intel, or plants a charge on the relay. */
+  private use(u: Unit): void {
+    const game = this.game
+    const goal = game.goal
+    check(this.usable(u) && (goal.kind === "intel" || goal.kind === "relay"), "use")
+    if (goal.kind === "intel") goal.taken = true
+    if (goal.kind === "relay") goal.planted = game.round
+    game.log.push({ key: goal.kind === "intel" ? "log.intel" : "log.charge", params: { unit: u.id } })
+    u.ap -= 1
   }
 
   private move(u: Unit, to: Point): void {

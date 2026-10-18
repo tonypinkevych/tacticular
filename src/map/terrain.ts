@@ -29,9 +29,9 @@ interface Template {
 
 export const BIOMES: Biome[] = ["forest", "village", "town"]
 
-/** A place a mission asks the map for: a walled yard for the alien leader, a hill for the beacon, a landing pad. */
+/** A place a mission asks the map for: a walled yard, a hill for the beacon, a post for an objective, a landing pad. */
 export interface Site {
-  kind: "yard" | "hill" | "pad"
+  kind: "yard" | "hill" | "post" | "pad"
   at: Point
 }
 
@@ -196,6 +196,26 @@ class Terrain {
         const p = { x: at.x + dx, y: at.y + dy }
         const ring = Math.max(Math.abs(dx), Math.abs(dy)) === 2
         d.set(p, !ring ? "ridge" : open.some((o) => same(o, p)) ? "floor" : "low")
+      }
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) this.kept.add(key({ x: at.x + dx, y: at.y + dy }))
+  }
+
+  /** Open ground of 3×3 around a point, ringed by low cover with 2 openings. */
+  post(at: Point): void {
+    const { dice: r, board: d } = this
+    const open = r
+      .shuffle([
+        { x: at.x - 2, y: at.y },
+        { x: at.x + 2, y: at.y },
+        { x: at.x, y: at.y - 2 },
+        { x: at.x, y: at.y + 2 },
+      ])
+      .slice(0, 2)
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const p = { x: at.x + dx, y: at.y + dy }
+        const ring = Math.max(Math.abs(dx), Math.abs(dy)) === 2
+        d.set(p, ring && !open.some((o) => same(o, p)) ? "low" : "floor")
       }
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) this.kept.add(key({ x: at.x + dx, y: at.y + dy }))
   }

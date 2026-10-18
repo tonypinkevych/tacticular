@@ -6,7 +6,16 @@ import { type ClassId, type Kind, PROFILES } from "./profiles"
 
 export type Side = "squad" | "enemy"
 
-export type StatusId = "shaken" | "burning" | "dominated" | "ward" | "exposed" | "guarded" | "killzone" | "deployed"
+export type StatusId =
+  | "shaken"
+  | "burning"
+  | "dominated"
+  | "ward"
+  | "exposed"
+  | "guarded"
+  | "killzone"
+  | "deployed"
+  | "captive"
 
 export interface Status {
   id: StatusId

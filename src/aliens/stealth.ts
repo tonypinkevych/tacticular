@@ -70,7 +70,7 @@ export class Stealth {
     const game = this.game
     for (const e of this.hostiles()) {
       for (const s of game.units) {
-        if (!s.alive() || !e.foe(s) || s.side !== "squad" || !e.alive()) continue
+        if (!s.alive() || !e.foe(s) || s.side !== "squad" || !e.alive() || s.has("captive")) continue
         const radius = s.concealed ? Math.min(this.detection(e, s), e.vision) : e.vision
         if (radius < 0) continue
         if (!game.sight.sees(e, s.pos, radius)) continue

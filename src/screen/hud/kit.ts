@@ -9,11 +9,11 @@ import type { Action } from "../../mission/orders"
 import { PROFILES } from "../../units/profiles"
 import { ULT, type Unit } from "../../units/unit"
 
-/** Keys of the bar: the weapon on 1, skills on 2 3 4, the ultimate on 5, stances on 6 7 8 with letter aliases. */
+/** Keys of the bar: the weapon on 1, skills on 2 3, the ultimate on 4, then Reload, Overwatch, Hunker and Use with letter aliases. */
 const SKILL_KEYS = "23"
 const ULT_KEY = "4"
 const ROUSE_KEY = "9"
-const STANCE_KEYS = { reload: ["5", "R"], overwatch: ["6", "Y"], hunker: ["7", "H"] } as const
+const STANCE_KEYS = { reload: ["5", "R"], overwatch: ["6", "Y"], hunker: ["7", "H"], use: ["8", "U"] } as const
 
 /** What an action needs before it can be confirmed. */
 export type Aim = "unit" | "tile" | "none"
@@ -121,8 +121,9 @@ export class Kit {
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
       skill("rouse", "skill", ROUSE_KEY, "", false)
     if (p.ultimate) skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
-    for (const id of ["reload", "overwatch", "hunker"] as const) {
+    for (const id of ["reload", "overwatch", "hunker", "use"] as const) {
       if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
+      if (id === "use" && !game.orders.usable(u)) continue
       const s = { id, label: t(`action.${id}`), info: t(`info.${id}`), badge: "", disabled: none, aim: "none" as const }
       out.push({ ...s, group: "stance", key: STANCE_KEYS[id][0], alias: STANCE_KEYS[id][1] })
     }
@@ -251,7 +252,7 @@ export class Kit {
       if (TILE_ABILITIES.includes(a)) return armed.at ? { type: "ability", unit: u.id, ability: a, at: armed.at } : null
       return { type: "ability", unit: u.id, ability: a }
     }
-    return { type: kind as "overwatch" | "hunker" | "reload", unit: u.id }
+    return { type: kind as "overwatch" | "hunker" | "reload" | "use", unit: u.id }
   }
 
   /** The armed action with its tile filled in from the cursor: tile actions follow it, Charge lands where it points. */

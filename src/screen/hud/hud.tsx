@@ -9,10 +9,13 @@ import { Dock } from "./dock"
 import { Log } from "./log"
 import { Target } from "./odds"
 
-/** The mission goal in a few words, with the rounds left to hold a beacon. */
+/** The mission goal in a few words, with the rounds left to hold a beacon and the step an objective is at. */
 function goal(g: Game): string {
-  const k = g.goal.kind
-  return k === "defend" ? t("ui.goal.defend", { left: g.goal.rounds - g.round + 1 }) : t(`ui.goal.${k}`)
+  const goal = g.goal
+  if (goal.kind === "defend") return t("ui.goal.defend", { left: goal.rounds - g.round + 1 })
+  if (goal.kind === "intel" && goal.taken) return t("ui.goal.intelTaken")
+  if (goal.kind === "relay" && goal.planted !== null) return t("ui.goal.relayPlanted")
+  return t(`ui.goal.${goal.kind}`)
 }
 
 /** Round and phase, the log toggle and a menu with everything that is not an action. */

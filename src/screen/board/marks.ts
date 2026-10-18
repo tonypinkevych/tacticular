@@ -124,17 +124,22 @@ export class Marks {
     if (near.size > 0) this.px.outline(seen(near), MOVE, 0.45, 5)
   }
 
-  /** The evac zone, the beacon to hold and the next alien landing. */
+  /** The evac zone, the beacon, the terminal or relay, the captive and the next alien landing. */
   private goal(): void {
     const { game } = this.scene
     const g = game.goal
     const pulse = 0.55 + 0.3 * Math.sin(this.t / 400)
-    if (g.kind === "evac") this.px.outline(new Set(g.tiles.map(key)), EVAC, pulse, true)
-    if (g.kind === "defend") {
-      this.px.ring(g.at, BEACON, pulse)
-      const a = this.px.projection.ground(g.at)
-      this.px.dot(a.x - 1, a.y - 1, BEACON, 0.9, 3, 3)
+    const post = (at: Point, color: Rgb) => {
+      this.px.ring(at, color, pulse)
+      const a = this.px.projection.ground(at)
+      this.px.dot(a.x - 1, a.y - 1, color, 0.9, 3, 3)
     }
+    if ("tiles" in g) this.px.outline(new Set(g.tiles.map(key)), EVAC, pulse, true)
+    if (g.kind === "defend") post(g.at, BEACON)
+    if (g.kind === "intel" && !g.taken) post(g.at, AMBER)
+    if (g.kind === "relay") post(g.at, g.planted === null ? AMBER : ALIEN)
+    const captive = g.kind === "vip" ? game.units.find((u) => u.id === g.captive) : undefined
+    if (captive?.has("captive")) this.px.ring(captive.pos, EVAC, pulse)
     const d = game.reinforcements.coming()
     if (d) {
       const area = new Set<number>()

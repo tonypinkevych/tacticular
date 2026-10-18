@@ -29,7 +29,7 @@ export class Turn {
         u.ap = 0
         continue
       }
-      u.ap = 2
+      u.ap = u.has("captive") ? 0 : 2
       u.moved = false
       u.waited = u.stance === "overwatch" || u.stance === "hunker"
       u.stance = "none"
@@ -52,6 +52,17 @@ export class Turn {
       game.log.push({ key: "log.beacon", params: {} })
       game.phase = "lost"
     } else if (game.round >= goal.rounds) game.phase = "won"
+  }
+
+  /** Relay: a charge blows up at the end of the round after it was planted and wins the mission. */
+  private detonate(): void {
+    const game = this.game
+    const goal = game.goal
+    if (goal.kind !== "relay" || goal.planted === null || goal.planted >= game.round) return
+    game.log.push({ key: "log.relay", params: {} })
+    game.combat.explode(goal.at)
+    game.orders.settle()
+    if (game.phase !== "lost") game.phase = "won"
   }
 
   /** After round 3, an unaware group at a route point gets its next point nearer to where the squad landed. */
@@ -112,6 +123,7 @@ export class Turn {
     game.zones = game.zones.map((z) => ({ ...z, rounds: z.rounds - 1 })).filter((z) => z.rounds > 0)
     game.reinforcements.land()
     this.hold()
+    this.detonate()
     game.round += 1
     game.log.push({ key: "log.round", params: { round: game.round } })
   }

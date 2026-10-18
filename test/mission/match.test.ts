@@ -21,3 +21,13 @@ describe("simulated squad with no foe in sight", () => {
     expect(find(new Match(hidden()).simulate(1), "w").pos.x).toBeGreaterThan(10)
   })
 })
+
+describe("simulated squad on an objective", () => {
+  test("walks to the terminal, uses it, then walks to the evac zone", () => {
+    const g = setup(open(40, 3), [squad("w", "warden", { x: 10, y: 1 }), enemy("e", "orc", { x: 39, y: 1 }, "unaware")])
+    g.goal = { kind: "intel", at: { x: 14, y: 1 }, taken: false, tiles: [{ x: 0, y: 1 }] }
+    const after = new Match(g).simulate(2)
+    expect(after.goal).toMatchObject({ taken: true })
+    expect(find(after, "w").pos.x).toBeLessThan(14)
+  })
+})
