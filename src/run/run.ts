@@ -24,9 +24,11 @@ export type Choice =
   | { type: "finish"; result: Result }
   | { type: "take"; pick: number }
 
-const SQUAD = 3
+const DRAFT = 3
 
-const ROSTER = 6
+const SQUAD = 4
+
+const ROSTER = 5
 
 /**
  * One act of a roguelike run: a drafted squad crosses a chart of missions to the fortress. HP, recruits and
@@ -70,7 +72,7 @@ export class Run {
 
   /** Takes 3 of the candidates as the roster. */
   draft(picks: string[]): void {
-    must(this.stage === "draft" && new Set(picks).size === SQUAD, "draft")
+    must(this.stage === "draft" && new Set(picks).size === DRAFT, "draft")
     this.roster = picks.map((id) => {
       const c = this.candidates.find((x) => x.id === id)
       must(!!c, "draft")
@@ -84,7 +86,7 @@ export class Run {
     return this.at === null ? this.chart.layer(0) : this.chart.node(this.at).next.map((id) => this.chart.node(id))
   }
 
-  /** Goes to a mission with 1 to 3 soldiers of the roster; the threat rises, twice for the captain. */
+  /** Goes to a mission with 1 to 4 soldiers of the roster; the threat rises, twice for the captain. */
   go(node: number, deploy: string[]): void {
     must(this.stage === "chart" && this.options().some((n) => n.id === node), "node")
     must(deploy.length > 0 && deploy.length <= SQUAD && new Set(deploy).size === deploy.length, "deploy")

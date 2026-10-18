@@ -17,7 +17,7 @@ function spot(nodes: Node[], n: Node): { x: number; y: number } {
 export function Route(props: { expedition: Expedition }) {
   const x = props.expedition
   const run = () => x.run()
-  const healthy = () => [...run().roster].sort((a, b) => b.hp - a.hp).slice(0, 3)
+  const healthy = () => [...run().roster].sort((a, b) => b.hp - a.hp).slice(0, 4)
   const [deploy, setDeploy] = createSignal<string[]>(healthy().map((s) => s.id))
   const [hover, setHover] = createSignal<Node | null>(null)
   const open = (n: Node) =>
@@ -25,7 +25,7 @@ export function Route(props: { expedition: Expedition }) {
       .options()
       .some((o) => o.id === n.id)
   const toggle = (id: string) =>
-    setDeploy((d) => (d.includes(id) ? d.filter((x) => x !== id) : d.length < 3 ? [...d, id] : d))
+    setDeploy((d) => (d.includes(id) ? d.filter((x) => x !== id) : d.length < 4 ? [...d, id] : d))
   const go = (n: Node) => {
     if (open(n) && deploy().length > 0) x.choose({ type: "go", node: n.id, deploy: deploy() })
   }

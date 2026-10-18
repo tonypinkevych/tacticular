@@ -185,6 +185,15 @@ describe("conditions", () => {
       expect(squad.map((u) => [u.id, u.kind, u.name, u.hp, u.maxHp])).toEqual([["s1", "mage", "Voss", 3, 7]])
     }
   })
+  test("place a squad of 4 on distinct floor tiles", () => {
+    const four = ["s1", "s2", "s3", "s4"].map((id) => ({ ...recruit, id }))
+    for (let seed = 1; seed <= 20; seed++) {
+      const g = mission(seed, { squad: four })
+      const spots = g.units.filter((u) => u.side === "squad").map((u) => u.pos)
+      for (const p of spots) expect(["floor", "bridge"]).toContain(g.board.at(p))
+      expect(new Set(spots.map((p) => `${p.x},${p.y}`)).size).toBe(4)
+    }
+  })
   test("set where the alarm starts", () => {
     expect(mission(1, { alarm: 3 }).alarm).toBe(3)
   })

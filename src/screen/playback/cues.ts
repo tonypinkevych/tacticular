@@ -23,7 +23,6 @@ export type Cue =
   | "door"
   | "heard"
   | "spotted"
-  | "activity"
   | "select"
   | "denied"
 
@@ -42,7 +41,6 @@ export function cues(before: Game, frame: Frame): { start: Cue[]; end: Cue[] } {
   const a = frame.action
   const after = frame.game
   const start: Cue[] = []
-  if (a.type === "endTurn" && before.phase === "squad" && after.phase === "enemy") start.push("activity")
   if (a.type === "move") start.push("step")
   if (a.type === "ability") start.push("ability")
   if (a.type === "attack") {

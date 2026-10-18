@@ -34,11 +34,12 @@ describe("chart", () => {
     run.finish({ won: false, hp: {} })
     expect(run.options().map((n) => n.id)).toEqual(run.chart.node(node).next)
   })
-  test("refuses a mission it cannot reach and more than 3 soldiers", () => {
+  test("refuses a mission it cannot reach and more than 4 soldiers", () => {
     const run = drafted()
     expect(() => run.go(run.chart.layer(1)[0].id, ids(run))).toThrow()
-    run.roster.push({ ...run.roster[0], id: "x" })
+    run.roster.push({ ...run.roster[0], id: "x" }, { ...run.roster[0], id: "y" })
     expect(() => run.go(first(run), ids(run))).toThrow()
+    expect(() => run.go(first(run), ids(run).slice(0, 4))).not.toThrow()
   })
   test("a mission carries the deployed soldiers with their HP", () => {
     const run = drafted()
@@ -150,6 +151,13 @@ describe("rewards", () => {
     run.take(0)
     expect(run.roster.map((s) => s.hp)).toEqual([6, 6, 6])
     expect(run.stage).toBe("chart")
+  })
+  test("a roster of 5 gets no recruit offer", () => {
+    const run = drafted()
+    run.roster.push({ ...run.roster[0], id: "x" }, { ...run.roster[0], id: "y" })
+    run.go(first(run), ids(run).slice(0, 4))
+    run.finish({ won: true, hp: { c1: 2, c2: 2, c3: 2, x: 2 } })
+    expect(run.offers.map((o) => o.kind)).not.toContain("recruit")
   })
   test("a recruit joins the roster", () => {
     const run = offered()

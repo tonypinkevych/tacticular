@@ -98,7 +98,7 @@ function target(before: Game, frame: Frame): Point | null {
 
 /** The sounds the player hears of a step: all of a step in sight, else only the alarms and the heard steps. */
 function heard(sounds: Cue[], visible: boolean): Cue[] {
-  return visible ? sounds : sounds.filter((c) => c === "activity" || c === "heard" || c === "spotted")
+  return visible ? sounds : sounds.filter((c) => c === "heard" || c === "spotted")
 }
 
 function actor(frame: Frame): string | null {

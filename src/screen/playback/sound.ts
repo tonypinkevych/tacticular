@@ -164,9 +164,6 @@ const RECIPES: Record<Cue, (v: Voice, t: number) => void> = {
     v.tone(t, 440, 880, 0.12, "square", 0.15)
     v.tone(t + 0.13, 880, 880, 0.12, "square", 0.15)
   },
-  activity: (v, t) => {
-    for (let i = 0; i < 3; i++) v.tone(t + i * 0.18, 220, 200, 0.16, "sawtooth", 0.12)
-  },
   select: (v, t) => v.tone(t, 880, 880, 0.05, "square", 0.12),
   denied: (v, t) => v.tone(t, 180, 160, 0.15, "square", 0.15),
 }

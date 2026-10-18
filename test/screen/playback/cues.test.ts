@@ -27,13 +27,13 @@ describe("cues", () => {
   test("a walk sounds steps", () => {
     expect(cues(g, frame({ type: "move", unit: "w", to: { x: 1, y: 1 } })).start).toEqual(["step"])
   })
-  test("the end of the squad turn sounds the alien activity", () => {
+  test("the end of the squad turn is silent", () => {
     expect(
       cues(
         g,
         frame({ type: "endTurn" }, (a) => (a.phase = "enemy")),
       ).start,
-    ).toEqual(["activity"])
+    ).toEqual([])
   })
   test("a step heard from an unseen alien sounds as heard", () => {
     const f = frame({ type: "move", unit: "e", to: { x: 6, y: 1 } }, (a) =>
