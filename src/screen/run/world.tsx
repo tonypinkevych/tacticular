@@ -180,6 +180,9 @@ export function World(props: { expedition: Expedition }) {
             onClick={() => setPane({ kind: "research" })}
           >
             <Icon glyph={ICONS["world:research"]} color={css(BEACON)} class="icon" />
+            <Show when={!c().research}>
+              <span class="badge">!</span>
+            </Show>
           </button>
           <button
             type="button"

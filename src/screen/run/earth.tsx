@@ -1,9 +1,9 @@
-import { createEffect, onCleanup, onMount } from "solid-js"
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import type { Campaign } from "../../campaign/campaign"
 import { place, type RegionId } from "../../campaign/world"
 import { t } from "../../i18n/strings"
-import { ALIEN, AMBER, BEACON, BLACK, css, EVAC, type Rgb, rgb } from "../board/color"
-import { LANDS, textWidth } from "../board/glyphs"
+import { ALIEN, AMBER, BEACON, BLACK, css, EVAC, type Rgb, rgb, SQUAD } from "../board/color"
+import { ICONS, LANDS, textWidth, UNITS } from "../board/glyphs"
 import { Pixels } from "../board/pixels"
 import { Projection } from "../board/projection"
 import { EARTH, LABELS, land } from "./atlas"
@@ -15,11 +15,13 @@ const WASTE = rgb("#3e5660")
 const SEA = rgb("#26343a")
 
 /**
- * The world map: the Earth in glyphs, each region in the color of its state, with its name and a "!" for each
- * operation in it. A region is picked by a click on its land. When the names do not fit, only the picked one shows.
+ * The world map: the Earth in glyphs, each region in the color of its state, with its name, the glyph of each
+ * operation in it, and a squad mark that blinks when its operation can launch. A region is picked by a click on its
+ * land. When the names do not fit, only the picked one shows.
  */
 export function Earth(props: { campaign: Campaign; chosen: RegionId; onPick: (id: RegionId) => void }) {
   let canvas!: HTMLCanvasElement
+  const [tick, setTick] = createSignal(0)
   const sheet = document.createElement("canvas")
   sheet.width = W
   sheet.height = H
@@ -41,16 +43,22 @@ export function Earth(props: { campaign: Campaign; chosen: RegionId; onPick: (id
     ctx.setTransform(size * dpr, 0, 0, size * dpr, 0, 0)
     const px = new Pixels(ctx, new Projection(0, 0))
     for (const r of c.regions) {
-      const ops = c.ops.filter((o) => o.region === r.id).length
+      const ops = c.ops.filter((o) => o.region === r.id)
+      const sent = ops.find((o) => o.sent !== null)
       const name = crowded && r.id !== chosen ? "" : t(`region.${r.id}`).toUpperCase()
-      const text = [name, "!".repeat(ops)].filter(Boolean).join(" ")
-      if (!text || !textWidth(text)) continue
-      const w = textWidth(text)
+      if (!name && ops.length === 0) continue
+      const head = name ? textWidth(name) + 2 : 0
+      const w = head + ops.length * 10 + (sent ? 8 : 0) - 1
       const x = Math.round(((LABELS[r.id].x + 0.5) * CELL * scale) / size - w / 2)
       const y = Math.round(((LABELS[r.id].y + 0.5) * CELL * scale) / size - 2)
-      px.dot(x - 2, y - 2, BLACK, 0.8, w + 4, 9)
+      px.dot(x - 2, y - 3, BLACK, 0.8, w + 4, 11)
       px.label(name, x, y, tint(c, r.id))
-      if (ops) px.label("!".repeat(ops), x + (name ? textWidth(`${name} `) + 1 : 0), y, AMBER)
+      for (const [i, o] of ops.entries()) px.glyph(ICONS[`op:${o.kind}`], x + head + i * 10 + 3, y + 7, AMBER)
+      if (sent) {
+        const lit = !c.launchable(sent) || tick() % 2 === 0
+        const kind = c.roster.find((s) => s.id === sent.squad[0])?.kind ?? "vanguard"
+        px.glyph(UNITS[kind], x + head + ops.length * 10 + 3, y + 7, SQUAD, lit ? 1 : 0.3)
+      }
     }
   }
   const pick = (e: MouseEvent) => {
@@ -65,7 +73,11 @@ export function Earth(props: { campaign: Campaign; chosen: RegionId; onPick: (id
   onMount(() => {
     const seen = new ResizeObserver(draw)
     seen.observe(canvas)
-    onCleanup(() => seen.disconnect())
+    const blink = setInterval(() => setTick((n) => n + 1), 500)
+    onCleanup(() => {
+      seen.disconnect()
+      clearInterval(blink)
+    })
   })
   createEffect(draw)
   return <canvas class="earth" ref={canvas} onClick={pick} onMouseMove={pick} aria-label={t("world.map")} />

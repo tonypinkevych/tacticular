@@ -744,7 +744,8 @@ main.extended .more-mark {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.soldier .badge {
+.soldier .badge,
+#world .big .badge {
   position: absolute;
   top: -6px;
   right: -6px;
@@ -986,6 +987,7 @@ main.extended .more-mark {
   color: var(--accent);
 }
 #world button.big {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
