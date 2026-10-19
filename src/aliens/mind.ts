@@ -6,7 +6,11 @@ import { AROUND, area, distance, key, type Point, plus, pointOf, same } from "..
 import type { Game } from "../mission/game"
 import type { Action } from "../mission/orders"
 import type { Unit } from "../units/unit"
+import { Foresight } from "./foresight"
 import { SEARCH } from "./stealth"
+
+/** How much more than an attack a skill must be worth before a unit picks it. */
+const SKILL_MARGIN = 0.5
 
 interface Choice {
   action: Action
@@ -323,47 +327,13 @@ export class Mind {
       }
       if (best) return best
     }
-    if (u.kind === "warchief" && ready(u, "rally") && targets.length > 0) {
-      const ally = game.units
-        .filter(
-          (x) =>
-            x.alive() &&
-            x !== u &&
-            !u.foe(x) &&
-            distance(u.pos, x.pos) <= span(u, "rally") &&
-            game.sight.sees(u, x.pos),
-        )
-        .sort((a, b) => b.ap - a.ap)[0]
-      if (ally) return { action: { type: "ability", unit: u.id, ability: "rally", target: ally.id }, value: 2.5 }
-    }
-    if (u.kind === "whisperer") {
-      const ally = game.units.find(
-        (x) =>
-          x.alive() &&
-          x !== u &&
-          !u.foe(x) &&
-          x.alert === "engaged" &&
-          !x.has("ward") &&
-          distance(u.pos, x.pos) <= span(u, "ward") &&
-          game.sight.sees(u, x.pos),
-      )
-      if (ready(u, "ward") && ally)
-        return { action: { type: "ability", unit: u.id, ability: "ward", target: ally.id }, value: 3 }
-      for (const id of ["dominate", "dread"] as const) {
-        const marked =
-          u.intent?.type === "psi" &&
-          game.units.some((x) => x.id === (u.intent as { target: string }).target && x.alive())
-        if (!ready(u, id) || (id === "dominate" && marked)) continue
-        const t = targets
-          .filter(
-            (x) =>
-              game.orders.canTarget(u, x) && distance(u.pos, x.pos) <= span(u, id) && (id === "dread" || x.soldier()),
-          )
-          .sort((a, b) => b.hp - a.hp)[0]
-        if (!t) continue
-        const value = failChance(t.will, 10 + u.will, t.stance === "hunker" ? 1 : 0) * (id === "dominate" ? 12 : 5)
-        const ability = id === "dominate" ? "mark" : id
-        return { action: { type: "ability", unit: u.id, ability, target: t.id }, value }
+    if (u.kind === "whisperer" && ready(u, "dominate") && !u.intent) {
+      const t = targets
+        .filter((x) => game.orders.canTarget(u, x) && distance(u.pos, x.pos) <= span(u, "dominate") && x.soldier())
+        .sort((a, b) => b.hp - a.hp)[0]
+      if (t) {
+        const value = failChance(t.will, 10 + u.will, t.stance === "hunker" ? 1 : 0) * 12
+        return { action: { type: "ability", unit: u.id, ability: "mark", target: t.id }, value }
       }
     }
     return null
@@ -386,7 +356,9 @@ export class Mind {
     const attack = this.bestAttack(u, targets)
     const back = u.hp * 3 <= u.maxHp && !u.moved && !attack?.kill ? this.fallBack(u, targets) : null
     if (back) return back
-    const options = [attack, sp].filter((c): c is Choice => !!c)
+    const skill = new Foresight(game, (x, p) => this.tileValue(x, p, targets)).best(u)
+    const plan = skill && { ...skill, value: skill.value - SKILL_MARGIN }
+    const options = [attack, sp, plan].filter((c): c is Choice => !!c)
     const now = options.sort((a, b) => b.value - a.value)[0]
     if (u.ap >= 2 || game.reactions.includes(u.id)) {
       const move = this.bestMove(u, (p) => this.tileValue(u, p, targets))
