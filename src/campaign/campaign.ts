@@ -437,7 +437,8 @@ export class Campaign {
 
   /**
    * Posts the week's operations in regions in contact: a Defend where Vigilance is 5 or more, a Liberation where it is
-   * open, then others by chance up to 3, or 2 while one region is in contact. A Dark Event marks the first of them.
+   * open, then others by chance up to 3, or 2 while one region is in contact, never two of a kind in one region. A
+   * Dark Event marks the first of them.
    */
   private post(): void {
     const open = this.regions.filter((r) => r.resistance > 0 && !r.free)
@@ -447,9 +448,10 @@ export class Campaign {
       r.vigilance = Math.max(0, r.vigilance - 3)
     }
     for (const r of open.filter((x) => x.resistance >= RESISTANCE)) this.open(r.id, "liberation")
-    while (this.ops.length < (open.length > 1 ? 3 : 2)) {
+    for (let tries = 0; tries < 20 && this.ops.length < (open.length > 1 ? 3 : 2); tries++) {
       const r = this.dice.pick(open)
-      this.open(r.id, this.dice.pick(r.site ? KINDS : KINDS.filter((k) => k !== "relay")))
+      const kind = this.dice.pick(r.site ? KINDS : KINDS.filter((k) => k !== "relay"))
+      if (!this.ops.some((o) => o.region === r.id && o.kind === kind)) this.open(r.id, kind)
     }
     const marked = this.ops.find((o) => o.kind !== "defend" && o.kind !== "liberation")
     if (this.event && marked) marked.event = this.event.id

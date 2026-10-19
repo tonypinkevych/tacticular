@@ -34,6 +34,14 @@ describe("campaign", () => {
     expect(c.ops).toHaveLength(3)
     expect(c.ops.every((o) => o.difficulty >= 1 && o.difficulty <= 4)).toBe(true)
   })
+  test("a week never posts two operations of one kind in one region", () => {
+    const c = fresh()
+    for (let i = 0; i < 30 && c.stage === "world"; i++) {
+      const keys = c.ops.map((o) => `${o.kind}:${o.region}`)
+      expect(new Set(keys).size).toBe(keys.length)
+      c.play({ type: "week" })
+    }
+  })
   test("a squad of 3 or 4 ready soldiers launches a posted operation at once, and only one each week", () => {
     const c = fresh()
     const [op, other] = c.ops
