@@ -3,7 +3,7 @@ import { type Campaign, GOALS, RECRUIT_COST, ROSTER } from "../../campaign/campa
 import { level } from "../../campaign/soldier"
 import type { RegionId } from "../../campaign/world"
 import { t } from "../../i18n/strings"
-import { ALIEN, AMBER, BEACON, css, DASH, EVAC, SMOKE, SQUAD } from "../board/color"
+import { css } from "../board/color"
 import { ICONS } from "../board/glyphs"
 import type { Expedition } from "../expedition"
 import { Icon } from "../hud/icon"
@@ -11,6 +11,7 @@ import { SPEEDS } from "../playback/motion"
 import { type Beat, beats, type Counter, glance } from "./beat"
 import { Brief } from "./brief"
 import { Earth } from "./earth"
+import { BLUE, GREEN, GREY, INK, OCHRE, RED } from "./ink"
 import { Operation } from "./operation"
 import { Pips } from "./pips"
 import { Popup } from "./popup"
@@ -87,38 +88,33 @@ export function World(props: { expedition: Expedition }) {
     <Show when={x.lang()} keyed>
       <section id="world">
         <header class="bar">
-          <Stat icon="world:week" color={DASH} tip={t("world.week", { week: c().week })} info={t("world.weekInfo")}>
+          <Stat icon="world:week" color={OCHRE} tip={t("world.week", { week: c().week })} info={t("world.weekInfo")}>
             {c().week}
           </Stat>
-          <Stat icon="world:supplies" color={AMBER} tip={t("world.supplies")} info={t("world.suppliesInfo")}>
+          <Stat icon="world:supplies" color={OCHRE} tip={t("world.supplies")} info={t("world.suppliesInfo")}>
             {num("supplies")}
           </Stat>
-          <Stat icon="world:intel" color={BEACON} tip={t("world.intel")} info={t("world.intelInfo")}>
+          <Stat icon="world:intel" color={BLUE} tip={t("world.intel")} info={t("world.intelInfo")}>
             {num("intel")}
           </Stat>
-          <Stat icon="world:materials" color={SMOKE} tip={t("world.materials")} info={t("world.materialsInfo")}>
+          <Stat icon="world:materials" color={GREY} tip={t("world.materials")} info={t("world.materialsInfo")}>
             {num("materials")}
           </Stat>
           <Stat
             icon="world:freed"
-            color={EVAC}
+            color={GREEN}
             tip={t("world.goal", { freed: c().freed(), goal: c().goal })}
             info={t("world.goalInfo")}
           >
             {c().freed()}/{c().goal}
           </Stat>
           <span class="spacer" />
-          <Stat
-            icon="world:force"
-            color={ALIEN}
-            tip={t("world.force", { force: c().force })}
-            info={t("world.forceInfo")}
-          >
+          <Stat icon="world:force" color={RED} tip={t("world.force", { force: c().force })} info={t("world.forceInfo")}>
             <Pips on={num("force")} of={10} tone="bad" />
           </Stat>
           <Stat
             icon="world:project"
-            color={ALIEN}
+            color={RED}
             tip={t("world.project", { project: c().project, end: GOALS[c().goal].end })}
             info={t("world.projectInfo")}
           >
@@ -131,7 +127,7 @@ export function World(props: { expedition: Expedition }) {
             {(e) => (
               <Stat
                 icon="world:event"
-                color={ALIEN}
+                color={RED}
                 tip={t(`event.${e().id}`)}
                 info={t("world.eventInfo", { info: t(`event.info.${e().id}`), week: e().until })}
               >
@@ -140,7 +136,7 @@ export function World(props: { expedition: Expedition }) {
             )}
           </Show>
           <button type="button" classList={{ active: menu() }} data-tip={t("ui.menu")} onClick={() => setMenu(!menu())}>
-            <Icon glyph={ICONS["world:menu"]} color={css(SQUAD)} class="icon" />
+            <Icon glyph={ICONS["world:menu"]} color={css(INK)} class="icon" />
           </button>
           <Show when={menu()}>
             <Menu expedition={x} help={help()} onHelp={() => setHelp(!help())} />
@@ -203,7 +199,7 @@ export function World(props: { expedition: Expedition }) {
             }
             onClick={() => setPane({ kind: "research" })}
           >
-            <Icon glyph={ICONS["world:research"]} color={css(BEACON)} class="icon" />
+            <Icon glyph={ICONS["world:research"]} color={css(BLUE)} class="icon" />
             <Show when={!c().research}>
               <span class="badge">!</span>
             </Show>
@@ -215,15 +211,15 @@ export function World(props: { expedition: Expedition }) {
             data-tip={t("world.recruit", { cost: RECRUIT_COST })}
             onClick={() => setPane({ kind: "recruit" })}
           >
-            <Icon glyph={ICONS["world:recruit"]} color={css(SQUAD)} class="icon" />
-            <Icon glyph={ICONS["world:supplies"]} color={css(AMBER)} class="icon" />
+            <Icon glyph={ICONS["world:recruit"]} color={css(INK)} class="icon" />
+            <Icon glyph={ICONS["world:supplies"]} color={css(OCHRE)} class="icon" />
             {RECRUIT_COST}
           </button>
           <button type="button" class="big" data-tip={t("world.report")} onClick={() => setPane({ kind: "log" })}>
-            <Icon glyph={ICONS["world:log"]} color={css(SQUAD)} class="icon" />
+            <Icon glyph={ICONS["world:log"]} color={css(INK)} class="icon" />
           </button>
           <button type="button" class="big primary" onClick={end}>
-            <Icon glyph={ICONS["world:week"]} color={css(DASH)} class="icon" />
+            <Icon glyph={ICONS["world:week"]} color={css(OCHRE)} class="icon" />
             {t("world.endWeek")}
           </button>
         </footer>
@@ -263,7 +259,7 @@ export function World(props: { expedition: Expedition }) {
                   close()
                 }}
               >
-                <Icon glyph={ICONS["world:supplies"]} color={css(AMBER)} class="icon" />
+                <Icon glyph={ICONS["world:supplies"]} color={css(OCHRE)} class="icon" />
                 {RECRUIT_COST} · {t("ui.confirm")}
               </button>
             </div>

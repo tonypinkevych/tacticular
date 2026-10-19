@@ -2,10 +2,11 @@ import { Show } from "solid-js"
 import { CONTACT_COST, RESISTANCE } from "../../campaign/campaign"
 import { place, type RegionId } from "../../campaign/world"
 import { t } from "../../i18n/strings"
-import { ALIEN, AMBER, BEACON, css, EVAC } from "../board/color"
+import { css } from "../board/color"
 import { ICONS } from "../board/glyphs"
 import type { Expedition } from "../expedition"
 import { Icon } from "../hud/icon"
+import { BLUE, GREEN, OCHRE, RED } from "./ink"
 import { Pips } from "./pips"
 import { Stat } from "./stat"
 
@@ -17,11 +18,11 @@ export function Region(props: { expedition: Expedition; id: RegionId }) {
   const bonus = () => t("world.bonus", { bonus: t(`bonus.${place(r().id).bonus}`) })
   return (
     <div class="card region">
-      <h3 style={{ color: css(r().free ? EVAC : r().resistance > 0 ? BEACON : ALIEN) }}>{t(`region.${r().id}`)}</h3>
+      <h3 style={{ color: css(r().free ? GREEN : r().resistance > 0 ? BLUE : RED) }}>{t(`region.${r().id}`)}</h3>
       <Show when={!r().free} fallback={<p class="small">{t("world.free")}</p>}>
         <Stat
           icon="world:strength"
-          color={ALIEN}
+          color={RED}
           tip={t("world.strength", { value: r().strength })}
           info={t("world.strengthInfo")}
         >
@@ -29,7 +30,7 @@ export function Region(props: { expedition: Expedition; id: RegionId }) {
         </Stat>
         <Stat
           icon="world:vigilance"
-          color={AMBER}
+          color={OCHRE}
           tip={t("world.vigilance", { value: r().vigilance })}
           info={t("world.vigilanceInfo")}
         >
@@ -37,14 +38,14 @@ export function Region(props: { expedition: Expedition; id: RegionId }) {
         </Stat>
         <Stat
           icon="world:resistance"
-          color={BEACON}
+          color={BLUE}
           tip={t("world.resistance", { value: r().resistance })}
           info={t("world.liberate")}
         >
           <Pips on={r().resistance} of={RESISTANCE} tone="good" />
         </Stat>
       </Show>
-      <Stat icon={`bonus:${place(r().id).bonus}`} color={EVAC} tip={bonus()} />
+      <Stat icon={`bonus:${place(r().id).bonus}`} color={GREEN} tip={bonus()} />
       <Show
         when={c()
           .reachable()
@@ -56,8 +57,8 @@ export function Region(props: { expedition: Expedition; id: RegionId }) {
           data-tip={t("world.contact", { cost: CONTACT_COST })}
           onClick={() => x.choose({ type: "contact", region: r().id })}
         >
-          <Icon glyph={ICONS["world:contact"]} color={css(BEACON)} class="icon" />
-          <Icon glyph={ICONS["world:intel"]} color={css(BEACON)} class="icon" />
+          <Icon glyph={ICONS["world:contact"]} color={css(BLUE)} class="icon" />
+          <Icon glyph={ICONS["world:intel"]} color={css(BLUE)} class="icon" />
           {CONTACT_COST}
         </button>
       </Show>

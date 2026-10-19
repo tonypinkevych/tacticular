@@ -1,9 +1,10 @@
 import { For, Show } from "solid-js"
 import type { Op, Penalty } from "../../campaign/campaign"
 import { t } from "../../i18n/strings"
-import { ALIEN, AMBER, BEACON, css, EVAC, SMOKE, SQUAD } from "../board/color"
+import { css } from "../board/color"
 import { ICONS } from "../board/glyphs"
 import { Icon } from "../hud/icon"
+import { BLUE, GREEN, GREY, INK, OCHRE, RED } from "./ink"
 import { Pips } from "./pips"
 import { Stat } from "./stat"
 
@@ -29,15 +30,15 @@ const PENALTIES: Record<Penalty, [string, string]> = {
 }
 
 const TONES: Record<string, ReturnType<typeof css>> = {
-  "world:intel": css(BEACON),
-  "world:resistance": css(BEACON),
-  "world:recruit": css(SQUAD),
-  "world:supplies": css(AMBER),
-  "world:project": css(ALIEN),
-  "world:materials": css(SMOKE),
-  "world:strength": css(ALIEN),
-  "world:vigilance": css(AMBER),
-  "world:freed": css(EVAC),
+  "world:intel": css(BLUE),
+  "world:resistance": css(BLUE),
+  "world:recruit": css(INK),
+  "world:supplies": css(OCHRE),
+  "world:project": css(RED),
+  "world:materials": css(GREY),
+  "world:strength": css(RED),
+  "world:vigilance": css(OCHRE),
+  "world:freed": css(GREEN),
 }
 
 /** A posted operation in the list: its kind, region, reward, difficulty and what leaving it costs. */
@@ -54,7 +55,7 @@ export function Brief(props: { op: Op; on: boolean; onClick: () => void }) {
       onClick={() => props.onClick()}
     >
       <span class="name">
-        <Icon glyph={ICONS[`op:${o().kind}`]} color={css(AMBER)} class="icon" />
+        <Icon glyph={ICONS[`op:${o().kind}`]} color={css(OCHRE)} class="icon" />
         {t(`op.${o().kind}`)}
         <span class="small muted">{t(`region.${o().region}`)}</span>
         <span class="spacer" />
@@ -75,14 +76,14 @@ export function Brief(props: { op: Op; on: boolean; onClick: () => void }) {
           )}
         </For>
         <Show when={o().event}>
-          <Stat icon="world:event" color={ALIEN} tip={t("op.counter")} />
+          <Stat icon="world:event" color={RED} tip={t("op.counter")} />
         </Show>
         <span class="spacer" />
         <span class="figure penalty" data-tip={t(`penalty.${penalty() ?? "none"}`)}>
           <Show when={penalty()} fallback="—">
             {(p) => (
               <>
-                <Icon glyph={ICONS[PENALTIES[p()][0]]} color={css(ALIEN)} class="icon" />
+                <Icon glyph={ICONS[PENALTIES[p()][0]]} color={css(RED)} class="icon" />
                 {PENALTIES[p()][1]}
               </>
             )}

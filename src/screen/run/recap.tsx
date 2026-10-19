@@ -1,12 +1,13 @@
 import { createSignal, onCleanup, Show } from "solid-js"
 import type { Note } from "../../campaign/campaign"
 import { t } from "../../i18n/strings"
-import { ALIEN, AMBER, BEACON, css, DASH, type Rgb } from "../board/color"
+import { css, type Rgb } from "../board/color"
 import { ICONS } from "../board/glyphs"
 import { Icon } from "../hud/icon"
 import type { Cue } from "../playback/cues"
 import type { Speed } from "../playback/motion"
 import type { Beat } from "./beat"
+import { BLUE, OCHRE, RED } from "./ink"
 
 /** One line of the week's report in the active language, its regions, operation, event, tech and penalty by name. */
 export function say(n: Note): string {
@@ -54,9 +55,9 @@ export function Recap(props: {
         when={at() >= 0}
         fallback={
           <span class="banner">
-            <Icon glyph={ICONS["world:week"]} color={css(DASH)} class="icon" />
+            <Icon glyph={ICONS["world:week"]} color={css(OCHRE)} class="icon" />
             {t("world.week", { week: props.week })}
-            <Icon glyph={ICONS["world:week"]} color={css(DASH)} class="icon" />
+            <Icon glyph={ICONS["world:week"]} color={css(OCHRE)} class="icon" />
           </span>
         }
       >
@@ -74,8 +75,8 @@ const THREATS = ["world:force", "world:project", "world:strength", "world:event"
 
 /** Amber for an operation, red for the aliens, blue for the rest. */
 function tone(icon: string): Rgb {
-  if (icon.startsWith("op:")) return AMBER
-  return THREATS.includes(icon) ? ALIEN : BEACON
+  if (icon.startsWith("op:")) return OCHRE
+  return THREATS.includes(icon) ? RED : BLUE
 }
 
 /** A chime for an operation, a low drone for the aliens, a coin for the rest. */
