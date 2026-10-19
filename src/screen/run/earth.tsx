@@ -11,13 +11,23 @@ import { EARTH, LABELS, land } from "./atlas"
 const CELL = 6
 const W = EARTH[0].length * CELL
 const H = EARTH.length * CELL
-const WASTE = rgb("#3e5660")
+const GRID = 10
+const SIDES = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const
 const BORDER = rgb("#c8d0d4")
+const PICKED = rgb("#e8eef0")
+const COAST = rgb("#5d6f75")
+const EDGE = rgb("#2a3539")
+const GRID_LINE = rgb("#11191c")
 
 /**
- * The world map: the Earth in dots, each region in the color of its state, with its name, the glyph of each
- * operation in it, and a squad mark that blinks when its operation can launch; a flashed region blinks amber. A
- * region is picked by a click on its land. When the names do not fit, only the picked one shows.
+ * The world map: the Earth as control zones, each region hatched in the color of its state, with its name, the glyph
+ * of each operation in it, and a squad mark that blinks when its operation can launch; a flashed region blinks amber.
+ * A region is picked by a click on its land. When the names do not fit, only the picked one shows.
  */
 export function Earth(props: {
   campaign: Campaign
@@ -57,7 +67,7 @@ export function Earth(props: {
       const x = Math.round(((LABELS[r.id].x + 0.5) * CELL * scale) / size - w / 2)
       const y = Math.round(((LABELS[r.id].y + 0.5) * CELL * scale) / size - 2)
       px.dot(x - 2, y - 3, BLACK, 0.8, w + 4, 11)
-      px.label(name, x, y, tint(c, r.id))
+      px.label(name, x, y, r.id === chosen ? PICKED : tint(c, r.id))
       for (const [i, o] of ops.entries()) px.glyph(ICONS[`op:${o.kind}`], x + head + i * 10 + 3, y + 7, AMBER)
       if (sent) {
         const lit = !c.launchable(sent) || tick() % 2 === 0
@@ -88,27 +98,46 @@ export function Earth(props: {
   return <canvas class="earth" ref={canvas} onClick={pick} onMouseMove={pick} aria-label={t("world.map")} />
 }
 
-/** Draws a dot on each land cell in its region's color, a line between regions, and the flashed region lit amber. */
+/**
+ * Draws the Earth as control zones: a faint grid, a hatch on land in the color of its state, coastlines and region
+ * borders as thin lines, the picked region outlined bright and the flashed one lit amber.
+ */
 function paint(ctx: CanvasRenderingContext2D, c: Campaign, chosen: RegionId, flash: RegionId | null): void {
   ctx.fillStyle = css(BLACK)
   ctx.fillRect(0, 0, W, H)
   const px = new Pixels(ctx, new Projection(0, 0))
+  for (let x = 0; x < EARTH[0].length; x += GRID) px.dot(x * CELL, 0, GRID_LINE, 1, 1, H)
+  for (let y = 0; y < EARTH.length; y += GRID) px.dot(0, y * CELL, GRID_LINE, 1, W, 1)
   EARTH.forEach((row, y) => {
-    ;[...row].forEach((ch, x) => {
+    ;[...row].forEach((_, x) => {
+      if (!ground(x, y)) return
       const id = land(x, y)
-      if (!id) {
-        if (ch === "x") px.dot(x * CELL + 2, y * CELL + 2, WASTE, 1, 2, 2)
-        return
+      const cx = x * CELL
+      const cy = y * CELL
+      if (id === chosen) px.dot(cx, cy, BORDER, 0.08, CELL, CELL)
+      if (id && id === flash) px.dot(cx, cy, AMBER, 0.45, CELL, CELL)
+      if (id && !c.region(id).free && (x + y) % 3 === 0)
+        for (let k = 0; k < CELL; k++) px.dot(cx + k, cy + CELL - 1 - k, tint(c, id), 0.45, 1, 1)
+      for (const [dx, dy] of SIDES) {
+        const other = land(x + dx, y + dy)
+        const line =
+          id === chosen && other !== chosen
+            ? PICKED
+            : !ground(x + dx, y + dy)
+              ? COAST
+              : id && other && other !== id && other !== chosen && dx + dy > 0
+                ? EDGE
+                : null
+        if (!line) continue
+        px.dot(dx === 1 ? cx + CELL - 1 : cx, dy === 1 ? cy + CELL - 1 : cy, line, 1, dx ? 1 : CELL, dy ? 1 : CELL)
       }
-      if (id === chosen) px.dot(x * CELL, y * CELL, tint(c, id), 0.12, CELL, CELL)
-      if (id === flash) px.dot(x * CELL, y * CELL, AMBER, 0.45, CELL, CELL)
-      const right = land(x + 1, y)
-      const below = land(x, y + 1)
-      if (right && right !== id) px.dot(x * CELL + CELL - 1, y * CELL, BORDER, 0.25, 1, CELL)
-      if (below && below !== id) px.dot(x * CELL, y * CELL + CELL - 1, BORDER, 0.25, CELL, 1)
-      px.dot(x * CELL + 2, y * CELL + 2, tint(c, id), id === chosen ? 1 : 0.55, 2, 2)
     })
   })
+}
+
+/** Whether a cell is land, of a region or of none. */
+function ground(x: number, y: number): boolean {
+  return (EARTH[y]?.[x] ?? ".") !== "."
 }
 
 /** Green for a free region, blue for one in contact, red for one the aliens hold. */
