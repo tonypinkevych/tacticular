@@ -1,4 +1,5 @@
 import { type AbilityId, span } from "../combat/abilities"
+import { WEAPONS } from "../combat/weapons"
 import { area, distance, key, type Point, pointOf } from "../map/point"
 import type { Game } from "../mission/game"
 import { type Action, Illegal } from "../mission/orders"
@@ -9,6 +10,8 @@ import { ULT, type Unit } from "../units/unit"
 export interface Option {
   action: Action
   value: number
+  /** The part of the value that is the attack the unit can still make after the skill. */
+  follow: number
 }
 
 /** Skills an alien uses only through its marked intent. */
@@ -40,7 +43,6 @@ const SAMPLES = 3
 
 /** What a status on a unit is worth to its own side; a status that hurts is worth less than 0. */
 const STATUS: Partial<Record<string, number>> = {
-  shaken: -1.5,
   exposed: -1,
   dominated: -5,
   burning: -1,
@@ -50,25 +52,30 @@ const STATUS: Partial<Record<string, number>> = {
   killzone: 1.5,
 }
 
+/** What Shaken takes from a unit each round, as a share of its weapon's mean damage. */
+const SHAKEN = 0.4
+
 /** Statuses worth more on a unit the more foes see it. */
 const GUARDS = ["ward", "guarded"]
 
 /**
  * The look ahead of a unit at its skills: it tries each ready skill on each target in reach on copies of the game,
- * with other dice than the game's own, and scores what changes for both sides.
+ * with other dice than the game's own, and scores what changes for both sides, with the attack the unit can still
+ * make after a skill that leaves it AP.
  */
 export class Foresight {
   constructor(
     private readonly game: Game,
     private readonly ground: (u: Unit, p: Point) => number,
+    private readonly strike: (after: Game, u: Unit) => number,
   ) {}
 
   /** The skill worth the most to the unit now, or null when none is legal. */
   best(u: Unit): Option | null {
     let best: Option | null = null
     for (const action of this.actions(u)) {
-      const value = this.worth(u, action)
-      if (value !== null && (!best || value > best.value)) best = { action, value }
+      const w = this.worth(u, action)
+      if (w && (!best || w.value > best.value)) best = { action, ...w }
     }
     return best
   }
@@ -120,8 +127,10 @@ export class Foresight {
   }
 
   /** The mean worth of an action over a few dice streams, or null when it is not legal. */
-  private worth(u: Unit, action: Action): number | null {
+  private worth(u: Unit, action: Action): { value: number; follow: number } | null {
     let sum = 0
+    let follow = 0
+    let n = 0
     for (let k = 0; k < SAMPLES; k++) {
       const trial = this.game.clone()
       trial.rng = (this.game.rng + (k + 1) * 7919) | 0
@@ -134,10 +143,14 @@ export class Foresight {
         if (!(e instanceof Illegal)) throw e
         return null
       }
-      sum += this.score(u, after)
-      if (after.rng === trial.rng) return sum / (k + 1)
+      const self = after.units.find((x) => x.id === u.id)
+      const strike = self?.alive() && self.ap > 0 && after.phase === self.allegiance() ? this.strike(after, self) : 0
+      sum += this.score(u, after) + strike
+      follow += strike
+      n += 1
+      if (after.rng === trial.rng) break
     }
-    return sum / SAMPLES
+    return { value: sum / n, follow: follow / n }
   }
 
   /** What changed between this game and a later one, for the unit's side. */
@@ -155,8 +168,10 @@ export class Foresight {
       if (before.alive() && !x.alive()) worth -= 4
       if (!before.alive() && before.down > 0 && x.alive()) worth += 4
       const watched = 1 + after.units.filter((f) => f.alive() && f.foe(x) && after.sight.sees(f, x.pos)).length
-      for (const s of x.statuses)
-        if (!before.has(s.id)) worth += (STATUS[s.id] ?? 0) * (GUARDS.includes(s.id) ? watched : 1)
+      for (const s of x.statuses) {
+        if (s.id === "shaken" && !before.has(s.id)) worth -= SHAKEN * s.rounds * mean(x)
+        else if (!before.has(s.id)) worth += (STATUS[s.id] ?? 0) * (GUARDS.includes(s.id) ? watched : 1)
+      }
       for (const s of before.statuses) if (!x.has(s.id)) worth -= STATUS[s.id] ?? 0
       if (x.side === "squad" && before.concealed !== x.concealed) worth += x.concealed ? 2 : -2
       if (x === after.unit(u.id)) worth += (x.ap - Math.max(0, before.ap - 1)) * 1.5
@@ -180,4 +195,10 @@ export class Foresight {
       (f) => f.alive() && f.foe(x) && game.sight.sees(f, x.pos) && game.cover.against(x.pos, f.pos) === 0,
     ).length
   }
+}
+
+/** The mean damage of a hit with the unit's weapon. */
+function mean(u: Unit): number {
+  const d = WEAPONS[u.weapon].dice
+  return (d.count * (d.sides + 1)) / 2 + d.bonus
 }

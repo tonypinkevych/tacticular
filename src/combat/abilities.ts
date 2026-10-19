@@ -214,6 +214,7 @@ export class Abilities {
           if (!ok || game.unitAt(next)) break
           t!.pos = next
         }
+        t!.give({ id: "shaken", rounds: 1, source: u.id })
         game.log.push({ key: "log.hook", params: { unit: u.id, target: t!.id } })
         game.fire.scorch(t!)
         game.stealth.attacked(u, t!, "dagger")
@@ -438,7 +439,7 @@ export const ABILITIES: Record<AbilityId, AbilityRule> = {
   dread: { cooldown: [3], endsTurn: true, range: [6] },
   dominate: { cooldown: [4], endsTurn: true, range: [6], power: [2, 3] },
   mark: { cooldown: [0], endsTurn: true },
-  shove: { cooldown: [2], endsTurn: true, power: [0, 1, 2] },
+  shove: { cooldown: [2], endsTurn: false, power: [1, 2, 3] },
   rally: { cooldown: [4, 3, 3], endsTurn: false, range: [4, 5, 6] },
   blast: { cooldown: [0], endsTurn: true, range: [5], power: [3, 3, 4] },
   grapple: { cooldown: [3], endsTurn: false, free: true, range: [4, 6, 8] },

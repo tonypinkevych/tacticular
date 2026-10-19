@@ -16,6 +16,7 @@ interface Choice {
   action: Action
   value: number
   kill?: boolean
+  follow?: number
 }
 
 /** The enemy side's choices in a game: patrol, investigate, or fight with the best attack, tile or special. */
@@ -104,6 +105,11 @@ export class Mind {
     let h = (game.rng ^ (p.x * 73856093) ^ (p.y * 19349663)) + u.id.length * 83492791
     h = Math.imul(h ^ (h >>> 13), 0x5bd1e995)
     return ((h >>> 0) % 1000) / 2000
+  }
+
+  /** What the unit's best attack from where it stands is worth, or 0 with none. */
+  strike(u: Unit): number {
+    return this.bestAttack(u, this.known(u))?.value ?? 0
   }
 
   /** Best attack from the unit's current tile, by expected damage, kills, wounds already dealt and target value. */
@@ -356,7 +362,11 @@ export class Mind {
     const attack = this.bestAttack(u, targets)
     const back = u.hp * 3 <= u.maxHp && !u.moved && !attack?.kill ? this.fallBack(u, targets) : null
     if (back) return back
-    const skill = new Foresight(game, (x, p) => this.tileValue(x, p, targets)).best(u)
+    const skill = new Foresight(
+      game,
+      (x, p) => this.tileValue(x, p, targets),
+      (after, x) => new Mind(after).strike(x),
+    ).best(u)
     const plan = skill && { ...skill, value: skill.value - SKILL_MARGIN }
     const options = [attack, sp, plan].filter((c): c is Choice => !!c)
     const now = options.sort((a, b) => b.value - a.value)[0]
@@ -364,7 +374,11 @@ export class Mind {
       const move = this.bestMove(u, (p) => this.tileValue(u, p, targets))
       const here = this.tileValue(u, u.pos, targets)
       const exposed = targets.some((f) => game.sight.sees(f, u.pos) && game.cover.against(u.pos, f.pos) === 0)
-      if (move && (move.value > here + 1 || (exposed && !now) || (exposed && (now?.value ?? 0) < 2))) return move.action
+      if (
+        move &&
+        (move.value > here + 1 || (exposed && !now) || (exposed && (now?.value ?? 0) - (now?.follow ?? 0) < 2))
+      )
+        return move.action
     }
     if (now && now.value > 0.4) return now.action
     if (WEAPONS[u.weapon].ammo !== null && u.ammo <= 0) return { type: "reload", unit: u.id }

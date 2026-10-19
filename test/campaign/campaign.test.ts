@@ -76,7 +76,7 @@ describe("campaign", () => {
     expect(c.week).toBe(2)
     expect(c.project).toBe(1)
   })
-  test("a sent operation is ready after a week and Launch plays it at once; a win pays it, gives XP and rest", () => {
+  test("a sent operation is ready after a week and Launch plays it at once; a win pays it and gives XP", () => {
     const c = fresh()
     const op = c.ops.find((o) => o.kind === "intel")!
     c.play({ type: "send", op: op.id, squad: squad(c, 3) })
@@ -94,7 +94,7 @@ describe("campaign", () => {
     expect(c.intel).toBe(intel + 4)
     expect(home(c).resistance).toBe(2)
     const back = c.roster.filter((s) => sent.includes(s.id))
-    expect(back.every((s) => s.xp === GOALS[1].xp && s.rest === 1)).toBe(true)
+    expect(back.every((s) => s.xp === GOALS[1].xp && s.rest === 0)).toBe(true)
     expect(c.roster.filter((s) => !sent.includes(s.id)).every((s) => s.xp === GOALS[1].xp / 4)).toBe(true)
   })
   test("End week waits while a ready operation is at its last week, until it is launched or called back", () => {

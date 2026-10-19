@@ -64,9 +64,9 @@ export type Choice =
 
 /** The pace of each goal: the Project's end, the weeks per Force Level, and the XP of a won mission. */
 export const GOALS: Record<Goal, { end: number; pace: number; xp: number }> = {
-  1: { end: 30, pace: 3, xp: 32 },
-  3: { end: 70, pace: 5, xp: 20 },
-  8: { end: 150, pace: 9, xp: 12 },
+  1: { end: 36, pace: 3, xp: 32 },
+  3: { end: 96, pace: 5, xp: 26 },
+  8: { end: 200, pace: 9, xp: 16 },
 }
 
 /** Research: its cost, the tech it needs first, and its weeks. */
@@ -312,7 +312,7 @@ export class Campaign {
   }
 
   /**
-   * Ends the mission in play: the dead leave, survivors gain the goal's XP (half after a loss) and rest a week,
+   * Ends the mission in play: the dead leave, survivors gain the goal's XP (half after a loss),
    * soldiers at home gain a quarter of a win's XP, and a win pays the operation's reward.
    */
   finish(result: Result): void {
@@ -325,7 +325,6 @@ export class Campaign {
       if (op.squad.includes(s.id)) {
         s.hp = result.hp[s.id] ?? 0
         s.xp += result.won ? xp : xp / 2
-        s.rest = 1
       } else if (!this.away(s.id)) s.xp += result.won ? home : 0
     }
     const dead = this.roster.filter((s) => s.hp <= 0)

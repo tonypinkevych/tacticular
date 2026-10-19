@@ -44,6 +44,12 @@ describe("ranks", () => {
 })
 
 describe("Assault", () => {
+  test("Shove does 1 damage at rank 1 and leaves the Assault its other AP", () => {
+    const g = setup(open(8, 3), [squad("v", "vanguard", { x: 1, y: 1 }), enemy("e", "orc", { x: 2, y: 1 })])
+    const a = use(g, "v", "shove", { target: "e" })
+    expect(find(a, "e").hp).toBe(find(g, "e").hp - 1)
+    expect(find(a, "v").ap).toBe(find(g, "v").ap - 1)
+  })
   test("Rush gives 1 AP and costs none", () => {
     const g = setup(open(6, 3), [squad("v", "vanguard", { x: 0, y: 0 }), enemy("e", "orc", { x: 5, y: 2 })])
     const a = use(g, "v", "rush")
@@ -127,9 +133,11 @@ describe("Medic", () => {
 })
 
 describe("Scout", () => {
-  test("Hook pulls an alien 2 tiles toward the Scout", () => {
+  test("Hook pulls an alien 2 tiles toward the Scout and leaves it Shaken for a round", () => {
     const g = setup(open(8, 2), [squad("g", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 4, y: 0 })])
-    expect(find(use(g, "g", "hook", { target: "e" }), "e").pos).toEqual({ x: 2, y: 0 })
+    const e = find(use(g, "g", "hook", { target: "e" }), "e")
+    expect(e.pos).toEqual({ x: 2, y: 0 })
+    expect(e.statuses.find((s) => s.id === "shaken")?.rounds).toBe(1)
   })
   test("Mark exposes an alien and keeps the Scout concealed", () => {
     const g = setup(open(8, 2), [squad("g", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 5, y: 0 }, "unaware")])
