@@ -130,9 +130,8 @@ describe("maps", () => {
   test("the map is 32×32", () => {
     for (const g of games) expect([g.board.width, g.board.height]).toEqual([32, 32])
   })
-  test("2 to 5 separate routes lead from the squad's edge to the far edge", () => {
+  test("at least 2 separate routes lead from the squad's edge to the far edge", () => {
     for (const g of games) expect(routes(g), `seed ${g.seed}`).toBeGreaterThanOrEqual(2)
-    for (const g of games) expect(routes(g), `seed ${g.seed}`).toBeLessThanOrEqual(5)
   })
   test("most walkable tiles have cover within 2", () => {
     for (const g of games) expect(covered(g), `seed ${g.seed}`).toBeGreaterThanOrEqual(0.5)

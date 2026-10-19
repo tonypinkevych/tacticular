@@ -25,9 +25,16 @@ interface Template {
   rocks: number
   grass: number
   mud: number
+  /** The share of cover islands that are houses on an open map. */
+  built: number
 }
 
 export const BIOMES: Biome[] = ["forest", "village", "town"]
+
+/** How the land lies between the squad and the aliens: a barrier with gaps, or open ground with cover islands. */
+export type Layout = "barrier" | "open"
+
+export const LAYOUTS: Layout[] = ["barrier", "open"]
 
 /** A place a mission asks the map for: a walled yard, a hill for the beacon, a post for an objective, a landing pad. */
 export interface Site {
@@ -58,6 +65,7 @@ const TEMPLATES: Record<Biome, Template> = {
     rocks: 0.2,
     grass: 4,
     mud: 0.4,
+    built: 0.1,
   },
   village: {
     river: 0.4,
@@ -72,6 +80,7 @@ const TEMPLATES: Record<Biome, Template> = {
     rocks: 0.1,
     grass: 3,
     mud: 0.3,
+    built: 0.45,
   },
   town: {
     river: 0.2,
@@ -86,6 +95,7 @@ const TEMPLATES: Record<Biome, Template> = {
     rocks: 0.1,
     grass: 1,
     mud: 0,
+    built: 0.6,
   },
 }
 
@@ -141,6 +151,7 @@ class Terrain {
     const { dice: r, board: d } = this
     let p = points[0]
     let step = 0
+    this.kept.add(key(p))
     for (const to of points.slice(1)) {
       while (!same(p, to)) {
         const along = p.x === to.x
@@ -269,14 +280,18 @@ class Terrain {
     return r.random() < 0.8 ? "tree" : "rock"
   }
 
-  /** A house with doors, or a flat rooftop with a ladder on one side. */
-  house(roof: boolean): void {
+  /** A house with doors, or a flat rooftop with a ladder on one side; near a point when given one. */
+  house(roof: boolean, near?: Point): void {
     const { dice: r, board: d } = this
     const w = r.between(4, 6)
     const h = r.between(3, 5)
     for (let tries = 0; tries < 30; tries++) {
-      const x0 = r.between(START + 3, d.width - w - 1)
-      const y0 = r.between(1, d.height - h - 1)
+      const x0 = near
+        ? Math.min(d.width - w - 1, Math.max(START + 3, near.x - (w >> 1) + r.between(-1, 1)))
+        : r.between(START + 3, d.width - w - 1)
+      const y0 = near
+        ? Math.min(d.height - h - 1, Math.max(1, near.y - (h >> 1) + r.between(-1, 1)))
+        : r.between(1, d.height - h - 1)
       let free = true
       for (let y = y0 - 1; y <= y0 + h && free; y++) {
         for (let x = x0 - 1; x <= x0 + w && free; x++)
@@ -313,6 +328,61 @@ class Terrain {
     }
   }
 
+  /**
+   * Cover islands on a grid of 8×8 cells east of the start, most cells holding one: a house, a grove of high cover
+   * or a broken wall ring. The lanes between the cells stay open ground.
+   */
+  islands(): void {
+    const { dice: r, board: d, template: t } = this
+    for (let y = 0; y < d.height; y++)
+      for (let x = START + 3; x < d.width; x++)
+        if ((x - START - 3) % 8 === 0 || (y - 1) % 8 === 0) this.kept.add(key({ x, y }))
+    for (let y0 = 1; y0 < d.height - 6; y0 += 8)
+      for (let x0 = START + 3; x0 < d.width - 6; x0 += 8) {
+        if (r.random() < 0.2) continue
+        const at = { x: r.between(x0 + 2, x0 + 5), y: r.between(y0 + 2, y0 + 5) }
+        if (r.random() < t.built) this.house(r.random() < t.roofs, at)
+        else if (r.random() < t.trees + t.rocks) this.grove(at)
+        else this.ruin(at)
+      }
+  }
+
+  /** A blob of 4 to 8 tiles of high cover around a point, with low cover at its edge. */
+  private grove(at: Point): void {
+    const { dice: r, board: d } = this
+    const blob = [at]
+    const size = r.between(4, 8)
+    for (let tries = 0; blob.length < size && tries < 40; tries++) {
+      const p = plus(r.pick(blob), r.pick(AROUND.slice(0, 4)))
+      if (d.at(p) === "floor" && !this.kept.has(key(p)) && !blob.some((q) => same(q, p))) blob.push(p)
+    }
+    for (const p of blob) if (d.at(p) === "floor" && !this.kept.has(key(p))) d.set(p, this.cover())
+    for (let i = 0; i < 3; i++) {
+      const p = plus(r.pick(blob), r.pick(AROUND))
+      if (d.at(p) === "floor" && !this.kept.has(key(p))) d.set(p, "low")
+    }
+  }
+
+  /** A ring of 5×5 walls around a point with about half of it broken away, low rubble in the gaps. */
+  private ruin(at: Point): void {
+    const { dice: r, board: d } = this
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const p = { x: at.x + dx, y: at.y + dy }
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== 2 || d.at(p) !== "floor" || this.kept.has(key(p))) continue
+        const roll = r.random()
+        if (roll < 0.45) d.set(p, this.wall())
+        else if (roll < 0.65) d.set(p, "low")
+      }
+  }
+
+  /** One tile of high cover in the biome's mix of trees, rocks and walls. */
+  private cover(): Tile {
+    const { dice: r, template: t } = this
+    const roll = r.random()
+    return roll < t.trees ? "tree" : roll < t.trees + t.rocks ? "rock" : "high"
+  }
+
   /** A small raised patch of open ground. */
   ridge(): void {
     const { dice: r, board: d } = this
@@ -329,9 +399,10 @@ class Terrain {
     for (const p of spots) if (d.at(p) === "floor" && !this.kept.has(key(p))) d.set(p, "ridge")
   }
 
-  clutter(): void {
+  /** Single tiles and short lines of cover over open ground, a share of the biome's full count. */
+  clutter(share = 1): void {
     const { dice: r, board: d, template: t } = this
-    const count = Math.floor((d.width * d.height) / t.clutter)
+    const count = Math.floor(((d.width * d.height) / t.clutter) * share)
     for (let i = 0; i < count; i++) {
       const at = { x: r.between(1, d.width - 2), y: r.between(0, d.height - 1) }
       const roll = r.random()
@@ -423,15 +494,16 @@ function walkables(d: Board): Point[] {
 }
 
 /**
- * Builds a map of a biome with the squad's start on the west edge and the aliens' side in the east: a barrier
- * with 2 or 3 gaps between them, a direct route through the gap nearest the squad, flank routes through the
- * others, the sites a mission asks for and 1 or 2 hand-made pieces. Every passable tile can be reached from the
- * start.
+ * Builds a map of a biome with the squad's start on the west edge and the aliens' side in the east. A barrier
+ * layout puts a line with 2 or 3 gaps between them, with routes through the gaps; an open layout puts cover
+ * islands with open ground between. Both hold the sites a mission asks for and 1 or 2 hand-made pieces. Every
+ * passable tile can be reached from the start.
  */
 export function map(
   r: Dice,
   biome: Biome = r.pick(BIOMES),
   sites: Site[] = [],
+  layout: Layout = r.pick(LAYOUTS),
   width = SIZE.width,
   height = SIZE.height,
 ): Board {
@@ -442,7 +514,8 @@ export function map(
     const land = new Terrain(r, d, t)
     const start = { x: 1, y: Math.floor(height / 2) }
     const avoid = sites.flatMap((s) => Array.from({ length: 9 }, (_, i) => s.at.y - 4 + i))
-    const gaps = land.barrier(avoid).sort((a, b) => Math.abs(a.y - start.y) - Math.abs(b.y - start.y))
+    const open = layout === "open"
+    const gaps = open ? [] : land.barrier(avoid).sort((a, b) => Math.abs(a.y - start.y) - Math.abs(b.y - start.y))
     for (const site of sites) land[site.kind](site.at)
     gaps.forEach((gap, i) => {
       const west = start.x + 2 + r.between(0, 3)
@@ -465,11 +538,12 @@ export function map(
         i > 0,
       )
     })
-    const houses = Math.round(r.between(...t.houses) * scale * 0.75)
+    const houses = open ? 0 : Math.round(r.between(...t.houses) * scale * 0.75)
     const pieces = r.between(1, 2)
     for (let i = 0; i < pieces; i++) land.piece()
+    if (open) land.islands()
     for (let i = 0; i < houses; i++) land.house(r.random() < t.roofs)
-    land.clutter()
+    land.clutter(open ? 0.4 : 1)
     land.barrels(Math.round(scale * 1.5))
     land.meadows(Math.round(t.grass * scale))
     land.banks()

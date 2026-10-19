@@ -2,6 +2,7 @@ import { Dice } from "../../src/combat/dice"
 import type { Biome, Board } from "../../src/map/board"
 import { key } from "../../src/map/point"
 import { map } from "../../src/map/terrain"
+import { passable } from "../../src/map/tile"
 import type { Game } from "../../src/mission/game"
 import { enemy, find, setup, squad } from "../fixture"
 
@@ -159,5 +160,26 @@ describe("biome terrain", () => {
   test("villages have fences and grass", () => {
     expect(avg("village", "low")).toBeGreaterThan(4)
     expect(avg("village", "grass")).toBeGreaterThan(6)
+  })
+})
+
+describe("layouts", () => {
+  const seeds = Array.from({ length: 40 }, (_, i) => i + 1)
+  const crossings = (b: Board) =>
+    Array.from({ length: b.height }, (_, y) => y).filter((y) =>
+      Array.from({ length: Math.ceil(b.width * 0.2) + 1 }, (_, i) => Math.floor(b.width * 0.4) + i).every((x) =>
+        passable(b.at({ x, y })),
+      ),
+    ).length
+  test("a barrier map lets few rows straight across its middle, an open map lets many", () => {
+    const avg = (layout: "barrier" | "open") =>
+      seeds.reduce((n, s) => n + crossings(map(new Dice({ rng: s }), "village", [], layout)), 0) / seeds.length
+    expect(avg("barrier")).toBeLessThan(3.5)
+    expect(avg("open")).toBeGreaterThan(8)
+  })
+  test("about half the maps are open", () => {
+    const open = seeds.filter((s) => crossings(map(new Dice({ rng: s }))) >= 6).length
+    expect(open).toBeGreaterThan(12)
+    expect(open).toBeLessThan(28)
   })
 })

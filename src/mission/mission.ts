@@ -100,11 +100,15 @@ export function alien(id: string, kind: EnemyKind, pos: Point, group: string, fo
   return u
 }
 
+/** The walking cost from the landing that a group starts at or beyond: two dashes, and room for its spread. */
+const DASHES = 20
+
 function enemies(
   r: Dice,
   board: Board,
   taken: Set<number>,
   reachable: Point[],
+  walk: Map<number, number>,
   landing: Point,
   lead: Point | null,
   leader: number,
@@ -112,9 +116,10 @@ function enemies(
   size: number,
   force?: number,
 ): { units: Unit[]; groups: Group[] } {
-  const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.65))
+  const far = reachable.filter((p) => (walk.get(key(p)) ?? Infinity) >= DASHES)
+  const field = far.filter((p) => p.x >= Math.floor(board.width * 0.65))
   const anchors: Point[] = lead ? [lead] : []
-  const way = halfway(reachable, board, landing, lead ?? { x: board.width - 2, y: landing.y })
+  const way = halfway(far, board, landing, lead ?? { x: board.width - 2, y: landing.y })
   if (way.length > 0) anchors.push(r.pick(way))
   for (let tries = 0; anchors.length < count && tries < 400; tries++) {
     const p = r.pick(field)
@@ -136,17 +141,9 @@ function enemies(
   return { units, groups }
 }
 
-/**
- * The reachable tiles just past the middle of the map, two dashes or more from the landing, within 4 rows of the line
- * from the landing to the objective.
- */
-function halfway(reachable: Point[], board: Board, from: Point, to: Point): Point[] {
-  const band = reachable.filter(
-    (p) =>
-      p.x >= Math.floor(board.width * 0.55) &&
-      p.x < Math.floor(board.width * 0.7) &&
-      Math.max(Math.abs(p.x - from.x), Math.abs(p.y - from.y)) >= 19,
-  )
+/** The tiles just past the middle of the map, within 4 rows of the line from the landing to the objective. */
+function halfway(tiles: Point[], board: Board, from: Point, to: Point): Point[] {
+  const band = tiles.filter((p) => p.x >= Math.floor(board.width * 0.55) && p.x < Math.floor(board.width * 0.7))
   const line = (x: number) => from.y + ((to.y - from.y) * (x - from.x)) / Math.max(1, to.x - from.x)
   const near = band.filter((p) => Math.abs(p.y - line(p.x)) <= 4)
   return near.length > 0 ? near : band
@@ -243,6 +240,8 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
   const reachable = [...flood(board, team[0].pos)]
     .map((k) => ({ x: k % 1000, y: Math.floor(k / 1000) }))
     .filter((p) => board.tiles[p.y * board.width + p.x] !== "door")
+  const scout = Unit.of("scout", team[0].kind, "squad", team[0].pos, "scout")
+  const walk = Game.start({ seed, board, units: [scout] }).reach(scout, 999).cost
   const captive = kind === "vip" && site ? prisoner(r, board, taken, team, site.at, conditions.captive) : null
   const lead = site && site.kind !== "hill" ? site.at : null
   const leader = kind === "warchief" ? 3 : 2
@@ -251,6 +250,7 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
     board,
     taken,
     reachable,
+    walk,
     team[0].pos,
     lead,
     leader,
