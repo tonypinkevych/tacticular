@@ -1,3 +1,4 @@
+import { PLACES } from "../../../src/campaign/world"
 import { DICTIONARIES } from "../../../src/i18n/strings"
 import { ICONS, textWidth } from "../../../src/screen/board/glyphs"
 
@@ -17,5 +18,10 @@ describe("action bar icons", () => {
       expect(icon.length, id).toBe(9)
       for (const row of icon) expect(row.length, id).toBe(9)
     }
+  })
+  test("every operation kind and every region bonus has an icon", () => {
+    for (const kind of ["intel", "vip", "relay", "captain", "defend", "liberation"])
+      expect(ICONS[`op:${kind}`]).toBeDefined()
+    for (const p of PLACES) expect(ICONS[`bonus:${p.bonus}`], p.bonus).toBeDefined()
   })
 })

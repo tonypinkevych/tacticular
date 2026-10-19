@@ -2,13 +2,19 @@ import { createSignal, For, Show } from "solid-js"
 import { type Campaign, CONTACT_COST, GOALS, type Note, type Op } from "../../campaign/campaign"
 import { place, type RegionId } from "../../campaign/world"
 import { t } from "../../i18n/strings"
+import { ALIEN, AMBER, BEACON, css, DASH, EVAC, SMOKE, SQUAD } from "../board/color"
+import { ICONS } from "../board/glyphs"
 import type { Expedition } from "../expedition"
+import { Icon } from "../hud/icon"
 import { SPEEDS } from "../playback/motion"
 import { Earth } from "./earth"
 import { Operation } from "./operation"
+import { Pips } from "./pips"
 import { Profile } from "./profile"
 import { Research } from "./research"
 import { Soldier } from "./soldier"
+import { Stat } from "./stat"
+import { Tip } from "./tip"
 
 /** One line of the week's report in the active language, its region, operation, event and tech by name. */
 export function say(n: Note): string {
@@ -45,22 +51,63 @@ export function World(props: { expedition: Expedition }) {
     <Show when={x.lang()} keyed>
       <section class="run" id="world">
         <header class="bar">
-          <h2>{t("world.week", { week: c().week })}</h2>
-          <span>
-            {t("world.supplies")} <b>{c().supplies}</b>
-          </span>
-          <span>
-            {t("world.intel")} <b>{c().intel}</b>
-          </span>
-          <span>
-            {t("world.materials")} <b>{c().materials}</b>
-          </span>
-          <span class="muted">{t("world.goal", { freed: c().freed(), goal: c().goal })}</span>
+          <Stat icon="world:week" color={DASH} tip={t("world.week", { week: c().week })} info={t("world.weekInfo")}>
+            {c().week}
+          </Stat>
+          <Stat icon="world:supplies" color={AMBER} tip={t("world.supplies")} info={t("world.suppliesInfo")}>
+            {c().supplies}
+          </Stat>
+          <Stat icon="world:intel" color={BEACON} tip={t("world.intel")} info={t("world.intelInfo")}>
+            {c().intel}
+          </Stat>
+          <Stat icon="world:materials" color={SMOKE} tip={t("world.materials")} info={t("world.materialsInfo")}>
+            {c().materials}
+          </Stat>
+          <Stat
+            icon="world:freed"
+            color={EVAC}
+            tip={t("world.goal", { freed: c().freed(), goal: c().goal })}
+            info={t("world.goalInfo")}
+          >
+            {c().freed()}/{c().goal}
+          </Stat>
+          <span class="spacer" />
+          <Stat
+            icon="world:force"
+            color={ALIEN}
+            tip={t("world.force", { force: c().force })}
+            info={t("world.forceInfo")}
+          >
+            <Pips on={c().force} of={10} tone="bad" />
+          </Stat>
+          <Stat
+            icon="world:project"
+            color={ALIEN}
+            tip={t("world.project", { project: c().project, end: GOALS[c().goal].end })}
+            info={t("world.projectInfo")}
+          >
+            <span class="clock">
+              <i style={{ width: `${(100 * c().project) / GOALS[c().goal].end}%` }} />
+            </span>
+            {c().project}/{GOALS[c().goal].end}
+          </Stat>
+          <Show when={c().event}>
+            {(e) => (
+              <Stat
+                icon="world:event"
+                color={ALIEN}
+                tip={t(`event.${e().id}`)}
+                info={t("world.eventInfo", { info: t(`event.info.${e().id}`), week: e().until })}
+              >
+                {e().until}
+              </Stat>
+            )}
+          </Show>
           <button type="button" class="primary" onClick={end}>
             {t("world.endWeek")}
           </button>
-          <button type="button" classList={{ active: menu() }} onClick={() => setMenu(!menu())}>
-            {t("ui.menu")}
+          <button type="button" classList={{ active: menu() }} data-tip={t("ui.menu")} onClick={() => setMenu(!menu())}>
+            <Icon glyph={ICONS["world:menu"]} color={css(SQUAD)} class="icon" />
           </button>
           <Show when={menu()}>
             <Menu expedition={x} help={help()} onHelp={() => setHelp(!help())} />
@@ -71,20 +118,6 @@ export function World(props: { expedition: Expedition }) {
             <For each={t("world.helpText").split(" · ")}>{(line) => <div>{line}</div>}</For>
           </div>
         </Show>
-        <div class="bar aliens">
-          <span title={t("world.forceInfo")}>{t("world.force", { force: c().force })}</span>
-          <span class="clock" title={t("world.projectInfo")}>
-            {t("world.project", { project: c().project, end: GOALS[c().goal].end })}
-            <i style={{ width: `${(100 * c().project) / GOALS[c().goal].end}%` }} />
-          </span>
-          <Show when={c().event}>
-            {(e) => (
-              <span class="event" title={t(`event.info.${e().id}`)}>
-                {t("world.event", { event: t(`event.${e().id}`), week: e().until })}
-              </span>
-            )}
-          </Show>
-        </div>
         <div class="map">
           <Earth campaign={c()} chosen={region().id} onPick={setChosen} />
         </div>
@@ -156,6 +189,7 @@ export function World(props: { expedition: Expedition }) {
             </Show>
           </div>
         </div>
+        <Tip />
       </section>
     </Show>
   )
