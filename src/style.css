@@ -546,6 +546,17 @@ header {
   text-transform: uppercase;
   pointer-events: none;
 }
+#banner.landed {
+  animation: landed 4s ease-in forwards;
+}
+@keyframes landed {
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 main.logged #top {
   right: 340px;
 }

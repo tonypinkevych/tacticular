@@ -36,7 +36,7 @@ function Top(props: { model: Model }) {
       </span>
       <span class="goal">{goal(m.shown())}</span>
       <span class="alarm" classList={{ coming: !!m.shown().reinforcements.coming() }}>
-        {t("ui.alarm", { alarm: m.shown().alarm, next: m.shown().reinforcements.next() ?? "—" })}
+        {drop(m.shown().reinforcements.next())}
       </span>
       <span class="grow" />
       <button type="button" classList={{ active: m.help() }} onClick={() => m.setHelp(!m.help())}>
@@ -145,6 +145,13 @@ export function App(props: { model: Model }): JSX.Element {
         <Show when={m.shown().phase === "enemy"}>
           <div id="banner">{t("ui.activity")}</div>
         </Show>
+        <Show when={m.shown().phase === "squad" && m.shown().reinforcements.landed()} keyed>
+          {(count) => (
+            <div id="banner" class="landed">
+              {t("ui.landed", { count })}
+            </div>
+          )}
+        </Show>
         <Help model={m} />
         <div class="corner left">
           <Show when={m.unit()}>{(u) => <Card unit={u()} game={m.game()} model={m} />}</Show>
@@ -160,4 +167,10 @@ export function App(props: { model: Model }): JSX.Element {
       </main>
     </Show>
   )
+}
+
+/** The drop clock as the top bar says it. */
+function drop(rounds: number | null): string {
+  if (rounds === null) return t("ui.dropNone")
+  return rounds === 0 ? t("ui.dropNow") : t("ui.drop", { rounds })
 }

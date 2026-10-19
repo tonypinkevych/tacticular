@@ -18,7 +18,7 @@ export type Tech = "weapons2" | "weapons3" | "armor2" | "armor3" | "squad"
 
 export type OpKind = "intel" | "vip" | "relay" | "captain" | "defend" | "liberation"
 
-/** A timed alien effect on every mission: +1 group, +2 Force Level, or +1 alarm. */
+/** A timed alien effect on every mission: +1 group, +2 Force Level, or alien drops 1 round sooner. */
 export type DarkEvent = "reinforced" | "elite" | "vigilant"
 
 /** What an ignored operation costs at the week's end: Project +2, the region's Strength +1, or its Resistance −1. */

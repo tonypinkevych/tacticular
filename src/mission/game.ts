@@ -56,7 +56,7 @@ export interface GameData {
   goal: Goal
   /** Where alien reinforcements land; a map with no pad gets none. */
   pad: Point | null
-  /** Rises each round; at some values the aliens get help. */
+  /** The rounds sooner each alien drop comes. */
   alarm: number
   /** The alien Force Level of a campaign mission. */
   force?: number

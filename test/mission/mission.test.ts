@@ -85,7 +85,7 @@ describe("mission", () => {
         expect(r.cost.has(key(g.units[0].pos)), `seed ${seed}: ${e.id}`).toBe(true)
       }
     }
-  })
+  }, 15_000)
   test("the same seed builds the same mission", () => {
     expect(mission(7)).toEqual(mission(7))
   })

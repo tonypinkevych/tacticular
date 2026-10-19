@@ -20,7 +20,7 @@ export interface Noise {
   at: Point
   radius: number
   round: number
-  /** The squad made it; a loud round raises the alarm. */
+  /** The squad made it. */
   loud?: boolean
 }
 
@@ -231,17 +231,6 @@ export class Stealth {
     const aim = "at" in goal ? goal.at : "tiles" in goal ? goal.tiles[0] : undefined
     if (!g.landing || !aim) return g.landing && { ...g.landing }
     return { x: Math.round((g.landing.x + aim.x) / 2), y: Math.round((g.landing.y + aim.y) / 2) }
-  }
-
-  /** Sends the calm group nearest to a soldier to search where that soldier stands. */
-  hunt(): void {
-    const soldiers = this.game.units.filter((s) => s.alive() && s.soldier())
-    const calm = this.hostiles().filter((e) => e.alert !== "engaged" && e.group)
-    const near = (e: Unit) => Math.min(...soldiers.map((s) => distance(s.pos, e.pos)))
-    const e = calm.sort((a, b) => near(a) - near(b))[0]
-    if (!e || soldiers.length === 0) return
-    const s = soldiers.sort((a, b) => distance(a.pos, e.pos) - distance(b.pos, e.pos))[0]
-    this.investigate(e.group, s.pos)
   }
 
   private investigate(id: string | null, at: Point): void {
