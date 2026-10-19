@@ -122,6 +122,7 @@ export class Mind {
       if (!canReach(u, t, weapon)) continue
       if (weapon.twoAp && (u.ap < 2 || u.moved)) continue
       if (weapon.ammo !== null && u.ammo <= 0) continue
+      if (!game.orders.sighted(u, "attack")) continue
       const o = game.combat.odds(u, t)
       const dmg = (o.min + o.max) / 2
       const value =
@@ -206,10 +207,11 @@ export class Mind {
     return this.watch(u)
   }
 
-  /** Overwatch when the weapon can fire and the unit is not suppressed, else nothing. */
+  /** Overwatch when the weapon can fire and the unit is neither suppressed nor blinded, else nothing. */
   private watch(u: Unit): Action | null {
     const loaded = WEAPONS[u.weapon].ammo === null || u.ammo > 0
-    return loaded && !u.has("suppressed") ? { type: "overwatch", unit: u.id } : null
+    const ready = loaded && !u.has("suppressed") && this.game.orders.sighted(u, "overwatch")
+    return ready ? { type: "overwatch", unit: u.id } : null
   }
 
   /** True when the unit is the unaware alien nearest to the evac zone. */
@@ -252,6 +254,7 @@ export class Mind {
     const game = this.game
     if (!u.alive() || u.has("stasis") || u.allegiance() !== "enemy" || (u.intent && u.intent.type !== "shot"))
       return null
+    if (!game.orders.sighted(u, "aim")) return null
     const known = this.known(u)
     const tiles = [u.pos, ...[...game.reach(u, u.mobility).cost.keys()].map(pointOf).filter((p) => !game.unitAt(p))]
     let best: { at: Point; target: string; value: number } | null = null
@@ -272,6 +275,7 @@ export class Mind {
   /** Special moves of the enemy types: telegraphs, then the strike they promised. */
   private special(u: Unit, targets: Unit[]): Choice | null {
     const game = this.game
+    if (!game.orders.sighted(u, "ability")) return null
     if (u.intent?.type === "shot") {
       const t = game.units.find((x) => x.id === (u.intent as { target: string }).target)
       const from = u.intent.from

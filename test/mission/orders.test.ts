@@ -278,6 +278,31 @@ describe("aim", () => {
   })
 })
 
+describe("blinded", () => {
+  const blind = (kind: "orc" | "ogre" | "bomber") => {
+    const e = enemy("e", kind, { x: 1, y: 1 })
+    e.give({ id: "blinded", rounds: 1 })
+    const g = setup(["..b.....", "........", "........"], [squad("v", "vanguard", { x: 0, y: 1 }), e])
+    g.phase = "enemy"
+    find(g, "e").ap = 2
+    return g
+  }
+  test("a blinded alien cannot shoot, overwatch, aim, fire at a barrel or use a skill", () => {
+    const g = blind("orc")
+    expect(() => g.apply({ type: "attack", unit: "e", target: "v" })).toThrow(Illegal)
+    expect(() => g.apply({ type: "overwatch", unit: "e" })).toThrow(Illegal)
+    expect(() => g.apply({ type: "aim", unit: "e", target: "v" })).toThrow(Illegal)
+    expect(() => g.apply({ type: "shoot", unit: "e", at: { x: 2, y: 0 } })).toThrow(Illegal)
+    expect(() => blind("bomber").apply({ type: "ability", unit: "e", ability: "mark", at: { x: 0, y: 1 } })).toThrow(
+      Illegal,
+    )
+  })
+  test("a blinded alien still moves and hits in melee", () => {
+    expect(find(blind("orc").apply({ type: "move", unit: "e", to: { x: 4, y: 1 } }), "e").pos).toEqual({ x: 4, y: 1 })
+    expect(hits(blind("ogre").apply({ type: "attack", unit: "e", target: "v" }))).toHaveLength(1)
+  })
+})
+
 describe("shooting a barrel", () => {
   test("a soldier shoots a barrel in sight and weapon range: it blows up and the turn ends", () => {
     const g = setup(

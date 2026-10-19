@@ -46,6 +46,7 @@ const STATUS: Partial<Record<string, number>> = {
   poisoned: -1,
   suppressed: -1.5,
   stasis: -2,
+  blinded: -2,
   ward: 1,
   running: 1,
   killzone: 1.5,

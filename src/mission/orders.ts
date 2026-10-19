@@ -48,6 +48,7 @@ export class Orders {
       return
     }
     check(!u.has("stasis"), "stasis")
+    check(this.sighted(u, action.type), "blinded")
     if (action.type === "aim") {
       this.aim(u, game.unit(action.target), action.from)
       return
@@ -147,6 +148,13 @@ export class Orders {
       .sort((a, b) => (r.cost.get(key(a)) ?? 0) - (r.cost.get(key(b)) ?? 0))
   }
 
+  /** False when a Blinded unit would aim: a ranged attack, a shot at a barrel, overwatch, a mark or a skill. */
+  sighted(u: Unit, type: Action["type"]): boolean {
+    if (!u.has("blinded")) return true
+    if (type === "attack") return u.arms().melee
+    return !["shoot", "overwatch", "aim", "ability"].includes(type)
+  }
+
   canTarget(u: Unit, t: Unit): boolean {
     const { sight, units } = this.game
     if (!t.alive() || t.has("captive") || t.has("stasis")) return false
@@ -243,7 +251,7 @@ export class Orders {
     if (!s) return
     u.lift("suppressed")
     const by = game.units.find((x) => x.id === s.source)
-    if (!by?.alive() || by.has("stasis") || !game.sight.sees(by, u.pos) || by.ammo <= 0) return
+    if (!by?.alive() || by.has("stasis") || by.has("blinded") || !game.sight.sees(by, u.pos) || by.ammo <= 0) return
     game.combat.attack(by, u, { reaction: true, risky })
   }
 
@@ -254,7 +262,7 @@ export class Orders {
     for (const x of game.units) {
       if (!u.alive()) return
       if (!x.alive() || !x.foe(u) || x.rank("covering") === 0 || x.cooldowns.covering) continue
-      if (["stasis", "suppressed", "exposed"].some((s) => x.has(s as StatusId))) continue
+      if (["stasis", "suppressed", "exposed", "blinded"].some((s) => x.has(s as StatusId))) continue
       if (x.ammo <= 0 || !game.sight.sees(x, u.pos)) continue
       x.cooldowns.covering = 1
       game.log.push({ key: "log.covering", params: { unit: x.id, target: u.id } })

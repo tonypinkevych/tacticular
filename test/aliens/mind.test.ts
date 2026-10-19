@@ -184,6 +184,15 @@ describe("fight", () => {
     find(g, "e").give({ id: "suppressed", rounds: 1 })
     expect(new Mind(g).decide(find(g, "e"))?.type).not.toBe("overwatch")
   })
+  test("a blinded alien with a gun neither shoots nor watches", () => {
+    const e = enemy("e", "orc", { x: 6, y: 1 })
+    e.ap = 2
+    e.give({ id: "blinded", rounds: 1 })
+    const g = setup(open(8, 3), [squad("v", "vanguard", { x: 0, y: 1 }), e])
+    find(g, "v").concealed = false
+    expect(["attack", "overwatch", "ability"]).not.toContain(new Mind(g).decide(find(g, "e"))?.type)
+    expect(new Mind(g).aim(find(g, "e"))).toBeNull()
+  })
   const duel = (d: number) => {
     const rows = [".".repeat(12), `.H${".".repeat(d - 1)}H${".".repeat(10 - d)}`, ".".repeat(12)]
     const g = setup(rows, [squad("s", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 2 + d, y: 1 })])

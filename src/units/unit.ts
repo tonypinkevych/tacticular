@@ -19,6 +19,7 @@ export type StatusId =
   | "stasis"
   | "poisoned"
   | "running"
+  | "blinded"
 
 export interface Status {
   id: StatusId

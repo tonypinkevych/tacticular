@@ -320,7 +320,7 @@ describe("Engineer", () => {
     expect(find(b, "e").has("exposed")).toBe(true)
     expect(b.zones.some((z) => z.kind === "mine")).toBe(false)
   })
-  test("Flash shakes the aliens in a 3×3 area within 5, not the squad; at rank 3 it also exposes", () => {
+  test("Flash blinds the aliens in a 3×3 area within 5, not the squad; at rank 3 it also exposes", () => {
     const n = squad("n", "engineer", { x: 0, y: 2 })
     n.ranks = { ...n.ranks, flash: 3 }
     const g = setup(open(8, 5), [
@@ -330,9 +330,18 @@ describe("Engineer", () => {
       enemy("b", "orc", { x: 4, y: 3 }),
     ])
     const a = use(g, "n", "flash", { at: { x: 4, y: 2 } })
-    expect(find(a, "a").has("shaken")).toBe(true)
+    expect(find(a, "a").statuses.find((s) => s.id === "blinded")?.rounds).toBe(2)
     expect(find(a, "b").has("exposed")).toBe(true)
-    expect(find(a, "v").has("shaken")).toBe(false)
+    expect(find(a, "v").has("blinded")).toBe(false)
+  })
+  test("Flash takes the aliens it blinds off overwatch and drops their marks", () => {
+    const e = enemy("e", "orc", { x: 4, y: 2 })
+    e.stance = "overwatch"
+    e.intent = { type: "shot", target: "n" }
+    const g = setup(open(8, 5), [squad("n", "engineer", { x: 0, y: 2 }), e])
+    const a = use(g, "n", "flash", { at: { x: 4, y: 2 } })
+    expect(find(a, "e").stance).toBe("none")
+    expect(find(a, "e").intent).toBeNull()
   })
 })
 

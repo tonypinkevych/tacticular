@@ -48,7 +48,7 @@ export type AbilityId =
   | "warcry"
 
 /** Statuses a Medkit and a Field hospital clear. */
-export const BAD: StatusId[] = ["shaken", "burning", "exposed", "poisoned"]
+export const BAD: StatusId[] = ["shaken", "burning", "exposed", "poisoned", "blinded"]
 
 /** The class abilities and ultimates units use in a game. */
 export class Abilities {
@@ -332,7 +332,11 @@ export class Abilities {
         const hits = area(at!, 1)
           .map((p) => game.unitAt(p))
           .filter((x): x is Unit => !!x && x.alive() && u.foe(x))
-        for (const x of hits) x.give({ id: "shaken", rounds: power(u, id), source: u.id })
+        for (const x of hits) {
+          x.give({ id: "blinded", rounds: power(u, id), source: u.id })
+          x.intent = null
+          if (x.stance === "overwatch") x.stance = "none"
+        }
         if (u.rank(id) >= 3) for (const x of hits) x.give({ id: "exposed", rounds: 1, source: u.id })
         game.stealth.noise(at!, FLASH_NOISE, u)
         for (const x of hits) game.stealth.attacked(u, x, u.weapon)
