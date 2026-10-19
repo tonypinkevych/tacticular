@@ -17,7 +17,8 @@ The folders name what the game is made of.
 - **`src/aliens/`**: the alien AI, stealth (alerts, noise, the alarm) and reinforcements.
 - **`src/mission/`**: the game, its turns and orders, the mission generator, and the match that plays the
   alien side.
-- **`src/run/`**: the roguelike run: the draft, the chart of missions, threat, rewards and carried HP.
+- **`src/campaign/`**: the campaign: the world's regions, weeks, both economies, operations, infiltration, research
+  and soldier levels.
 - **`src/save/`**: the signed event logs of the run and the mission, and their saved copies.
 - **`src/i18n/`**: every string the player reads, in English and Russian, with the same keys.
 - **`src/screen/`**: the canvas board, the HUD, playback and the run screens. It never changes a `Game` except through an action.

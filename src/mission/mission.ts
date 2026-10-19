@@ -40,18 +40,21 @@ function squad(r: Dice, board: Board, taken: Set<number>, recruits?: Recruit[]):
   const classes = r.shuffle(CLASSES).slice(0, 3)
   const names = r.shuffle(NAMES)
   const mid = Math.floor(board.height / 2)
-  const random = classes.map((kind, i) => ({
-    id: `s${i + 1}`,
-    kind,
-    name: names[i],
-    spread: { hp: r.between(-1, 1), aim: r.between(-1, 1), will: r.between(-1, 1) },
-    hp: Infinity,
-  }))
+  const random = classes.map(
+    (kind, i): Recruit => ({
+      id: `s${i + 1}`,
+      kind,
+      name: names[i],
+      spread: { hp: r.between(-1, 1), aim: r.between(-1, 1), will: r.between(-1, 1) },
+      hp: Infinity,
+    }),
+  )
   const team = recruits ?? random
   const spots = [-2, 0, 2, 4].slice(0, team.length).map((dy) => free(board, { x: 1, y: mid + dy }, taken))
   return team.map((s, i) => {
-    const u = Unit.of(s.id, s.kind, "squad", spots[i], s.name, null, s.spread)
+    const u = Unit.of(s.id, s.kind, "squad", spots[i], s.name, null, s.spread, s.ranks)
     u.hp = Math.min(u.maxHp, s.hp)
+    if (s.might) u.might = s.might
     return u
   })
 }

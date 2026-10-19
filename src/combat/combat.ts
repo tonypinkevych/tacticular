@@ -116,8 +116,8 @@ export class Combat {
       need: sure ? 1 : Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
       aimParts,
       defenseParts,
-      min: scale(weapon.dice.count + weapon.dice.bonus),
-      max: scale(weapon.dice.count * weapon.dice.sides + weapon.dice.bonus),
+      min: scale(weapon.dice.count + weapon.dice.bonus + (attacker.might ?? 0)),
+      max: scale(weapon.dice.count * weapon.dice.sides + weapon.dice.bonus + (attacker.might ?? 0)),
     }
   }
 
@@ -171,7 +171,7 @@ export class Combat {
       game.log.push({ key: "log.miss", params })
       return
     }
-    const raw = game.dice.roll(w.dice) + (shot.bonus ?? 0)
+    const raw = game.dice.roll(w.dice) + (shot.bonus ?? 0) + (attacker.might ?? 0)
     const dmg = critical ? crit(raw) : raw
     game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
     if (o.sure) target.lift("exposed")

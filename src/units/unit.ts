@@ -51,6 +51,10 @@ export interface Recruit {
   name: string
   spread: Spread
   hp: number
+  /** The rank of each skill; with none, every skill of the kit is at rank 1. */
+  ranks?: Partial<Record<AbilityId, number>>
+  /** Extra damage of its weapon. */
+  might?: number
 }
 
 /** The saved fields of a unit. */
@@ -86,6 +90,8 @@ export interface UnitData {
   intent: Intent | null
   /** True when the unit's last turn ended on overwatch or hunker. */
   waited?: boolean
+  /** Extra damage of its weapon. */
+  might?: number
 }
 
 /** A soldier, an alien or a gadget on the board, with its stats and its state in the fight. */
@@ -119,6 +125,7 @@ export class Unit implements UnitData {
   patrolIndex!: number
   intent!: Intent | null
   waited?: boolean
+  might?: number
 
   constructor(data: UnitData) {
     Object.assign(this, data)

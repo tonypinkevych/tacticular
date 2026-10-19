@@ -6,8 +6,8 @@ import type { Action } from "../mission/orders"
 /** Nostr event kind of the game log: one start event, then one event per player action. */
 export const KIND = 7350
 
-/** Nostr event kind of the run log: one start event, then one event per choice on the run. */
-export const RUN = 7351
+/** Nostr event kind of the campaign log: one start event, then one event per choice in the campaign. */
+export const CAMPAIGN = 7352
 
 const TAG = ["t", "tacticular"]
 
@@ -35,8 +35,8 @@ export class Journal {
     return getPublicKey(this.key)
   }
 
-  /** The start event of a log, with what the mission is built from. */
-  begin(seed: number, conditions: Conditions = {}, kind = KIND): Event {
+  /** The start event of a log, with what the mission or the campaign is built from. */
+  begin(seed: number, conditions: object = {}, kind = KIND): Event {
     return finalizeEvent(
       { kind, created_at: now(), tags: [TAG, ["seed", String(seed)]], content: JSON.stringify({ seed, conditions }) },
       this.key,
@@ -57,10 +57,10 @@ export class Journal {
 }
 
 /** Reads a log back: checks every signature, the author, the root link and the order. */
-export function history<T = Action>(
+export function history<T = Action, C = Conditions>(
   events: Event[],
   kind = KIND,
-): { seed: number; conditions: Conditions; actions: T[] } {
+): { seed: number; conditions: C; actions: T[] } {
   const [start, ...rest] = events
   if (!start || !verifyEvent(start) || start.kind !== kind) throw new Error("bad start event")
   const seed = Number(start.tags.find((t) => t[0] === "seed")?.[1])
@@ -72,6 +72,6 @@ export function history<T = Action>(
     if (!verifyEvent(e) || !linked) throw new Error(`bad event ${i}`)
     return JSON.parse(e.content) as T
   })
-  const conditions = (JSON.parse(start.content) as { conditions?: Conditions }).conditions ?? {}
+  const conditions = ((JSON.parse(start.content) as { conditions?: C }).conditions ?? {}) as C
   return { seed, conditions, actions }
 }

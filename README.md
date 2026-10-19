@@ -1,6 +1,6 @@
 # Tacticular
 
-A chess-like, turn-based tactics game in the browser, played as a short roguelike run. You lead a squad of up to 4
+A chess-like, turn-based tactics game in the browser, played as a campaign to free the Earth. You lead squads of up to 4
 against alien war bands on random maps with fog of war. Position, information and timing win; brute force
 loses.
 
@@ -20,11 +20,23 @@ loses.
   captive; or hold a beacon for 8 rounds against growing waves. A downed soldier left outside the evac zone is
   lost.
 
-## The run
+## Skills and levels
 
-Pick 3 of 7 soldiers; 3 or 4 go on a mission, and the roster holds 5. Cross a chart of missions, each in a forest, village or town, to the fortress and kill the Warchief there. HP carries from
-mission to mission; a won mission gives a heal, a recruit or training, and changes the fortress. The run ends
-when no soldier is left.
+Each class has 3 skills and an ultimate. A soldier gets 1 rank point at each of 11 levels. A skill takes 3 ranks,
+each with a higher number or a shorter cooldown; a skill at rank n needs level 2n−1. The ultimate opens at level 6
+and takes rank 2 at level 11. The alien AI and the bot squad try each ready skill on copies of the game and use
+the best one.
+
+## The campaign
+
+Pick the goal: free 1, 3 or all 8 regions. Each week you contact regions with Intel, recruit and research with
+Supplies and Materials, rank up soldiers and send squads of 3 or 4 to operations. A short squad or a long prep
+infiltrates better: fewer aliens, or groups marked. Won operations raise a region's Resistance and cut its alien
+Strength; at full Resistance and low Strength, a Liberation frees the region and turns on its bonus.
+
+The aliens get income from the regions they hold. They spend it on Strength where you are active, on Dark Events
+that make every mission harder until you end them, and on the Project. Their Force Level rises with time and
+brings new kinds, skill ranks and HP. When the Project ends, the war is lost.
 
 ## Run
 
@@ -50,7 +62,7 @@ pnpm build      # type-check and build to dist/
 
 ## Save and action log
 
-The game keeps two logs in `localStorage`: the run's seed and choices (kind 7351), and the current mission's
+The game keeps two logs in `localStorage`: the campaign's seed, goal and choices (kind 7352), and the current mission's
 seed, conditions and actions (kind 7350). When you open the page again, the game replays both through the
 rules. Each entry is a signed Nostr event (NIP-01) with a local key, so the logs can go to relays later. If
 an event is changed, the game refuses the save.
@@ -61,12 +73,12 @@ an event is changed, the game refuses the save.
 src/map/       Board, tiles, the map generator (Terrain), Sight, Cover, Reach, Fire
 src/units/     Unit and the profiles of the classes and the aliens
 src/combat/    Dice, weapons, Combat (odds and attacks), Abilities
-src/aliens/    Mind (the alien AI), Stealth (alerts, noise, the alarm), Reinforcements
+src/aliens/    Mind (the AI), Foresight (its look-ahead at skills), Stealth (alerts, noise, the alarm), Reinforcements
 src/mission/   Game, Turn, Orders, the mission generator, Match (the alien side and AI balance runs)
-src/run/       Run (draft, chart, threat, rewards, carried HP) and Chart (the act's missions)
-src/save/      Journal (signed Nostr event logs), the saved Session (a mission) and Campaign (the run)
+src/campaign/  Campaign (weeks, both economies, operations, infiltration), the world's regions, soldier levels
+src/save/      Journal (signed Nostr event logs), the saved Session (a mission) and Chronicle (the campaign)
 src/i18n/      Locale: English and Russian strings
-src/screen/    the glyph board (board/), the HUD (hud/), playback with sound (playback/), run screens (run/)
+src/screen/    the glyph board (board/), the HUD (hud/), playback with sound (playback/), campaign screens (run/)
 test/          Vitest specs, one folder per source folder; test/play/ holds cases that cross modules
 ```
 

@@ -1,4 +1,4 @@
-import { Campaign } from "../../src/save/campaign"
+import { Chronicle } from "../../src/save/chronicle"
 import { Expedition } from "../../src/screen/expedition"
 
 const memory = (): Storage => {
@@ -15,35 +15,53 @@ const memory = (): Storage => {
 
 const opened = () => {
   const store = memory()
-  return Expedition.open(
-    Campaign.open(store, () => 12),
-    store,
-  )
+  const x = Expedition.open(Chronicle.open(store), store)
+  x.begin(1)
+  return x
+}
+
+const launch = (x: Expedition) => {
+  const c = x.campaign()!
+  x.choose({
+    type: "send",
+    op: c.ops[0].id,
+    squad: c
+      .ready()
+      .slice(0, 3)
+      .map((s) => s.id),
+    prep: 1,
+  })
+  x.choose({ type: "week" })
 }
 
 describe("expedition", () => {
-  test("a choice moves the run on and changes its version", () => {
+  test("a new expedition has no campaign until a goal is picked", () => {
+    const store = memory()
+    const x = Expedition.open(Chronicle.open(store), store)
+    expect(x.campaign()).toBeNull()
+    x.begin(3)
+    expect(x.campaign()?.goal).toBe(3)
+  })
+  test("a choice moves the campaign on and changes its version", () => {
     const x = opened()
     const before = x.version()
-    x.choose({ type: "draft", picks: ["c1", "c2", "c3"] })
-    expect(x.run().stage).toBe("chart")
+    x.choose({ type: "week" })
+    expect(x.campaign()?.week).toBe(2)
     expect(x.version()).toBeGreaterThan(before)
   })
-  test("going to a mission gives a mission model; ending it leaves the mission", () => {
+  test("a launched operation gives a mission model; ending it leaves the mission", () => {
     const x = opened()
-    x.choose({ type: "draft", picks: ["c1", "c2", "c3"] })
-    x.choose({ type: "go", node: x.run().options()[0].id, deploy: ["c1", "c2", "c3"] })
-    expect(x.model?.game().units.some((u) => u.id === "c1")).toBe(true)
+    launch(x)
+    expect(x.model?.game().units.some((u) => u.side === "squad")).toBe(true)
     x.finish()
     expect(x.model).toBeNull()
-    expect(x.run().stage).not.toBe("mission")
+    expect(x.campaign()?.stage).not.toBe("mission")
   })
-  test("the mission menu's new run starts a run at the draft", () => {
+  test("the mission menu's new campaign goes back to the goal pick", () => {
     const x = opened()
-    x.choose({ type: "draft", picks: ["c1", "c2", "c3"] })
-    x.choose({ type: "go", node: x.run().options()[0].id, deploy: ["c1", "c2", "c3"] })
+    launch(x)
     x.model?.newMission()
     x.model?.newMission()
-    expect(x.run().stage).toBe("draft")
+    expect(x.campaign()).toBeNull()
   })
 })

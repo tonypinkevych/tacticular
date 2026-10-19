@@ -1,28 +1,24 @@
 import { Match, Switch } from "solid-js"
 import type { Expedition } from "../expedition"
 import { App } from "../hud/hud"
-import { Draft } from "./draft"
 import { End } from "./end"
-import { Rewards } from "./rewards"
-import { Route } from "./route"
+import { Goals } from "./goal"
+import { World } from "./world"
 
-/** The whole game: the screen of the run's stage, or the mission in play. */
+/** The whole game: the goal pick, the world map, the mission in play, or the end of the campaign. */
 export function Shell(props: { expedition: Expedition }) {
   const x = props.expedition
-  const stage = () => x.run().stage
+  const stage = () => x.campaign()?.stage ?? null
   return (
     <Switch>
-      <Match when={stage() === "draft"}>
-        <Draft expedition={x} />
+      <Match when={stage() === null}>
+        <Goals expedition={x} />
       </Match>
-      <Match when={stage() === "chart"}>
-        <Route expedition={x} />
+      <Match when={stage() === "world"}>
+        <World expedition={x} />
       </Match>
       <Match when={stage() === "mission" && x.version() >= 0 && x.model} keyed>
         {(m) => <App model={m} />}
-      </Match>
-      <Match when={stage() === "reward"}>
-        <Rewards expedition={x} />
       </Match>
       <Match when={stage() === "won" || stage() === "lost"}>
         <End expedition={x} />
