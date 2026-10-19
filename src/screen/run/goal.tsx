@@ -3,7 +3,7 @@ import type { Goal } from "../../campaign/campaign"
 import { t } from "../../i18n/strings"
 import type { Expedition } from "../expedition"
 
-const GOALS: Goal[] = [1, 3, 8]
+const GOALS: Goal[] = [3, 5, 8]
 
 /** The start of a campaign: pick how many regions to free. */
 export function Goals(props: { expedition: Expedition }) {

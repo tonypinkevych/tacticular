@@ -22,26 +22,26 @@ describe("beats", () => {
       { key: "recap.project", params: { amount: 2 } },
     ])
   })
-  test("report lines keep their order and mark their region", () => {
+  test("report lines keep their order and mark their region; a spread also marks where it came from", () => {
     const b = beats(calm, calm, [
       { key: "week.research", params: { tech: "armor2" } },
-      { key: "week.reinforced", params: { region: "af" } },
+      { key: "week.spread", params: { from: "na", region: "sa" } },
+      { key: "week.ignored", params: { op: "intel", region: "af", penalty: "project" } },
     ])
-    expect(b.map((x) => [x.icon, x.region])).toEqual([
-      ["world:research", null],
-      ["world:strength", "af"],
+    expect(b.map((x) => [x.icon, x.region, x.from])).toEqual([
+      ["world:research", null, undefined],
+      ["world:strength", "sa", "na"],
+      ["op:intel", "af", undefined],
     ])
   })
-  test("an operation gone is expired and a new one is announced, each in its region", () => {
-    const before = { ...calm, ops: [{ id: 1, kind: "intel" as const, region: "na" as const }] }
+  test("a new operation is announced in its region", () => {
     const after = { ...calm, ops: [{ id: 2, kind: "captain" as const, region: "eas" as const }] }
-    expect(beats(before, after, []).map((x) => [x.icon, x.note.key, x.region])).toEqual([
-      ["op:intel", "recap.expired", "na"],
+    expect(beats(calm, after, []).map((x) => [x.icon, x.note.key, x.region])).toEqual([
       ["op:captain", "recap.new", "eas"],
     ])
   })
   test("a glance reads a campaign's resources, roster and operations", () => {
-    const c = Campaign.start(7, 1)
+    const c = Campaign.start(7, 3)
     const g = glance(c)
     expect(g.supplies).toBe(c.supplies)
     expect(g.roster.map((s) => s.id)).toEqual(c.roster.map((s) => s.id))

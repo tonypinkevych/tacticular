@@ -4,11 +4,15 @@ import type { RegionId } from "../../campaign/world"
 /** A number of the top bar that a beat counts up. */
 export type Counter = "supplies" | "intel" | "materials" | "force" | "project"
 
-/** One change of a week as the playback shows it: an icon, a line of text, its region and the counter it raises. */
+/**
+ * One change of a week as the playback shows it: an icon, a line of text, its region, the region it came from and the
+ * counter it raises.
+ */
 export interface Beat {
   icon: string
   note: Note
   region: RegionId | null
+  from?: RegionId
   counter?: Counter
 }
 
@@ -27,9 +31,9 @@ const RESOURCES = ["supplies", "intel", "materials"] as const
 
 const ICONS: Record<string, string> = {
   "week.research": "world:research",
-  "week.reinforced": "world:strength",
+  "week.spread": "world:strength",
+  "week.site": "world:project",
   "week.event": "world:event",
-  "week.haven": "world:resistance",
 }
 
 export function glance(c: Campaign): Glance {
@@ -45,8 +49,8 @@ export function glance(c: Campaign): Glance {
 }
 
 /**
- * The beats of a week in the order they play: income, new soldiers, the report's lines, the Force Level, the Project,
- * expired operations and new ones.
+ * The beats of a week in the order they play: income, new soldiers, the report's lines, the Force Level, the Project
+ * and the new operations.
  */
 export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
   const gains: Beat[] = RESOURCES.filter((r) => after[r] > before[r]).map((r) => ({
@@ -59,9 +63,10 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
     .filter((s) => !before.roster.some((b) => b.id === s.id))
     .map((s) => ({ icon: "world:recruit", note: { key: "recap.recruit", params: { name: s.name } }, region: null }))
   const lines: Beat[] = report.map((n) => ({
-    icon: ICONS[n.key] ?? "world:log",
+    icon: n.key === "week.ignored" ? `op:${n.params.op}` : (ICONS[n.key] ?? "world:log"),
     note: n,
     region: (n.params.region as RegionId | undefined) ?? null,
+    ...(n.params.from ? { from: n.params.from as RegionId } : {}),
   }))
   const aliens: Beat[] = [
     ...(after.force > before.force
@@ -85,12 +90,12 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
         ]
       : []),
   ]
-  const op = (key: string) => (o: Glance["ops"][number]) => ({
-    icon: `op:${o.kind}`,
-    note: { key, params: { op: o.kind, region: o.region } },
-    region: o.region,
-  })
-  const expired = before.ops.filter((o) => !after.ops.some((a) => a.id === o.id)).map(op("recap.expired"))
-  const opened = after.ops.filter((o) => !before.ops.some((b) => b.id === o.id)).map(op("recap.new"))
-  return [...gains, ...recruits, ...lines, ...aliens, ...expired, ...opened]
+  const opened = after.ops
+    .filter((o) => !before.ops.some((b) => b.id === o.id))
+    .map((o) => ({
+      icon: `op:${o.kind}`,
+      note: { key: "recap.new", params: { op: o.kind, region: o.region } },
+      region: o.region,
+    }))
+  return [...gains, ...recruits, ...lines, ...aliens, ...opened]
 }

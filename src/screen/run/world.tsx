@@ -43,9 +43,7 @@ export function World(props: { expedition: Expedition }) {
   const close = () => setPane(null)
   const region = () => chosen() ?? home(c())
   const ops = () =>
-    [...c().ops]
-      .sort((a, b) => Number(b.region === region()) - Number(a.region === region()) || a.expires - b.expires)
-      .map((o) => ({ ...o }))
+    [...c().ops].sort((a, b) => Number(b.region === region()) - Number(a.region === region())).map((o) => ({ ...o }))
   const roster = () => c().roster.map((s) => ({ ...s }))
   const open = () => {
     const p = pane()
@@ -56,8 +54,6 @@ export function World(props: { expedition: Expedition }) {
     return p?.kind === "soldier" ? (roster().find((s) => s.id === p.id) ?? null) : null
   }
   const end = () => {
-    const due = c().due()
-    if (due) return setPane({ kind: "op", id: due.id })
     const before = glance(c())
     x.choose({ type: "week" })
     setShown({
@@ -84,7 +80,7 @@ export function World(props: { expedition: Expedition }) {
     }, 60)
   }
   const [recap, setRecap] = createSignal<{ week: number; beats: Beat[] } | null>(null)
-  const [flash, setFlash] = createSignal<RegionId | null>(null)
+  const [flash, setFlash] = createSignal<Beat | null>(null)
   const [menu, setMenu] = createSignal(false)
   const [help, setHelp] = createSignal(false)
   return (
@@ -157,7 +153,13 @@ export function World(props: { expedition: Expedition }) {
         </Show>
         <div class="middle">
           <div class="map">
-            <Earth campaign={c()} chosen={region()} flash={flash()} onPick={setChosen} />
+            <Earth
+              campaign={c()}
+              chosen={region()}
+              flash={flash()?.region ?? null}
+              from={flash()?.from ?? null}
+              onPick={setChosen}
+            />
           </div>
           <aside class="side">
             <Region expedition={x} id={region()} />
@@ -166,7 +168,6 @@ export function World(props: { expedition: Expedition }) {
                 {(o) => (
                   <Brief
                     op={o}
-                    campaign={c()}
                     on={o.region === region()}
                     onClick={() => {
                       setChosen(o.region)
@@ -221,7 +222,7 @@ export function World(props: { expedition: Expedition }) {
           <button type="button" class="big" data-tip={t("world.report")} onClick={() => setPane({ kind: "log" })}>
             <Icon glyph={ICONS["world:log"]} color={css(SQUAD)} class="icon" />
           </button>
-          <button type="button" class="big primary" data-tip={c().due() ? t("world.due") : ""} onClick={end}>
+          <button type="button" class="big primary" onClick={end}>
             <Icon glyph={ICONS["world:week"]} color={css(DASH)} class="icon" />
             {t("world.endWeek")}
           </button>
@@ -285,7 +286,7 @@ export function World(props: { expedition: Expedition }) {
               speed={x.speed()}
               play={(cue) => x.play(cue)}
               onBeat={(b) => {
-                setFlash(b?.region ?? null)
+                setFlash(b)
                 if (b?.counter) count(b.counter)
               }}
               onDone={() => {

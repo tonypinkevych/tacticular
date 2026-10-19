@@ -5,10 +5,10 @@ import { Session } from "./session"
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">
 
-const KEY = "tacticular.campaign"
+const KEY = "tacticular.week"
 
 /** Keys of saves the game no longer reads. */
-const OLD = ["tacticular.run"]
+const OLD = ["tacticular.run", "tacticular.campaign"]
 
 /** The saved campaign: its signed log of choices, and the mission in play with its own log. */
 export class Chronicle {

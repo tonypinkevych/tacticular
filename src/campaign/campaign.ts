@@ -9,7 +9,7 @@ import { kit, rankable, type Soldier } from "./soldier"
 import { PLACES, place, type Region, type RegionId } from "./world"
 
 /** How many regions the player must free to win. */
-export type Goal = 1 | 3 | 8
+export type Goal = 3 | 5 | 8
 
 /** Where a campaign stands: on the world map, in a mission, or over. */
 export type Stage = "world" | "mission" | "won" | "lost"
@@ -21,20 +21,36 @@ export type OpKind = "intel" | "vip" | "relay" | "captain" | "defend" | "liberat
 /** A timed alien effect on every mission: +1 group, +2 Force Level, or +1 alarm. */
 export type DarkEvent = "reinforced" | "elite" | "vigilant"
 
-/** An operation on the world map: open until it expires; a squad sent to it infiltrates until it is launched. */
+/** What an ignored operation costs at the week's end: Project +2, the region's Strength +1, or its Resistance −1. */
+export type Penalty = "project" | "strength" | "resistance"
+
+/** 1 Easy, 2 Moderate, 3 Hard, 4 Very hard: the pods of an operation and the size of its reward. */
+export type Difficulty = 1 | 2 | 3 | 4
+
+/** An operation posted this week: it launches with a squad at once or expires at the week's end. */
 export interface Op {
   id: number
   kind: OpKind
   region: RegionId
-  /** The last week it can launch. */
-  expires: number
+  difficulty: Difficulty
+  penalty: Penalty | null
+  /** The squad of a launched operation. */
   squad: string[]
-  /** The week its squad was sent. */
-  sent: number | null
   scouted: boolean
   /** The Dark Event a win ends. */
   event?: DarkEvent
   captive?: Recruit
+}
+
+/** The kinds posted by chance; a Relay only where the aliens have a site. */
+const KINDS: OpKind[] = ["intel", "vip", "relay", "captain"]
+
+/** The penalty of each kind left unplayed; Intel and VIP draw one, a Liberation has none. */
+const PENALTIES: Partial<Record<OpKind, Penalty | null>> = {
+  defend: "resistance",
+  relay: "project",
+  captain: "strength",
+  liberation: null,
 }
 
 /** How a mission ended for the campaign: won or not, and the HP each soldier in it left with; 0 is dead. */
@@ -56,16 +72,14 @@ export type Choice =
   | { type: "research"; tech: Tech }
   | { type: "rank"; soldier: string; skill: AbilityId }
   | { type: "scout"; op: number }
-  | { type: "send"; op: number; squad: string[] }
-  | { type: "cancel"; op: number }
-  | { type: "launch"; op: number }
+  | { type: "launch"; op: number; squad: string[] }
   | { type: "week" }
   | { type: "finish"; result: Result }
 
 /** The pace of each goal: the Project's end, the weeks per Force Level, and the XP of a won mission. */
 export const GOALS: Record<Goal, { end: number; pace: number; xp: number }> = {
-  1: { end: 36, pace: 3, xp: 32 },
-  3: { end: 96, pace: 5, xp: 26 },
+  3: { end: 36, pace: 3, xp: 32 },
+  5: { end: 96, pace: 5, xp: 26 },
   8: { end: 200, pace: 9, xp: 16 },
 }
 
@@ -85,8 +99,10 @@ export const ROSTER = 10
 export const SQUAD = 4
 const FEWEST = 3
 const START = 6
-export const RESISTANCE = 6
-export const LIBERATION = 2
+export const RESISTANCE = 2
+const SITES = 2
+const MOST_SITES = 3
+const SITE_COST = 4
 
 /**
  * A campaign to free the Earth, played in weeks. The player spends Supplies, Intel and Materials and sends squads
@@ -110,6 +126,8 @@ export class Campaign {
   at: number | null = null
   report: Note[] = []
   made = 0
+  /** True once an operation launched this week. */
+  launched = false
   rng: number
   private readonly dice: Dice
 
@@ -121,20 +139,27 @@ export class Campaign {
     this.dice = new Dice(this)
   }
 
-  /** A new campaign: a home region in contact, alien Strength 5–8 elsewhere, and 6 soldiers of 6 classes. */
+  /**
+   * A new campaign: a home region in contact, alien Strength 4–7 elsewhere, 2 alien sites away from home, 6 soldiers
+   * of 6 classes, and the first week's operations.
+   */
   static start(seed: number, goal: Goal): Campaign {
     const c = new Campaign(seed, goal)
     const home = c.dice.pick(PLACES).id
+    const sites = c.dice
+      .shuffle(PLACES.filter((p) => p.id !== home))
+      .slice(0, SITES)
+      .map((p) => p.id)
     c.regions = PLACES.map((p) => ({
       id: p.id,
       strength: p.id === home ? 4 : c.dice.between(4, 7),
       vigilance: 0,
       resistance: p.id === home ? 1 : 0,
       free: false,
+      site: sites.includes(p.id),
     }))
     for (const kind of c.dice.shuffle(CLASSES).slice(0, START)) c.roster.push(c.soldier(kind))
-    c.open(home, "intel", 3)
-    c.open(home, c.dice.pick(["vip", "relay", "captain"] as const), 3)
+    c.post()
     return c
   }
 
@@ -144,9 +169,7 @@ export class Campaign {
     if (choice.type === "research") this.study(choice.tech)
     if (choice.type === "rank") this.rank(choice.soldier, choice.skill)
     if (choice.type === "scout") this.scout(choice.op)
-    if (choice.type === "send") this.send(choice.op, choice.squad)
-    if (choice.type === "cancel") this.cancel(choice.op)
-    if (choice.type === "launch") this.launch(choice.op)
+    if (choice.type === "launch") this.launch(choice.op, choice.squad)
     if (choice.type === "week") this.end()
     if (choice.type === "finish") this.finish(choice.result)
   }
@@ -181,26 +204,6 @@ export class Campaign {
     return Math.min(FEWEST, this.roster.length)
   }
 
-  /** How well a squad infiltrates, 2–5: 1 plus its weeks in, plus 1 for each soldier under 4 and the South Asia bonus. */
-  infiltration(squad: number, weeks: number): number {
-    return Math.min(5, Math.max(2, 1 + weeks + SQUAD - squad + (this.bonus("stealth") ? 1 : 0)))
-  }
-
-  /** The infiltration a sent operation has reached this week. */
-  score(op: Op): number {
-    return this.infiltration(op.squad.length, this.week - (op.sent ?? this.week))
-  }
-
-  /** True when the operation's squad has been in a week or more, so it can launch. */
-  launchable(op: Op): boolean {
-    return op.sent !== null && this.week > op.sent
-  }
-
-  /** A ready operation at its last week, which must launch or be called back before the week ends. */
-  due(): Op | null {
-    return this.ops.find((o) => this.launchable(o) && this.week >= o.expires) ?? null
-  }
-
   freed(): number {
     return this.regions.filter((r) => r.free).length
   }
@@ -210,20 +213,18 @@ export class Campaign {
     return (Math.imul(this.seed ^ 0x9e3779b9, (this.at ?? 0) + 1) >>> 1) % 2 ** 31
   }
 
-  /** What the operation in play holds: its goal, the squad with its gear, and aliens by Strength and infiltration. */
+  /** What the operation in play holds: its goal, the squad with its gear, and aliens by its difficulty. */
   conditions(): Conditions {
     const op = this.op(this.at ?? -1)
     const r = this.region(op.region)
-    const score = this.score(op)
+    const d = op.difficulty
     const event = this.event?.id
     const base: Conditions = {
       squad: op.squad.map((id) => this.gear(this.roster.find((s) => s.id === id)!)),
-      groups:
-        Math.max(1, 1 + Math.floor(r.strength / 3) + (score <= 2 ? 1 : score >= 5 ? -1 : 0)) +
-        (event === "reinforced" ? 1 : 0),
-      size: r.strength >= 6 ? 3 : 2,
-      alarm: (score <= 2 ? 1 : 0) + (event === "vigilant" ? 1 : 0),
-      scouted: op.scouted || score >= 4,
+      groups: 1 + d + (event === "reinforced" ? 1 : 0),
+      size: d >= 3 ? 3 : 2,
+      alarm: (d === 4 ? 1 : 0) + (event === "vigilant" ? 1 : 0),
+      scouted: op.scouted,
       force: Math.min(10, this.force + (event === "elite" ? 2 : 0)),
       biome: place(r.id).biome,
     }
@@ -268,47 +269,33 @@ export class Campaign {
     s!.ranks = { ...s!.ranks, [skill]: (s!.ranks?.[skill] ?? 0) + 1 }
   }
 
-  /** Spends Intel to mark the alien groups of an operation before it is sent. */
+  /** Spends Intel to mark the alien groups of a posted operation. */
   scout(id: number): void {
     const op = this.op(id)
-    must(this.stage === "world" && op.sent === null && !op.scouted && this.intel >= SCOUT_COST, "scout")
+    must(this.stage === "world" && !this.launched && !op.scouted && this.intel >= SCOUT_COST, "scout")
     this.intel -= SCOUT_COST
     op.scouted = true
   }
 
-  /** Sends 3 or 4 ready soldiers to an operation before its last week; they infiltrate until it launches. */
-  send(id: number, squad: string[]): void {
+  /** Plays a posted operation now with 3 or 4 ready soldiers; one operation launches each week. */
+  launch(id: number, squad: string[]): void {
     const op = this.op(id)
     const ready = this.ready()
-    must(this.stage === "world" && op.sent === null && this.week < op.expires, "send")
+    must(this.stage === "world" && !this.launched, "launch")
     must(squad.length >= this.fewest() && squad.length <= SQUAD && new Set(squad).size === squad.length, "squad")
     must(
       squad.every((s) => ready.some((x) => x.id === s)),
       "squad",
     )
     op.squad = [...squad]
-    op.sent = this.week
-  }
-
-  /** Calls a squad back home; the operation is open again. */
-  cancel(id: number): void {
-    const op = this.op(id)
-    must(this.stage === "world" && op.sent !== null, "cancel")
-    op.squad = []
-    op.sent = null
-  }
-
-  /** Plays a ready operation now. */
-  launch(id: number): void {
-    const op = this.op(id)
-    must(this.stage === "world" && this.launchable(op), "launch")
+    this.launched = true
     this.at = id
     this.stage = "mission"
   }
 
-  /** Ends the week and moves the world on, unless a ready operation is at its last week. */
+  /** Ends the week and moves the world on. */
   end(): void {
-    must(this.stage === "world" && !this.due(), "week")
+    must(this.stage === "world", "week")
     this.report = []
     this.turn()
   }
@@ -343,18 +330,21 @@ export class Campaign {
     else this.stage = "world"
   }
 
+  /** Pays a won operation: Supplies by its difficulty and what its kind gives; a Relay or Captain opens Liberation. */
   private reward(op: Op, result: Result): void {
     const r = this.region(op.region)
-    this.supplies += 2
-    if (["intel", "vip", "relay", "captain"].includes(op.kind)) r.resistance = Math.min(RESISTANCE, r.resistance + 1)
-    if (op.kind === "intel") this.intel += 4
+    const d = op.difficulty
+    this.supplies += 2 * d
+    if (op.kind === "relay" || op.kind === "captain") r.resistance = RESISTANCE
+    if (op.kind === "intel") this.intel += 2 + d
     if (op.kind === "relay") {
       this.project = Math.max(0, this.project - 2)
-      this.materials += 3
+      this.materials += 1 + d
       r.strength = Math.max(0, r.strength - 1)
+      r.site = false
     }
     if (op.kind === "captain") {
-      this.materials += 2
+      this.materials += d
       r.strength = Math.max(0, r.strength - 2)
     }
     if (op.kind === "defend") r.vigilance = 0
@@ -371,8 +361,11 @@ export class Campaign {
       this.roster.push({ ...op.captive!, hp: Math.min(maxHp(op.captive!), captive), xp: 0, rest: 1 })
   }
 
-  /** A new week: rest and healing, research, monthly income, the aliens' moves, expiries and new operations. */
+  /** A new week: ignored operations pay, rest and healing, research, monthly income, the aliens' moves, new operations. */
   private turn(): void {
+    for (const op of this.ops) this.ignore(op)
+    this.ops = []
+    this.launched = false
     this.week += 1
     for (const s of this.roster) {
       s.rest = Math.max(0, s.rest - 1)
@@ -387,16 +380,18 @@ export class Campaign {
     this.project += 1
     this.force = Math.min(10, 1 + Math.floor((this.week - 1) / GOALS[this.goal].pace))
     if (this.event && this.week > this.event.until) this.event = null
-    for (const op of this.ops.filter((o) => o.sent === null && o.expires < this.week)) {
-      if (op.kind === "defend") {
-        const r = this.region(op.region)
-        r.resistance = Math.max(0, r.resistance - 1)
-        this.note("week.haven", { region: r.id })
-      }
-    }
-    this.ops = this.ops.filter((o) => o.sent !== null || o.expires >= this.week)
-    this.spawn()
+    this.post()
     if (this.project >= GOALS[this.goal].end) this.stage = "lost"
+  }
+
+  /** The penalty of an operation left at the week's end. */
+  private ignore(op: Op): void {
+    const r = this.region(op.region)
+    if (!op.penalty) return
+    if (op.penalty === "project") this.project += 2
+    if (op.penalty === "strength") r.strength = Math.min(10, r.strength + 1)
+    if (op.penalty === "resistance") r.resistance = Math.max(0, r.resistance - 1)
+    this.note("week.ignored", { op: op.kind, region: r.id, penalty: op.penalty })
   }
 
   /** Monthly income on both sides; the aliens spend theirs on Strength, a Dark Event, and the Project. */
@@ -408,58 +403,75 @@ export class Campaign {
     for (let i = this.bonus("recruits") ? 2 : 1; i > 0 && this.roster.length < ROSTER; i--)
       this.roster.push(this.newcomer())
     if (this.bonus("delay")) this.project = Math.max(0, this.project - 1)
-    let points = this.regions.filter((r) => !r.free).length
-    const watched = this.regions.filter((r) => !r.free && r.vigilance >= 3).sort((a, b) => b.vigilance - a.vigilance)[0]
-    if (watched && points >= 2) {
-      points -= 2
-      watched.strength = Math.min(10, watched.strength + 1)
-      watched.vigilance = Math.max(0, watched.vigilance - 2)
-      this.note("week.reinforced", { region: watched.id })
+    const held = this.regions.filter((r) => !r.free)
+    let points = held.length
+    this.project += held.filter((r) => r.site).length
+    this.spread()
+    const bare = held.filter((r) => !r.site)
+    if (points >= SITE_COST && bare.length > 0 && held.length - bare.length < MOST_SITES) {
+      points -= SITE_COST
+      const r = this.dice.pick(bare)
+      r.site = true
+      this.note("week.site", { region: r.id })
     }
     if (!this.event && points >= 3) {
-      points -= 3
       const id = this.dice.pick(["reinforced", "elite", "vigilant"] as const)
       this.event = { id, until: this.week + 3 }
       this.note("week.event", { event: id })
-      const open = this.regions.filter((r) => r.resistance > 0 && !r.free)
-      if (open.length > 0) this.open(this.dice.pick(open).id, "intel", 3, id)
-    }
-    this.project += Math.floor(points / 2)
-  }
-
-  /** New operations in contacted regions: retaliations where Vigilance is high, Liberations, and others by chance. */
-  private spawn(): void {
-    for (const r of this.regions) {
-      if (r.resistance === 0 || r.free) continue
-      const here = this.ops.filter((o) => o.region === r.id)
-      if (r.vigilance >= 5 && !here.some((o) => o.kind === "defend") && this.dice.random() < 0.5) {
-        this.open(r.id, "defend", 1)
-        r.vigilance = Math.max(0, r.vigilance - 3)
-        continue
-      }
-      if (r.resistance >= RESISTANCE && r.strength <= LIBERATION && !here.some((o) => o.kind === "liberation"))
-        this.open(r.id, "liberation", 4)
-      else if (here.length < 2 && this.dice.random() < 0.5)
-        this.open(
-          r.id,
-          this.dice.pick(["intel", "vip", "vip", "relay", "captain", "intel"] as const),
-          this.dice.between(2, 3),
-        )
     }
   }
 
-  private open(region: RegionId, kind: OpKind, weeks: number, event?: DarkEvent): void {
+  /** The strongest alien region gives 1 Strength to its weakest neighbour that is weaker and not free. */
+  private spread(): void {
+    const held = this.regions.filter((r) => !r.free)
+    const from = held.reduce<Region | null>((a, r) => (!a || r.strength > a.strength ? r : a), null)
+    if (!from) return
+    const to = place(from.id)
+      .next.map((id) => this.region(id))
+      .filter((r) => !r.free && r.strength < from.strength)
+      .reduce<Region | null>((a, r) => (!a || r.strength < a.strength ? r : a), null)
+    if (!to) return
+    to.strength = Math.min(10, to.strength + 1)
+    this.note("week.spread", { from: from.id, region: to.id })
+  }
+
+  /**
+   * Posts the week's operations in regions in contact: a Defend where Vigilance is 5 or more, a Liberation where it is
+   * open, then others by chance up to 3, or 2 while one region is in contact. A Dark Event marks the first of them.
+   */
+  private post(): void {
+    const open = this.regions.filter((r) => r.resistance > 0 && !r.free)
+    if (open.length === 0) return
+    for (const r of open.filter((x) => x.vigilance >= 5)) {
+      this.open(r.id, "defend")
+      r.vigilance = Math.max(0, r.vigilance - 3)
+    }
+    for (const r of open.filter((x) => x.resistance >= RESISTANCE)) this.open(r.id, "liberation")
+    while (this.ops.length < (open.length > 1 ? 3 : 2)) {
+      const r = this.dice.pick(open)
+      this.open(r.id, this.dice.pick(r.site ? KINDS : KINDS.filter((k) => k !== "relay")))
+    }
+    const marked = this.ops.find((o) => o.kind !== "defend" && o.kind !== "liberation")
+    if (this.event && marked) marked.event = this.event.id
+  }
+
+  private open(region: RegionId, kind: OpKind): void {
     this.made += 1
+    const r = this.region(region)
+    const raw =
+      Math.floor(r.strength / 3) +
+      (kind === "captain" || kind === "liberation" ? 1 : 0) +
+      this.dice.between(0, 1) -
+      (this.bonus("stealth") ? 1 : 0)
     const captive = kind === "vip" ? this.newcomer(`v${this.made}`) : undefined
     this.ops.push({
       id: this.made,
       kind,
       region,
-      expires: this.week + weeks,
+      difficulty: Math.min(4, Math.max(1, raw)) as Difficulty,
+      penalty: PENALTIES[kind] ?? this.dice.pick(["project", "strength"] as const),
       squad: [],
-      sent: null,
       scouted: false,
-      ...(event ? { event } : {}),
       ...(captive ? { captive } : {}),
     })
   }

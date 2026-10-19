@@ -8,13 +8,15 @@ import type { Cue } from "../playback/cues"
 import type { Speed } from "../playback/motion"
 import type { Beat } from "./beat"
 
-/** One line of the week's report in the active language, its region, operation, event and tech by name. */
+/** One line of the week's report in the active language, its regions, operation, event, tech and penalty by name. */
 export function say(n: Note): string {
   const p: Record<string, string | number> = { ...n.params }
   if (p.region !== undefined) p.region = t(`region.${p.region}`)
+  if (p.from !== undefined) p.from = t(`region.${p.from}`)
   if (p.op !== undefined) p.op = t(`op.${p.op}`)
   if (p.event !== undefined) p.event = t(`event.${p.event}`)
   if (p.tech !== undefined) p.tech = t(`tech.${p.tech}`)
+  if (p.penalty !== undefined) p.penalty = t(`cost.${p.penalty}`)
   return t(n.key, p)
 }
 

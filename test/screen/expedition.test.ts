@@ -16,22 +16,20 @@ const memory = (): Storage => {
 const opened = () => {
   const store = memory()
   const x = Expedition.open(Chronicle.open(store), store)
-  x.begin(1)
+  x.begin(3)
   return x
 }
 
 const launch = (x: Expedition) => {
   const c = x.campaign()!
   x.choose({
-    type: "send",
+    type: "launch",
     op: c.ops[0].id,
     squad: c
       .ready()
       .slice(0, 3)
       .map((s) => s.id),
   })
-  x.choose({ type: "week" })
-  x.choose({ type: "launch", op: c.ops[0].id })
 }
 
 describe("expedition", () => {

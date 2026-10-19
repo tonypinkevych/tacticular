@@ -5,8 +5,8 @@ import type { Expedition } from "../expedition"
 import { Soldier } from "./soldier"
 
 /**
- * The orders for an operation. An open one takes a squad, the infiltration it gets after a week, and scouting. A sent
- * one shows its infiltration now and next week, with Launch once it is ready and Call back.
+ * The orders for a posted operation: its difficulty and what leaving it costs, the squad, scouting and Launch. Only
+ * one operation launches each week.
  */
 export function Operation(props: { expedition: Expedition; op: Op; onDone: () => void }) {
   const x = props.expedition
@@ -18,77 +18,49 @@ export function Operation(props: { expedition: Expedition; op: Op; onDone: () =>
       .slice(0, SQUAD)
       .map((s) => s.id),
   )
-  const score = () => c().infiltration(squad().length, 1)
-  const ok = () => squad().length >= c().fewest() && squad().length <= SQUAD
+  const ok = () => squad().length >= c().fewest() && squad().length <= SQUAD && !c().launched
   const toggle = (id: string) =>
     setSquad((d) => (d.includes(id) ? d.filter((x) => x !== id) : d.length < SQUAD ? [...d, id] : d))
-  const say = (score: number) => t("world.infiltration", { score, effect: t(`infiltration.${score}`) })
   return (
-    <Show
-      when={op().sent === null}
-      fallback={
-        <div class="orders">
-          <p class="small">
-            {c().launchable(op()) ? t("world.ready") : t("world.notReady", { week: op().sent! })} ·{" "}
-            {say(c().score(op()))}
-          </p>
-          <Show when={c().score(op()) < 5 && c().week < op().expires}>
-            <p class="small muted">{t("world.next", { score: c().score(op()) + 1 })}</p>
-          </Show>
-          <Show when={c().due() === op()}>
-            <p class="small">{t("world.due")}</p>
-          </Show>
-          <div class="row">
-            <button type="button" onClick={() => x.choose({ type: "cancel", op: op().id })}>
-              {t("world.cancel")}
-            </button>
-            <button
-              type="button"
-              class="primary"
-              disabled={!c().launchable(op())}
-              onClick={() => x.choose({ type: "launch", op: op().id })}
-            >
-              {t("world.launch")}
-            </button>
-          </div>
-        </div>
-      }
-    >
-      <div class="orders">
-        <div class="row">
-          <h3>{t("world.squad", { fewest: c().fewest() })}</h3>
-          <button type="button" disabled={squad().length === 0} onClick={() => setSquad([])}>
-            {t("world.deselect")}
-          </button>
-        </div>
-        <div class="squad">
-          <For each={ready()}>
-            {(s) => <Soldier soldier={s} on={squad().includes(s.id)} onClick={() => toggle(s.id)} />}
-          </For>
-        </div>
-        <p class="small">{say(score())}</p>
-        <p class="small muted">{t("world.tiers")}</p>
-        <div class="row">
-          <button
-            type="button"
-            disabled={op().scouted || c().intel < SCOUT_COST}
-            onClick={() => x.choose({ type: "scout", op: op().id })}
-          >
-            {op().scouted ? t("world.scouted") : t("world.scout", { cost: SCOUT_COST })}
-          </button>
-          <button
-            type="button"
-            class="primary"
-            disabled={!ok() || c().week >= op().expires}
-            onClick={() => {
-              x.choose({ type: "send", op: op().id, squad: squad() })
-              props.onDone()
-            }}
-          >
-            {t("world.send")}
-          </button>
-        </div>
+    <div class="orders">
+      <p class="small">
+        {t("world.difficulty", { level: t(`difficulty.${op().difficulty}`), pods: 1 + op().difficulty })} ·{" "}
+        {t(`penalty.${op().penalty ?? "none"}`)}
+      </p>
+      <div class="row">
+        <h3>{t("world.squad", { fewest: c().fewest() })}</h3>
+        <button type="button" disabled={squad().length === 0} onClick={() => setSquad([])}>
+          {t("world.deselect")}
+        </button>
       </div>
-    </Show>
+      <div class="squad">
+        <For each={ready()}>
+          {(s) => <Soldier soldier={s} on={squad().includes(s.id)} onClick={() => toggle(s.id)} />}
+        </For>
+      </div>
+      <Show when={c().launched}>
+        <p class="small muted">{t("world.launched")}</p>
+      </Show>
+      <div class="row">
+        <button
+          type="button"
+          disabled={op().scouted || c().intel < SCOUT_COST || c().launched}
+          onClick={() => x.choose({ type: "scout", op: op().id })}
+        >
+          {op().scouted ? t("world.scouted") : t("world.scout", { cost: SCOUT_COST })}
+        </button>
+        <button
+          type="button"
+          class="primary"
+          disabled={!ok()}
+          onClick={() => {
+            x.choose({ type: "launch", op: op().id, squad: squad() })
+            props.onDone()
+          }}
+        >
+          {t("world.launch")}
+        </button>
+      </div>
+    </div>
   )
 }

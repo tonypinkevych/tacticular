@@ -29,11 +29,13 @@ export interface Region {
   id: RegionId
   /** 0–10: the size of the alien force in its missions. */
   strength: number
-  /** 0–10: how much the aliens watch it; it rises with each mission there. */
+  /** 0–10: how much the aliens watch it; it rises with each mission there and brings a Defend at 5. */
   vigilance: number
-  /** 0–4: 1 is contact, which opens its operations; 4 opens a Liberation. */
+  /** 0–2: 1 is contact, which opens its operations; 2 opens a Liberation. */
   resistance: number
   free: boolean
+  /** An alien site raises the Project each month until a Relay win destroys it. */
+  site: boolean
 }
 
 export const place = (id: RegionId): Place => PLACES.find((p) => p.id === id)!
