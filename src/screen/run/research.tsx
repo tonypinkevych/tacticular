@@ -1,9 +1,9 @@
 import { For, Show } from "solid-js"
-import { RECRUIT_COST, ROSTER, TECHS, type Tech } from "../../campaign/campaign"
+import { TECHS, type Tech } from "../../campaign/campaign"
 import { t } from "../../i18n/strings"
 import type { Expedition } from "../expedition"
 
-/** Research to start, the one running, and the recruit button. */
+/** Research to start and the one running. */
 export function Research(props: { expedition: Expedition }) {
   const x = props.expedition
   const c = () => x.campaign()!
@@ -14,8 +14,7 @@ export function Research(props: { expedition: Expedition }) {
   const affordable = (k: Tech) =>
     !c().research && c().supplies >= TECHS[k].supplies && c().materials >= TECHS[k].materials
   return (
-    <div class="card">
-      <h3>{t("world.research")}</h3>
+    <div class="research">
       <Show when={c().research}>
         {(r) => <p class="small">{t("world.researching", { tech: t(`tech.${r().tech}`), week: r().ready })}</p>}
       </Show>
@@ -34,13 +33,6 @@ export function Research(props: { expedition: Expedition }) {
           </button>
         )}
       </For>
-      <button
-        type="button"
-        disabled={c().supplies < RECRUIT_COST || c().roster.length >= ROSTER}
-        onClick={() => x.choose({ type: "recruit" })}
-      >
-        {t("world.recruit", { cost: RECRUIT_COST })}
-      </button>
     </div>
   )
 }

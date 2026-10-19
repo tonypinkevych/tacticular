@@ -13,10 +13,7 @@ export function Profile(props: { expedition: Expedition; soldier: Soldier }) {
   const unit = () => Unit.of(s().id, s().kind, "squad", { x: 0, y: 0 }, s().name, null, s().spread, s().ranks)
   const need = (id: string) => (id === PROFILES[s().kind].ultimate ? 6 : 2 * ((s().ranks?.[id as never] ?? 0) + 1) - 1)
   return (
-    <div class="card profile">
-      <h3>
-        {s().name} · {t("soldier.level", { level: level(s()) })}
-      </h3>
+    <div class="profile">
       <p class="small muted">
         {t("soldier.xp", { xp: s().xp, next: next() })} · {t("soldier.points", { points: points(s()) })}
       </p>

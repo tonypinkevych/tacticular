@@ -695,16 +695,21 @@ main.extended .more-mark {
   opacity: 0.4;
   cursor: default;
 }
-.soldiers {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
+.soldiers,
+.roster,
+.squad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .soldier {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  text-align: left;
+  gap: 3px;
+  width: 60px;
+  padding: 4px;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -712,24 +717,54 @@ main.extended .more-mark {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
-.soldier .who {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+.soldier.dim {
+  opacity: 0.55;
 }
-.soldier .name,
+.soldier .portrait {
+  width: auto;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.soldier .health {
+  width: 100%;
+  height: 4px;
+  background: var(--line);
+}
+.soldier .health i {
+  display: block;
+  height: 100%;
+  background: var(--good);
+}
+.soldier .name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.soldier .badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  padding: 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  color: #000;
+  background: var(--crit);
+}
+.soldier .state {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  height: 12px;
+  image-rendering: pixelated;
+}
 .reward .name {
   font-size: 14px;
   font-weight: 700;
-}
-.soldier .hp {
-  color: var(--good);
-}
-.soldier .skills {
-  flex-basis: 100%;
-}
-.soldier {
-  flex-wrap: wrap;
 }
 .chart {
   position: relative;
@@ -822,11 +857,9 @@ main.extended .more-mark {
 
 #world {
   position: relative;
-  max-width: 1200px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   height: 100dvh;
-  margin: 0 auto;
-  padding: 12px 16px;
-  gap: 10px;
 }
 #world .bar {
   position: relative;
@@ -834,6 +867,13 @@ main.extended .more-mark {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 18px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+#world footer.bar {
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
 }
 #world .clock {
   position: relative;
@@ -876,81 +916,126 @@ main.extended .more-mark {
 #world .pips.good i.on {
   background: var(--accent);
 }
-#hover {
-  position: fixed;
-  z-index: 20;
-  max-width: 260px;
-  padding: 6px 9px;
-  font-size: 12px;
-  pointer-events: none;
-  background: #000;
-  border: 1px solid var(--accent);
-}
-#hover b {
-  display: block;
-  color: var(--accent);
-}
-#hover span {
-  display: block;
-  color: var(--text);
+#world .middle {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: 0;
 }
 #world .map {
-  flex: none;
+  container-type: size;
   display: flex;
+  align-items: center;
   justify-content: center;
+  min-height: 0;
+  background: #000;
 }
 #world .earth {
   display: block;
-  width: min(100%, calc(42dvh * 60 / 22));
+  width: min(100cqw, 100cqh * 60 / 22);
   aspect-ratio: 60 / 22;
-  border: 1px solid var(--line);
 }
-#world .columns {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-#world .column {
-  min-height: 0;
-  overflow-y: auto;
+#world .side {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
+  padding: 10px;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
 }
-#world .card h3 {
-  margin-bottom: 6px;
+#world .region {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
-#world .card p {
-  margin: 4px 0;
+#world .region h3 {
+  margin: 0;
+  font-size: 15px;
 }
-.soldiers.narrow {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+#world .brief {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
 }
-.soldier .points {
-  color: var(--crit);
-  font-weight: 700;
+#world .brief.on {
+  border-color: var(--line-hi);
 }
-.soldier .tag {
-  flex-basis: 100%;
-}
-#world .op.on {
-  border-color: var(--accent);
-}
-#world .op.defend,
-#world .op.liberation {
+#world .brief.defend,
+#world .brief.liberation {
   border-left: 3px solid var(--bad);
+}
+#world .brief .name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
 }
 #world .row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin: 8px 0;
 }
 #world .row .on {
   border-color: var(--accent);
   color: var(--accent);
+}
+#world button.big {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+#world button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#world .veil {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 0;
+  border: 0;
+  background: rgb(0 0 0 / 55%);
+  cursor: default;
+}
+#world .popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 11;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 64px);
+  overflow-y: auto;
+  background: #0d1214;
+  border: 1px solid var(--accent);
+}
+#world .popup header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#world .popup h3 {
+  margin: 0;
+  color: var(--accent);
+}
+#world .popup p {
+  margin: 0;
+}
+#world .orders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 #world .orders .primary {
   margin-left: auto;
@@ -974,20 +1059,38 @@ main.extended .more-mark {
   margin: 0;
   padding-left: 18px;
 }
-#world .research,
-#world .card .reward {
+#world .research .reward {
   width: 100%;
   margin: 4px 0;
 }
-@media (max-width: 640px) {
-  #world {
-    padding: 8px;
-  }
-  #world .columns {
+#hover {
+  position: fixed;
+  z-index: 20;
+  max-width: 260px;
+  padding: 6px 9px;
+  font-size: 12px;
+  pointer-events: none;
+  background: #000;
+  border: 1px solid var(--accent);
+}
+#hover b {
+  display: block;
+  color: var(--accent);
+}
+#hover span {
+  display: block;
+  color: var(--text);
+}
+@media (max-width: 720px) {
+  #world .middle {
     grid-template-columns: 1fr;
-    overflow-y: auto;
+    grid-template-rows: auto 1fr;
   }
-  #world .column {
-    overflow: visible;
+  #world .map {
+    height: 34dvh;
+  }
+  #world .side {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 }

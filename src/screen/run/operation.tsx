@@ -27,7 +27,7 @@ export function Operation(props: { expedition: Expedition; op: Op; onDone: () =>
     <Show
       when={op().sent === null}
       fallback={
-        <div class="card orders">
+        <div class="orders">
           <p class="small">
             {c().launchable(op()) ? t("world.ready") : t("world.notReady", { week: op().sent! })} ·{" "}
             {say(c().score(op()))}
@@ -54,9 +54,9 @@ export function Operation(props: { expedition: Expedition; op: Op; onDone: () =>
         </div>
       }
     >
-      <div class="card orders">
+      <div class="orders">
         <h3>{t("world.squad", { fewest: c().fewest() })}</h3>
-        <div class="soldiers narrow">
+        <div class="squad">
           <For each={ready()}>
             {(s) => <Soldier soldier={s} on={squad().includes(s.id)} onClick={() => toggle(s.id)} />}
           </For>

@@ -1,28 +1,45 @@
-import type { JSX } from "solid-js"
+import { Show } from "solid-js"
 import { maxHp } from "../../campaign/campaign"
 import { level, type Soldier as Member, points } from "../../campaign/soldier"
 import { t } from "../../i18n/strings"
-import { css, SQUAD } from "../board/color"
-import { UNITS } from "../board/glyphs"
+import { css, SMOKE, SQUAD } from "../board/color"
+import { ICONS, UNITS } from "../board/glyphs"
 import { Icon } from "../hud/icon"
 
-/** A soldier of the roster as a button: portrait, name, class, level, HP and unspent rank points. */
-export function Soldier(props: { soldier: Member; on?: boolean; onClick?: () => void; children?: JSX.Element }) {
+/**
+ * A soldier as a portrait button: class glyph, HP bar and name, a badge for rank points to spend, and a mark when
+ * away or resting. The pointer over it shows the class, level and HP.
+ */
+export function Soldier(props: { soldier: Member; on?: boolean; state?: "away" | "rest"; onClick?: () => void }) {
   const s = () => props.soldier
+  const info = () =>
+    [
+      t(`kind.${s().kind}`),
+      t("soldier.level", { level: level(s()) }),
+      `${t("ui.hp")} ${s().hp}/${maxHp(s())}`,
+      points(s()) > 0 ? t("soldier.points", { points: points(s()) }) : "",
+      props.state ? t(`soldier.${props.state}`) : "",
+    ]
+      .filter(Boolean)
+      .join(" · ")
   return (
-    <button type="button" class="soldier card" classList={{ on: props.on }} onClick={() => props.onClick?.()}>
+    <button
+      type="button"
+      class="soldier"
+      classList={{ on: props.on, dim: !!props.state }}
+      data-tip={s().name}
+      data-info={info()}
+      onClick={() => props.onClick?.()}
+    >
+      <Show when={props.state}>{(st) => <Icon glyph={ICONS[`world:${st()}`]} color={css(SMOKE)} class="state" />}</Show>
+      <Show when={points(s()) > 0}>
+        <span class="badge">+{points(s())}</span>
+      </Show>
       <Icon glyph={UNITS[s().kind]} color={css(SQUAD)} class="portrait" />
-      <span class="who">
-        <span class="name">{s().name}</span>
-        <span class="small muted">
-          {t(`kind.${s().kind}`)} · {t("soldier.level", { level: level(s()) })}
-        </span>
+      <span class="health">
+        <i style={{ width: `${(100 * s().hp) / maxHp(s())}%` }} />
       </span>
-      <span class="hp">
-        {t("ui.hp")} {s().hp}/{maxHp(s())}
-        {points(s()) > 0 ? <span class="points"> +{points(s())}</span> : null}
-      </span>
-      {props.children}
+      <span class="name">{s().name}</span>
     </button>
   )
 }
