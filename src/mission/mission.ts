@@ -113,6 +113,8 @@ function enemies(
 ): { units: Unit[]; groups: Group[] } {
   const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.65))
   const anchors: Point[] = lead ? [lead] : []
+  const way = halfway(reachable, board, landing, lead ?? { x: board.width - 2, y: landing.y })
+  if (way.length > 0) anchors.push(r.pick(way))
   for (let tries = 0; anchors.length < count && tries < 400; tries++) {
     const p = r.pick(field)
     if (anchors.every((a) => distance(a, p) >= 6)) anchors.push(p)
@@ -122,7 +124,7 @@ function enemies(
   anchors.forEach((anchor, g) => {
     const id = `g${g + 1}`
     groups.push({ id, revealed: false, target: null, landing: { ...landing } })
-    const kinds = composition(r, lead && g === 0 ? leader : r.between(1, size), force)
+    const kinds = composition(r, lead && g === 0 ? leader : r.between(Math.min(2, size), size), force)
     const route = [anchor, r.pick(field), r.pick(field)]
     for (const kind of kinds) {
       const u = alien(`e${units.length + 1}`, kind, free(board, anchor, taken), id, force)
@@ -131,6 +133,22 @@ function enemies(
     }
   })
   return { units, groups }
+}
+
+/**
+ * The reachable tiles just past the middle of the map, two dashes or more from the landing, within 4 rows of the line
+ * from the landing to the objective.
+ */
+function halfway(reachable: Point[], board: Board, from: Point, to: Point): Point[] {
+  const band = reachable.filter(
+    (p) =>
+      p.x >= Math.floor(board.width * 0.55) &&
+      p.x < Math.floor(board.width * 0.7) &&
+      Math.max(Math.abs(p.x - from.x), Math.abs(p.y - from.y)) >= 19,
+  )
+  const line = (x: number) => from.y + ((to.y - from.y) * (x - from.x)) / Math.max(1, to.x - from.x)
+  const near = band.filter((p) => Math.abs(p.y - line(p.x)) <= 4)
+  return near.length > 0 ? near : band
 }
 
 /** Sends every group, engaged, on the beacon from the start. */

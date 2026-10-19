@@ -49,20 +49,25 @@ export class Match {
     return this.game
   }
 
-  /** Each unit in the reveal queue takes one AI action, surprised. */
+  /** Each unit in the reveal queue acts with its full AP, surprised. */
   private react(out: Frame[]): void {
     while (last(out).reactions.length > 0 && (last(out).phase === "squad" || last(out).phase === "enemy")) {
       const id = last(out).reactions[0]
       const ready = last(out).clone()
-      const u = ready.unit(id)
-      u.ap = u.alive() ? 1 : 0
-      const action = new Mind(ready).decide(u)
+      ready.unit(id).ap = ready.unit(id).alive() ? 2 : 0
       let after = ready
-      if (action) {
+      let action: Action | null = null
+      for (let i = 0; i < 4 && after.unit(id).ap > 0 && after.reactions.includes(id); i++) {
+        const next = new Mind(after).decide(after.unit(id))
+        if (!next) break
         try {
-          after = ready.apply(action)
+          const moved = after.apply(next)
+          if (action) out.push({ action, game: after })
+          action = next
+          after = moved
         } catch (e) {
           if (!(e instanceof Illegal)) throw e
+          break
         }
       }
       after.unit(id).ap = 0

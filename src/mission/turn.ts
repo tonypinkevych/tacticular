@@ -72,22 +72,28 @@ export class Turn {
     game.orders.settle()
   }
 
-  /** After round 3, an unaware group at a route point gets its next point nearer to where the squad landed. */
+  /**
+   * After round 3, an unaware group at a route point gets its next point nearer to where it looks for the squad; every
+   * member takes the lead's route and point.
+   */
   private drift(): void {
     const game = this.game
     if (game.round <= 3) return
     for (const g of game.groups) {
       const members = game.units.filter((u) => u.alive() && u.group === g.id && u.side === "enemy")
       const lead = members[0]
-      const landing = g.landing
+      const landing = game.stealth.hunch(g)
       if (!landing || !lead || lead.patrol.length === 0 || members.some((u) => u.alert !== "unaware")) continue
       if (distance(lead.pos, lead.patrol[lead.patrolIndex % lead.patrol.length]) > 1) continue
       const closer = [...game.reach(lead, lead.mobility * 4).cost.keys()]
         .map(pointOf)
         .filter((p) => distance(p, landing) < distance(lead.pos, landing) - 2)
       if (closer.length === 0) continue
-      const next = game.dice.pick(closer)
-      for (const u of members) u.patrol[(u.patrolIndex + 1) % u.patrol.length] = { ...next }
+      lead.patrol[(lead.patrolIndex + 1) % lead.patrol.length] = { ...game.dice.pick(closer) }
+      for (const u of members) {
+        u.patrol = lead.patrol.map((p) => ({ ...p }))
+        u.patrolIndex = lead.patrolIndex
+      }
     }
   }
 

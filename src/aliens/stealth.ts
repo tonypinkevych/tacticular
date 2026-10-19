@@ -10,7 +10,7 @@ export interface Group {
   alarmed?: boolean
   /** Round ends the group spent at its target without seeing a soldier. */
   searched?: number
-  /** Where the squad landed; routes drift toward it after round 3. */
+  /** Where the squad landed. */
   landing?: Point
   /** It calmed down once and is never caught unaware again. */
   wary?: boolean
@@ -24,7 +24,7 @@ export interface Noise {
   loud?: boolean
 }
 
-export const DETECTION = { unaware: 2, wary: 3, investigating: 4, assassin: 2, rogue: 3 }
+export const DETECTION = { unaware: 3, wary: 4, investigating: 5, assassin: 2 }
 
 /** How far from its target an alien group searches. */
 export const SEARCH = 3
@@ -47,11 +47,13 @@ export class Stealth {
     )
   }
 
-  /** Detection radius of an enemy against a concealed soldier on a tile, its own by default. Grass hides a soldier from all but next tiles. */
+  /**
+   * Detection radius of an enemy against a concealed soldier on a tile, its own by default. A Rogue is spotted one tile
+   * closer; grass hides a soldier from all but next tiles.
+   */
   detection(e: Unit, s: Unit, at: Point = s.pos): number {
-    const alert = s.kind === "rogue" ? DETECTION.rogue : DETECTION.investigating
     const calm = this.wary(e) ? DETECTION.wary : DETECTION.unaware
-    const radius = e.alert === "unaware" ? calm : alert
+    const radius = (e.alert === "unaware" ? calm : DETECTION.investigating) - (s.kind === "rogue" ? 1 : 0)
     return this.game.tile(at) === "grass" ? Math.min(1, radius) : radius
   }
 
@@ -214,9 +216,21 @@ export class Stealth {
       g.wary = true
       for (const u of units) {
         u.alert = "unaware"
-        if (u.patrol.length === 0 && g.landing) u.patrol = [{ ...u.pos }, { ...g.landing }]
+        const hunch = this.hunch(g)
+        if (u.patrol.length === 0 && hunch) u.patrol = [{ ...u.pos }, hunch]
       }
     }
+  }
+
+  /** Where a group looks for the squad: the latest loud noise, else halfway from its landing to the objective. */
+  hunch(g: Group): Point | undefined {
+    const game = this.game
+    const loud = game.noises.filter((n) => n.loud).at(-1)
+    if (loud) return { ...loud.at }
+    const goal = game.goal
+    const aim = "at" in goal ? goal.at : "tiles" in goal ? goal.tiles[0] : undefined
+    if (!g.landing || !aim) return g.landing && { ...g.landing }
+    return { x: Math.round((g.landing.x + aim.x) / 2), y: Math.round((g.landing.y + aim.y) / 2) }
   }
 
   /** Sends the calm group nearest to a soldier to search where that soldier stands. */

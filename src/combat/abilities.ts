@@ -475,3 +475,14 @@ export const span = (u: Unit, id: AbilityId): number => ranked(ABILITIES[id].ran
 
 /** What the unit's skill does at its rank: its damage, rounds or AP. */
 export const power = (u: Unit, id: AbilityId): number => ranked(ABILITIES[id].power ?? [0], u.rank(id))
+
+/** A number of a skill that a rank raises. */
+export type Stat = "cooldown" | "range" | "power"
+
+/** Each number of the skill that differs between the rank and the next one, now and next. */
+export function growth(id: AbilityId, rank: number): { stat: Stat; now: number; next: number }[] {
+  const rule = ABILITIES[id]
+  return (["cooldown", "range", "power"] as const)
+    .map((stat) => ({ stat, now: ranked(rule[stat] ?? [0], rank), next: ranked(rule[stat] ?? [0], rank + 1) }))
+    .filter((g) => g.now !== g.next)
+}

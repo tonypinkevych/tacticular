@@ -19,6 +19,24 @@ describe("patrol drift", () => {
     const e = find(roam(4), "e")
     expect(distance(e.patrol[e.patrolIndex], { x: 0, y: 1 })).toBeLessThan(15)
   })
+  test("a group drifts as one: every member takes the lead's route and point", () => {
+    const g = setup(open(20, 3), [
+      squad("s", "warden", { x: 0, y: 1 }),
+      enemy("e", "orc", { x: 15, y: 1 }, "unaware"),
+      enemy("f", "orc", { x: 16, y: 1 }, "unaware"),
+    ])
+    g.groups = [{ id: "g1", revealed: false, target: null, landing: { x: 0, y: 1 } }]
+    find(g, "e").patrol = route.map((p) => ({ ...p }))
+    find(g, "f").patrol = [
+      { x: 16, y: 0 },
+      { x: 19, y: 2 },
+    ]
+    find(g, "f").patrolIndex = 1
+    g.round = 4
+    const after = g.apply({ type: "endTurn" })
+    expect(find(after, "f").patrol).toEqual(find(after, "e").patrol)
+    expect(find(after, "f").patrolIndex).toBe(find(after, "e").patrolIndex)
+  })
   test("up to round 3 the route stays", () => {
     expect(find(roam(3), "e").patrol).toEqual(route)
   })

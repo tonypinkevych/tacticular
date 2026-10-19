@@ -1058,7 +1058,7 @@ main.extended .more-mark {
 }
 #world .profile .skill button {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1 / span 3;
   align-self: center;
 }
 #world .report {

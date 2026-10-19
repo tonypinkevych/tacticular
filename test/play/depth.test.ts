@@ -256,19 +256,19 @@ describe("alarm", () => {
       g.turn.end()
     }
   }
-  test("rises by 1 at the end of each even round, and by 1 more in a round with a loud squad noise", () => {
+  test("rises by 1 at the end of each round, and by 1 more in a round with a loud squad noise", () => {
     const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
-    ends(g, 4)
+    ends(g, 2)
     expect(g.alarm).toBe(2)
     g.stealth.noise({ x: 0, y: 5 }, 8, find(g, "s"))
     ends(g, 1)
-    expect(g.alarm).toBe(3)
+    expect(g.alarm).toBe(4)
   })
   test("at 4, 7 and 10, 2 aliens land on the pad, shown the round before", () => {
     const g = setup(open(24, 10), [squad("s", "warden", { x: 0, y: 5 }), enemy("e", "orc", { x: 20, y: 5 }, "unaware")])
     g.pad = { x: 18, y: 2 }
     const enemies = () => g.units.filter((u) => u.side === "enemy").length
-    g.alarm = 3
+    g.alarm = 2
     expect(g.reinforcements.coming()).toBeNull()
     ends(g, 1)
     expect(g.reinforcements.coming()).toEqual({ x: 18, y: 2 })
@@ -290,7 +290,7 @@ describe("alarm", () => {
     expect(g.alarm).toBe(8)
     expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(3)
   })
-  test("with no pad, at 4 the nearest calm group hunts the squad", () => {
+  test("with no pad, at 4 the nearest calm group hunts the squad and 2 aliens land at the edge farthest from it", () => {
     const g = setup(open(24, 10), [
       squad("s", "warden", { x: 0, y: 5 }),
       enemy("e", "orc", { x: 10, y: 5 }, "unaware", "g1"),
@@ -298,8 +298,10 @@ describe("alarm", () => {
     ])
     g.alarm = 3
     g.round = 2
+    expect(g.reinforcements.coming()?.x).toBe(23)
     ends(g, 1)
-    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(2)
+    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(4)
+    expect(g.units.filter((u) => u.group?.startsWith("d")).every((u) => u.pos.x >= 21)).toBe(true)
     expect(find(g, "e").alert).toBe("investigating")
     expect(g.groups.find((x) => x.id === "g1")?.target).toEqual({ x: 0, y: 5 })
     expect(find(g, "f").alert).toBe("unaware")

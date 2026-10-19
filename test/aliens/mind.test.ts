@@ -214,15 +214,21 @@ describe("evac guard", () => {
     return g
   }
 
-  test("the group nearest the evac zone walks to it, the other group does not", () => {
+  test("the unaware alien nearest the evac zone walks to it, no other does", () => {
     const g = evac(open(30, 3), [
       enemy("a", "orc", { x: 18, y: 1 }, "unaware", "g1"),
+      enemy("c", "orc", { x: 17, y: 1 }, "unaware", "g1"),
       enemy("b", "orc", { x: 10, y: 1 }, "unaware", "g2"),
     ])
     const a = new Mind(g).decide(find(g, "a"))
     expect(a?.type).toBe("move")
     expect((a as { to: { x: number } }).to.x).toBeGreaterThan(18)
+    expect(new Mind(g).decide(find(g, "c"))).toBeNull()
     expect(new Mind(g).decide(find(g, "b"))).toBeNull()
+  })
+  test("an engaged alien does not guard the evac zone", () => {
+    const g = evac(open(30, 3), [enemy("a", "orc", { x: 18, y: 1 }, "engaged", "g1")])
+    expect(new Mind(g).decide(find(g, "a"))?.type).toBe("overwatch")
   })
   test("a guard at the evac zone takes cover facing where the squad landed", () => {
     const rows = [".".repeat(12), `${".".repeat(8)}:...`, ".".repeat(12)]
@@ -275,7 +281,7 @@ describe("headless missions", () => {
       if (end.phase === "won" || end.phase === "lost") ended++
     }
     expect(ended).toBeGreaterThan(35)
-  }, 15000)
+  }, 30000)
 })
 
 describe("frames", () => {

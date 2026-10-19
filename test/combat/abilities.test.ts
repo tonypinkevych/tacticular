@@ -1,3 +1,4 @@
+import { growth } from "../../src/combat/abilities"
 import { WEAPONS } from "../../src/combat/weapons"
 import type { Game } from "../../src/mission/game"
 import { CLASSES, PROFILES } from "../../src/units/profiles"
@@ -219,5 +220,18 @@ describe("Engineer", () => {
     expect(find(a, "a").has("shaken")).toBe(true)
     expect(find(a, "b").has("shaken")).toBe(true)
     expect(find(a, "v").has("shaken")).toBe(false)
+  })
+})
+
+describe("growth", () => {
+  test("lists each number the next rank changes, now and next", () => {
+    expect(growth("charge", 1)).toEqual([{ stat: "cooldown", now: 3, next: 2 }])
+    expect(growth("ward", 2)).toEqual([
+      { stat: "range", now: 5, next: 6 },
+      { stat: "power", now: 2, next: 3 },
+    ])
+  })
+  test("a rank past the last row changes nothing", () => {
+    expect(growth("rampage", 2)).toEqual([])
   })
 })

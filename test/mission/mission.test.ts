@@ -1,6 +1,6 @@
 import { Dice } from "../../src/combat/dice"
 import type { Biome } from "../../src/map/board"
-import { distance, key } from "../../src/map/point"
+import { distance, key, type Point } from "../../src/map/point"
 import { map } from "../../src/map/terrain"
 import { walkable } from "../../src/map/tile"
 import { mission } from "../../src/mission/mission"
@@ -50,6 +50,20 @@ describe("mission", () => {
         if (kinds.length >= 3) expect(kinds).toContain("warchief")
         expect(kinds.filter((k) => ["ogre", "assassin", "whisperer"].includes(k)).length).toBeLessThanOrEqual(1)
       }
+    }
+  })
+  test("every group holds at least 2 aliens", () => {
+    for (const seed of seeds) {
+      const g = mission(seed, { size: 2 })
+      for (const group of g.groups) expect(g.units.filter((u) => u.group === group.id).length).toBeGreaterThanOrEqual(2)
+    }
+  })
+  test("one group starts on the way, nearer the squad than the objective", () => {
+    for (const seed of seeds) {
+      const g = mission(seed, { goal: "intel" })
+      const from = g.units[0].pos
+      const near = Math.min(...g.units.filter((u) => u.side === "enemy").map((u) => distance(u.pos, from)))
+      expect(near, `seed ${seed}`).toBeLessThanOrEqual(distance((g.goal as { at: Point }).at, from) - 2)
     }
   })
   test("every group has a route of 3 points and knows where the squad landed", () => {

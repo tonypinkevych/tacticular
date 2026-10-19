@@ -11,28 +11,28 @@ const kill = (g: Game, unit: string, target: string): Game => {
 }
 
 describe("detection", () => {
-  test("a concealed soldier is detected within 2 tiles of an unaware enemy", () => {
+  test("a concealed soldier is detected within 3 tiles of an unaware enemy", () => {
     const g = setup(open(20, 3), [squad("g", "warden", { x: 4, y: 1 }), enemy("e", "orc", { x: 10, y: 1 }, "unaware")])
-    const far = g.apply({ type: "move", unit: "g", to: { x: 7, y: 1 } })
+    const far = g.apply({ type: "move", unit: "g", to: { x: 6, y: 1 } })
     expect(find(far, "g").concealed).toBe(true)
-    const near = far.apply({ type: "move", unit: "g", to: { x: 8, y: 1 } })
+    const near = far.apply({ type: "move", unit: "g", to: { x: 7, y: 1 } })
     expect(find(near, "g").concealed).toBe(false)
     expect(find(near, "e").alert).toBe("engaged")
   })
-  test("an investigating enemy detects within 4 tiles", () => {
+  test("an investigating enemy detects within 5 tiles", () => {
     const g = setup(open(20, 3), [
       squad("g", "warden", { x: 0, y: 1 }),
       enemy("e", "orc", { x: 10, y: 1 }, "investigating"),
     ])
-    expect(find(g.apply({ type: "move", unit: "g", to: { x: 5, y: 1 } }), "g").concealed).toBe(true)
-    expect(find(g.apply({ type: "move", unit: "g", to: { x: 6, y: 1 } }), "g").concealed).toBe(false)
+    expect(find(g.apply({ type: "move", unit: "g", to: { x: 4, y: 1 } }), "g").concealed).toBe(true)
+    expect(find(g.apply({ type: "move", unit: "g", to: { x: 5, y: 1 } }), "g").concealed).toBe(false)
   })
   test("the tiles where an alien would spot a concealed soldier are those within its detection radius", () => {
     const e = enemy("e", "orc", { x: 10, y: 1 }, "unaware")
     const g = setup(open(20, 3), [squad("g", "warden", { x: 4, y: 1 }), squad("r", "rogue", { x: 3, y: 1 }), e])
     const spots = [...g.stealth.spots(find(g, "e"), find(g, "g"))].map((k) => k % 1000)
-    expect(Math.min(...spots)).toBe(8)
-    expect(Math.max(...spots)).toBe(12)
+    expect(Math.min(...spots)).toBe(7)
+    expect(Math.max(...spots)).toBe(13)
     const scout = new Set([...g.stealth.spots(find(g, "e"), find(g, "r"))].map((k) => k % 1000))
     expect([...scout].sort((a, b) => a - b)).toEqual([8, 9, 10, 11, 12])
   })
@@ -182,7 +182,7 @@ describe("captive", () => {
 })
 
 describe("wary", () => {
-  test("a group that calms down stays wary: it spots at 3 tiles and gives no unaware advantage", () => {
+  test("a group that calms down stays wary: it spots at 4 tiles and gives no unaware advantage", () => {
     const s = squad("s", "warden", { x: 0, y: 1 })
     const e = enemy("e", "orc", { x: 15, y: 1 }, "investigating")
     const g = setup(open(20, 3), [s, e])
@@ -190,7 +190,18 @@ describe("wary", () => {
     g.groups[0].searched = 1
     g.stealth.calm()
     expect(find(g, "e").alert).toBe("unaware")
-    expect(g.stealth.detection(find(g, "e"), find(g, "s"))).toBe(3)
+    expect(g.stealth.detection(find(g, "e"), find(g, "s"))).toBe(4)
     expect(g.combat.odds(find(g, "s"), find(g, "e")).advantages).not.toContain("unaware")
+  })
+})
+
+describe("hunch", () => {
+  test("a group looks for the squad halfway from the landing to the objective, then at its latest loud noise", () => {
+    const g = setup(open(24, 3), [squad("w", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 20, y: 1 }, "unaware")])
+    g.groups[0].landing = { x: 0, y: 1 }
+    g.goal = { kind: "intel", at: { x: 20, y: 1 }, taken: false, tiles: [] }
+    expect(g.stealth.hunch(g.groups[0])).toEqual({ x: 10, y: 1 })
+    g.noises.push({ at: { x: 5, y: 2 }, radius: 6, round: 1, loud: true })
+    expect(g.stealth.hunch(g.groups[0])).toEqual({ x: 5, y: 2 })
   })
 })

@@ -55,7 +55,12 @@ export function Operation(props: { expedition: Expedition; op: Op; onDone: () =>
       }
     >
       <div class="orders">
-        <h3>{t("world.squad", { fewest: c().fewest() })}</h3>
+        <div class="row">
+          <h3>{t("world.squad", { fewest: c().fewest() })}</h3>
+          <button type="button" disabled={squad().length === 0} onClick={() => setSquad([])}>
+            {t("world.deselect")}
+          </button>
+        </div>
         <div class="squad">
           <For each={ready()}>
             {(s) => <Soldier soldier={s} on={squad().includes(s.id)} onClick={() => toggle(s.id)} />}

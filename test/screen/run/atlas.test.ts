@@ -6,9 +6,9 @@ describe("atlas", () => {
     expect(new Set(EARTH.map((r) => r.length)).size).toBe(1)
   })
   test("a cell gives its region, and the sea or land of no region gives none", () => {
-    expect(land(5, 3)).toBe("na")
+    expect(land(10, 4)).toBe("na")
     expect(land(0, 0)).toBeNull()
-    expect(land(15, 0)).toBeNull()
+    expect(land(25, 0)).toBeNull()
     expect(land(-1, 3)).toBeNull()
   })
   test("each region has land and a label inside the map", () => {

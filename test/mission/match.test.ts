@@ -31,3 +31,14 @@ describe("simulated squad on an objective", () => {
     expect(find(after, "w").pos.x).toBeLessThan(14)
   })
 })
+
+describe("reveal", () => {
+  test("a revealed alien reacts with its full AP: two actions", () => {
+    const g = setup(open(20, 3), [
+      squad("w", "warden", { x: 2, y: 1 }),
+      enemy("e", "assassin", { x: 10, y: 1 }, "unaware"),
+    ])
+    const frames = new Match(g).play({ type: "move", unit: "w", to: { x: 7, y: 1 } })
+    expect(frames.filter((f) => "unit" in f.action && f.action.unit === "e")).toHaveLength(2)
+  })
+})

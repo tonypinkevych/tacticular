@@ -211,16 +211,16 @@ export class Mind {
     return WEAPONS[u.weapon].ammo === null || u.ammo > 0 ? { type: "overwatch", unit: u.id } : null
   }
 
-  /** True when the unit's group is the alien group nearest to the evac zone. */
+  /** True when the unit is the unaware alien nearest to the evac zone. */
   private guards(u: Unit): boolean {
     const game = this.game
     const goal = game.goal
-    if (goal.kind !== "evac" || u.side !== "enemy") return false
+    if (goal.kind !== "evac" || u.side !== "enemy" || u.alert !== "unaware") return false
     const zone = goal.tiles[0]
     const nearest = game.units
-      .filter((x) => x.alive() && x.side === "enemy" && x.group)
+      .filter((x) => x.alive() && x.side === "enemy" && x.alert === "unaware")
       .sort((a, b) => distance(a.pos, zone) - distance(b.pos, zone))[0]
-    return nearest?.group === u.group
+    return nearest === u
   }
 
   /** Walks to the evac zone, then holds the covered tile near it that faces where the squad was last known. */
@@ -230,7 +230,7 @@ export class Mind {
     const zone = game.goal.tiles[0]
     if (distance(u.pos, zone) > SEARCH + 1) return this.toward(u, zone, u.stride())
     const group = game.groups.find((g) => g.id === u.group)
-    const facing = group?.target ?? group?.landing ?? u.pos
+    const facing = group?.target ?? (group && game.stealth.hunch(group)) ?? u.pos
     const score = (p: Point) => game.cover.against(p, facing) + this.jitter(u, p)
     const move = this.bestMove(u, (p) => (distance(p, zone) <= SEARCH ? score(p) : -Infinity))
     if (move && !u.moved) return move.action
@@ -354,8 +354,9 @@ export class Mind {
     if (targets.length === 0) {
       const beacon = u.side === "enemy" && game.goal.kind === "defend" ? game.goal.at : null
       if (beacon && !same(u.pos, beacon)) return this.toward(u, beacon, u.stride())
-      const goal = group?.target ?? (u.waited ? group?.landing : undefined)
-      if (!beacon && goal) return this.search(u, goal, group?.landing)
+      const hunch = group && game.stealth.hunch(group)
+      const goal = group?.target ?? (u.waited ? hunch : undefined)
+      if (!beacon && goal) return this.search(u, goal, hunch)
       if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }
       return null
     }

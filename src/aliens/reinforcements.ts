@@ -14,9 +14,9 @@ export class Reinforcements {
   constructor(private readonly game: Game) {}
 
   /**
-   * Round end: the alarm rises by 1 after each even round, and by 1 more after a round with a loud squad noise.
-   * Passing 4, 7 or 10, 2 aliens land on the pad; with no pad, the nearest calm group hunts the squad. In Defend,
-   * waves land at the edge farthest from the beacon and head for it.
+   * Round end: the alarm rises by 1 after each round, and by 1 more after a round with a loud squad noise. Passing 4,
+   * 7 or 10, 2 aliens land on the pad; with no pad, they land at the edge farthest from the squad, except in Defend,
+   * and the nearest calm group hunts the squad. In Defend, waves land at the edge farthest from the beacon.
    */
   land(): void {
     const game = this.game
@@ -25,8 +25,10 @@ export class Reinforcements {
     const before = game.alarm
     game.alarm += this.rise()
     if (!STEPS.some((s) => s > before && s <= game.alarm)) return
-    if (game.pad) this.drop("d", game.pad, 2, game.units.find((u) => u.alive() && u.side === "squad")?.pos ?? null)
-    else game.stealth.hunt()
+    const squad = game.units.find((u) => u.alive() && u.side === "squad")?.pos ?? null
+    const at = this.pad()
+    if (at) this.drop("d", at, 2, squad)
+    if (!game.pad) game.stealth.hunt()
   }
 
   /** The alarm value of the next help, or null when no more comes. */
@@ -40,14 +42,22 @@ export class Reinforcements {
     const goal = game.goal
     if (goal.kind === "defend" && WAVES[game.round]) return this.edge(goal.at)
     const after = game.alarm + this.rise()
-    return game.pad && STEPS.some((s) => s > game.alarm && s <= after) ? game.pad : null
+    return STEPS.some((s) => s > game.alarm && s <= after) ? this.pad() : null
+  }
+
+  /** Where the alarm's help lands: the pad, else the edge farthest from the squad, and nowhere in Defend. */
+  private pad(): Point | null {
+    const game = this.game
+    if (game.pad) return game.pad
+    const squad = game.units.find((u) => u.alive() && u.side === "squad")
+    return squad && game.goal.kind !== "defend" ? this.edge(squad.pos) : null
   }
 
   /** How much the alarm rises at the end of this round, from what happened so far. */
   private rise(): number {
     const game = this.game
     const loud = game.noises.some((n) => n.loud && n.round === game.round)
-    return (game.round % 2 === 0 ? 1 : 0) + (loud ? 1 : 0)
+    return 1 + (loud ? 1 : 0)
   }
 
   private drop(prefix: string, at: Point, count: number, target: Point | null): void {
