@@ -1,4 +1,4 @@
-import { type AbilityId, RANGE } from "../../combat/abilities"
+import { type AbilityId, power, span } from "../../combat/abilities"
 import { canReach, type Odds } from "../../combat/combat"
 import { failChance } from "../../combat/dice"
 import { WEAPONS, type WeaponId } from "../../combat/weapons"
@@ -9,15 +9,15 @@ import type { Action } from "../../mission/orders"
 import { PROFILES } from "../../units/profiles"
 import { ULT, type Unit } from "../../units/unit"
 
-/** Keys of the bar: the weapon on 1, skills on 2 3, the ultimate on 4, then Reload, Overwatch, Hunker, Use and Door with letter aliases. */
-const SKILL_KEYS = "23"
-const ULT_KEY = "4"
-const ROUSE_KEY = "9"
+/** Keys of the bar: the weapon on 1, skills on 2 3 4, the ultimate on 5, then Reload, Overwatch, Hunker, Use and Door with letter aliases. */
+const SKILL_KEYS = "234"
+const ULT_KEY = "5"
+const ROUSE_KEY = "-"
 const STANCE_KEYS = {
-  reload: ["5", "R"],
-  overwatch: ["6", "Y"],
-  hunker: ["7", "H"],
-  use: ["8", "U"],
+  reload: ["6", "R"],
+  overwatch: ["7", "Y"],
+  hunker: ["8", "H"],
+  use: ["9", "U"],
   door: ["0", "O"],
 } as const
 
@@ -59,10 +59,12 @@ const UNIT_ABILITIES: AbilityId[] = [
   "hook",
   "tag",
   "swap",
+  "ward",
+  "cripple",
 ]
-const TILE_ABILITIES: AbilityId[] = ["grapple", "rocket", "smoke", "barricade", "mine", "saturation", "turret"]
+const TILE_ABILITIES: AbilityId[] = ["grapple", "rocket", "smoke", "barricade", "mine", "saturation", "turret", "flash"]
 /** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
-const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard"]
+const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard", "ward"]
 const ANY: AbilityId[] = ["swap"]
 
 const dice = (w: WeaponId): string => {
@@ -116,18 +118,20 @@ export class Kit {
         group,
         key,
         label: t(`ability.${a}`),
-        info: t(`info.${a}`),
+        info: `${t("ui.rank", { rank: u.rank(a) })} · ${t(`info.${a}`, { power: power(u, a), range: span(u, a) })}`,
         badge,
         disabled: none || blocked,
         aim: UNIT_ABILITIES.includes(a) ? "unit" : TILE_ABILITIES.includes(a) ? "tile" : "none",
       })
     p.abilities.forEach((a, i) => {
+      if (u.rank(a) === 0) return
       const cd = u.cooldowns[a] ?? 0
       skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : "", cd > 0)
     })
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
       skill("rouse", "skill", ROUSE_KEY, "", false)
-    if (p.ultimate) skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
+    if (p.ultimate && u.rank(p.ultimate) > 0)
+      skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
     for (const id of ["reload", "overwatch", "hunker", "use", "door"] as const) {
       if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
       if (id === "use" && !game.orders.usable(u)) continue
@@ -183,39 +187,46 @@ export class Kit {
       case "rampage":
         return new Set(game.reach(u, u.mobility).cost.keys())
       case "dominate":
-        return within(0, RANGE.dominate)
+        return within(0, span(u, "dominate"))
       case "saturation":
-        return within(1, RANGE.saturation)
+        return within(1, span(u, "saturation"))
       case "hospital":
-        return within(0, RANGE.hospital)
+        return within(0, span(u, "hospital"))
       case "turret":
       case "heal":
       case "rouse":
       case "shove":
       case "barricade":
+      case "cripple":
         return around()
+      case "ward":
+        return within(0, span(u, "ward"))
+      case "flash":
+        return within(1, span(u, "flash"))
       case "tag":
-        return within(1, RANGE.tag)
+        return within(1, span(u, "tag"))
       case "guard":
-        return within(1, RANGE.guard)
+        return within(1, span(u, "guard"))
       case "hook":
-        return within(1, RANGE.hook)
+        return within(1, span(u, "hook"))
       case "swap":
-        return within(1, RANGE.swap)
+        return within(1, span(u, "swap"))
       case "rocket":
-        return within(0, RANGE.rocket)
+        return within(0, span(u, "rocket"))
       case "smoke":
-        return within(0, RANGE.smoke)
+        return within(0, span(u, "smoke"))
       case "mine":
-        return within(1, RANGE.mine)
+        return within(1, span(u, "mine"))
       case "grapple":
-        return new Set([...within(1, RANGE.grapple)].filter((k) => ["roof", "ridge"].includes(game.tile(pointOf(k)))))
+        return new Set(
+          [...within(1, span(u, "grapple"))].filter((k) => ["roof", "ridge"].includes(game.tile(pointOf(k)))),
+        )
       case "rally":
-        return within(1, RANGE.rally)
+        return within(1, span(u, "rally"))
       case "fear":
-        return within(0, RANGE.fear)
+        return within(0, span(u, "fear"))
       case "volley":
-        return within(0, RANGE.volley)
+        return within(0, span(u, "volley"))
       default:
         return new Set()
     }
@@ -242,10 +253,14 @@ export class Kit {
     }
     if (a === "guard") return friends.filter((x) => x !== u).sort((x, y) => x.hp - y.hp)[0]?.id ?? null
     if (a === "rally") {
-      const near = friends.filter((x) => x !== u && distance(u.pos, x.pos) <= RANGE.rally && x.ap < 3)
+      const near = friends.filter((x) => x !== u && distance(u.pos, x.pos) <= span(u, "rally") && x.ap < 3)
       return near.sort((x, y) => x.ap - y.ap)[0]?.id ?? null
     }
-    if (a === "shove") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
+    if (a === "ward") {
+      const near = friends.filter((x) => distance(u.pos, x.pos) <= span(u, "ward") && !x.has("ward"))
+      return near.sort((x, y) => x.hp - y.hp)[0]?.id ?? null
+    }
+    if (a === "shove" || a === "cripple") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
     if (a === "rouse")
       return game.units.find((x) => x.side === "squad" && x.has("dominated") && distance(u.pos, x.pos) <= 1)?.id ?? null
     const reachable = foes.filter((e) => game.orders.canTarget(u, e))

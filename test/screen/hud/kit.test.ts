@@ -96,7 +96,7 @@ describe("objective", () => {
     g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: null, tiles: [], blown: false }
     expect(new Kit(g, s).slots().some((x) => x.id === "use")).toBe(false)
     g.goal = { kind: "relay", at: { x: 2, y: 1 }, planted: null, tiles: [], blown: false }
-    const use = new Kit(g, s).slotFor("8")
+    const use = new Kit(g, s).slotFor("9")
     expect(use?.id).toBe("use")
     expect(new Kit(g, s).action({ slot: "use", target: null, at: null })).toEqual({ type: "use", unit: "s" })
   })

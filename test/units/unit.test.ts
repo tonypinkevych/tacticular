@@ -16,3 +16,12 @@ describe("wounds", () => {
     expect(e.stride()).toBe(e.mobility)
   })
 })
+
+describe("ranks", () => {
+  test("a new unit has rank 1 in each skill of its kit and none outside it", () => {
+    const u = enemy("v", "vanguard", { x: 0, y: 0 }, "engaged", "g1", "squad")
+    expect(u.rank("charge")).toBe(1)
+    expect(u.rank("rampage")).toBe(1)
+    expect(u.rank("rocket")).toBe(0)
+  })
+})

@@ -1,8 +1,7 @@
 import { distance, key, type Point } from "../map/point"
 import { walkable } from "../map/tile"
 import type { Game } from "../mission/game"
-import { composition, free } from "../mission/mission"
-import { Unit } from "../units/unit"
+import { alien, composition, free } from "../mission/mission"
 
 /** Alarm values at which the aliens get help. */
 const STEPS = [4, 7, 10]
@@ -57,9 +56,9 @@ export class Reinforcements {
     const taken = new Set(game.units.filter((u) => u.alive() || u.down > 0).map((u) => key(u.pos)))
     const landing = game.groups.find((g) => g.landing)?.landing
     game.groups.push({ id, revealed: true, target: target && { ...target }, alarmed: true, landing })
-    const kinds = Array.from({ length: Math.ceil(count / 2) }, () => composition(game.dice, 2)).flat()
+    const kinds = Array.from({ length: Math.ceil(count / 2) }, () => composition(game.dice, 2, game.force)).flat()
     for (const [i, kind] of kinds.slice(0, count).entries()) {
-      const u = Unit.of(`${id}-${i + 1}`, kind, "enemy", free(game.board, at, taken), kind, id)
+      const u = alien(`${id}-${i + 1}`, kind, free(game.board, at, taken), id, game.force)
       u.alert = "engaged"
       game.units.push(u)
     }

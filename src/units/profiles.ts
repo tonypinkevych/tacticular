@@ -31,7 +31,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "shotgun",
-    abilities: ["shove", "charge"],
+    abilities: ["shove", "charge", "rush"],
     ultimate: "rampage",
   },
   ranger: {
@@ -42,7 +42,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 7,
     will: 1,
     weapon: "longbow",
-    abilities: ["grapple", "guard"],
+    abilities: ["grapple", "guard", "steady"],
     ultimate: "killzone",
   },
   warden: {
@@ -53,7 +53,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 2,
     weapon: "repeater",
-    abilities: ["rocket", "volley"],
+    abilities: ["rocket", "volley", "brace"],
     ultimate: "saturation",
   },
   cleric: {
@@ -64,7 +64,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 3,
     weapon: "crossbow",
-    abilities: ["smoke", "heal"],
+    abilities: ["heal", "smoke", "ward"],
     ultimate: "hospital",
   },
   rogue: {
@@ -75,7 +75,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "dagger",
-    abilities: ["hook", "tag"],
+    abilities: ["hook", "tag", "cripple"],
     ultimate: "ghost",
   },
   mage: {
@@ -86,7 +86,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 4,
     weapon: "bolt",
-    abilities: ["swap", "fear"],
+    abilities: ["swap", "fear", "rally"],
     ultimate: "dominate",
   },
   engineer: {
@@ -97,7 +97,7 @@ export const PROFILES: Record<Kind, Profile> = {
     vision: 6,
     will: 1,
     weapon: "crossbow",
-    abilities: ["barricade", "mine"],
+    abilities: ["barricade", "mine", "flash"],
     ultimate: "turret",
   },
   turret: {

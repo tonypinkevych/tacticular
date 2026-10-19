@@ -1,4 +1,5 @@
 import type { Group } from "../aliens/stealth"
+import type { AbilityId } from "../combat/abilities"
 import { Dice } from "../combat/dice"
 import type { Biome, Board } from "../map/board"
 import { area, distance, key, type Point } from "../map/point"
@@ -71,15 +72,28 @@ export function free(board: Board, near: Point, taken: Set<number>): Point {
   throw new Error("no free tile")
 }
 
-const SPECIALS: EnemyKind[] = ["ogre", "assassin", "whisperer"]
+/** Special alien kinds and the Force Level from which they come. */
+const SPECIALS: Partial<Record<EnemyKind, number>> = { ogre: 2, assassin: 3, whisperer: 4 }
 const LINE: EnemyKind[] = ["orc", "orc", "orc", "bomber", "shieldwall"]
 
-/** Kinds in one enemy group: a Warchief when 3 or more, at most one special. */
-export function composition(r: Dice, size: number): EnemyKind[] {
+/** Kinds in one enemy group: a Warchief when 3 or more, at most one special the Force Level allows. */
+export function composition(r: Dice, size: number, force?: number): EnemyKind[] {
   const out: EnemyKind[] = size >= 3 ? ["warchief"] : []
-  if (r.random() < 0.6) out.push(r.pick(SPECIALS))
+  const specials = (Object.keys(SPECIALS) as EnemyKind[]).filter((k) => force === undefined || SPECIALS[k]! <= force)
+  if (r.random() < 0.6 && specials.length > 0) out.push(r.pick(specials))
   while (out.length < size) out.push(r.pick(LINE))
   return out
+}
+
+/** A new alien; at a Force Level its skills rank 2 from level 4 and 3 from level 7, and each 3 levels add 1 HP. */
+export function alien(id: string, kind: EnemyKind, pos: Point, group: string, force?: number): Unit {
+  const u = Unit.of(id, kind, "enemy", pos, kind, group)
+  if (force === undefined) return u
+  const rank = force >= 7 ? 3 : force >= 4 ? 2 : 1
+  for (const a of Object.keys(u.ranks) as AbilityId[]) u.ranks[a] = rank
+  u.maxHp += Math.floor((force - 1) / 3)
+  u.hp = u.maxHp
+  return u
 }
 
 function enemies(
@@ -92,6 +106,7 @@ function enemies(
   leader: number,
   count: number,
   size: number,
+  force?: number,
 ): { units: Unit[]; groups: Group[] } {
   const field = reachable.filter((p) => p.x >= Math.floor(board.width * 0.65))
   const anchors: Point[] = lead ? [lead] : []
@@ -104,10 +119,10 @@ function enemies(
   anchors.forEach((anchor, g) => {
     const id = `g${g + 1}`
     groups.push({ id, revealed: false, target: null, landing: { ...landing } })
-    const kinds = composition(r, lead && g === 0 ? leader : r.between(1, size))
+    const kinds = composition(r, lead && g === 0 ? leader : r.between(1, size), force)
     const route = [anchor, r.pick(field), r.pick(field)]
     for (const kind of kinds) {
-      const u = Unit.of(`e${units.length + 1}`, kind, "enemy", free(board, anchor, taken), kind, id)
+      const u = alien(`e${units.length + 1}`, kind, free(board, anchor, taken), id, force)
       u.patrol = route.map((p) => ({ ...p }))
       units.push(u)
     }
@@ -179,6 +194,8 @@ export interface Conditions {
   scouted?: boolean
   alarm?: number
   biome?: Biome
+  /** The alien Force Level: which kinds come, their skill ranks and their extra HP. */
+  force?: number
 }
 
 /** A new mission from a seed: map, squad at one edge and alien groups toward the opposite edge. */
@@ -217,6 +234,7 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
     leader,
     conditions.groups ?? 4,
     conditions.size ?? 2,
+    conditions.force,
   )
   if (captive) team.push(captive)
   let aim = goal(r, board, reachable, kind, site, captive)
@@ -243,6 +261,7 @@ export function mission(seed: number, conditions: Conditions = {}): Game {
       if (lead) game.noises.push({ at: { ...lead.pos }, radius: 0, round: 1 })
     }
   game.alarm = conditions.alarm ?? 0
+  game.force = conditions.force
   return game
 }
 

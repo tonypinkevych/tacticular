@@ -8,7 +8,7 @@ import type { Weapon } from "./weapons"
 /** How far a blast or a Rocket is heard. */
 export const BLAST_NOISE = 10
 
-export type Reason = "flanked" | "unaware" | "range" | "reaction" | "hunkered" | "shaken"
+export type Reason = "flanked" | "unaware" | "steady" | "range" | "reaction" | "hunkered" | "shaken"
 
 /** Everything a player sees before an attack: modifiers, the edge, the hit chance and whether it is a sure critical. */
 export interface Odds {
@@ -34,10 +34,11 @@ export interface Part {
   value: number
 }
 
-/** How a shot is fired: as a reaction, and against a dash or a vault. */
+/** How a shot is fired: as a reaction, against a dash or a vault, and with extra damage on a hit. */
 export interface Shot {
   reaction?: boolean
   risky?: boolean
+  bonus?: number
 }
 
 /** Damage of a critical hit: half again, rounded up. */
@@ -83,6 +84,7 @@ export class Combat {
     if (exposed || open) adv.push("flanked")
     const caught = target.side === "enemy" && target.alert === "unaware" && !game.stealth.wary(target)
     if (caught || this.surprised(target)) adv.push("unaware")
+    if (attacker.has("steady")) adv.push("steady")
     if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
     if (target.stance === "hunker") dis.push("hunkered")
     if (attacker.has("shaken") || attacker.wounded() || this.surprised(attacker)) dis.push("shaken")
@@ -124,6 +126,7 @@ export class Combat {
     const game = this.game
     const o = this.odds(attacker, target, shot)
     const w = o.weapon
+    attacker.lift("steady")
     if (w.ammo !== null) attacker.ammo -= 1
     if (w.saveHalf) {
       const edge = target.stance === "hunker" ? 1 : 0
@@ -168,7 +171,7 @@ export class Combat {
       game.log.push({ key: "log.miss", params })
       return
     }
-    const raw = game.dice.roll(w.dice)
+    const raw = game.dice.roll(w.dice) + (shot.bonus ?? 0)
     const dmg = critical ? crit(raw) : raw
     game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
     if (o.sure) target.lift("exposed")

@@ -1,11 +1,10 @@
-import { RANGE } from "../combat/abilities"
+import { type AbilityId, span } from "../combat/abilities"
 import { canReach } from "../combat/combat"
 import { failChance } from "../combat/dice"
 import { WEAPONS } from "../combat/weapons"
 import { AROUND, area, distance, key, type Point, plus, pointOf, same } from "../map/point"
 import type { Game } from "../mission/game"
 import type { Action } from "../mission/orders"
-import { PROFILES } from "../units/profiles"
 import type { Unit } from "../units/unit"
 import { SEARCH } from "./stealth"
 
@@ -285,7 +284,7 @@ export class Mind {
         t?.alive() &&
         ready(u, "dominate") &&
         game.orders.canTarget(u, t) &&
-        distance(u.pos, t.pos) <= RANGE.dominate
+        distance(u.pos, t.pos) <= span(u, "dominate")
       ) {
         return { action: { type: "ability", unit: u.id, ability: "dominate", target: t.id }, value: 100 }
       }
@@ -296,7 +295,7 @@ export class Mind {
         const x = game.unitAt(p)
         return x?.alive() && !u.foe(x)
       })
-      if (!friendly && distance(u.pos, at) <= RANGE.blast && game.sight.line(u.pos, at, false)) {
+      if (!friendly && distance(u.pos, at) <= span(u, "blast") && game.sight.line(u.pos, at, false)) {
         return { action: { type: "ability", unit: u.id, ability: "blast", at }, value: 100 }
       }
     }
@@ -312,7 +311,8 @@ export class Mind {
       let best: Choice | null = null
       for (const t of targets) {
         for (const c of area(t.pos, 1)) {
-          if (!game.board.inside(c) || distance(u.pos, c) > RANGE.blast || !game.sight.line(u.pos, c, false)) continue
+          if (!game.board.inside(c) || distance(u.pos, c) > span(u, "blast") || !game.sight.line(u.pos, c, false))
+            continue
           const hit = area(c, 1)
             .map((p) => game.unitAt(p))
             .filter((x): x is Unit => !!x)
@@ -327,7 +327,11 @@ export class Mind {
       const ally = game.units
         .filter(
           (x) =>
-            x.alive() && x !== u && !u.foe(x) && distance(u.pos, x.pos) <= RANGE.rally && game.sight.sees(u, x.pos),
+            x.alive() &&
+            x !== u &&
+            !u.foe(x) &&
+            distance(u.pos, x.pos) <= span(u, "rally") &&
+            game.sight.sees(u, x.pos),
         )
         .sort((a, b) => b.ap - a.ap)[0]
       if (ally) return { action: { type: "ability", unit: u.id, ability: "rally", target: ally.id }, value: 2.5 }
@@ -340,7 +344,7 @@ export class Mind {
           !u.foe(x) &&
           x.alert === "engaged" &&
           !x.has("ward") &&
-          distance(u.pos, x.pos) <= RANGE.ward &&
+          distance(u.pos, x.pos) <= span(u, "ward") &&
           game.sight.sees(u, x.pos),
       )
       if (ready(u, "ward") && ally)
@@ -353,7 +357,7 @@ export class Mind {
         const t = targets
           .filter(
             (x) =>
-              game.orders.canTarget(u, x) && distance(u.pos, x.pos) <= RANGE[id] && (id === "dread" || x.soldier()),
+              game.orders.canTarget(u, x) && distance(u.pos, x.pos) <= span(u, id) && (id === "dread" || x.soldier()),
           )
           .sort((a, b) => b.hp - a.hp)[0]
         if (!t) continue
@@ -406,6 +410,6 @@ function stride(u: Unit): number {
   return u.wounded() ? u.mobility : u.mobility * 2
 }
 
-function ready(u: Unit, id: "dominate" | "dread" | "charge" | "mark" | "rally" | "ward"): boolean {
-  return PROFILES[u.kind].abilities.includes(id) && !u.cooldowns[id]
+function ready(u: Unit, id: AbilityId): boolean {
+  return u.rank(id) > 0 && !u.cooldowns[id]
 }

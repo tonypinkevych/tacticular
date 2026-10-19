@@ -219,3 +219,22 @@ describe("conditions", () => {
     expect(mission(5, {}).units.map((u) => u.pos)).toEqual(mission(5).units.map((u) => u.pos))
   })
 })
+
+describe("force level", () => {
+  const aliens = (force: number) =>
+    Array.from({ length: 30 }, (_, i) => mission(i + 1, { force, groups: 4, size: 3 }))
+      .flatMap((g) => g.units)
+      .filter((u) => u.side === "enemy")
+  test("Brutes come from Force Level 2, Stalkers from 3, Psions from 4", () => {
+    expect(new Set(aliens(1).map((u) => u.kind))).not.toContain("ogre")
+    expect(new Set(aliens(2).map((u) => u.kind))).toContain("ogre")
+    expect(new Set(aliens(2).map((u) => u.kind))).not.toContain("assassin")
+    expect(new Set(aliens(3).map((u) => u.kind))).not.toContain("whisperer")
+    expect(new Set(aliens(4).map((u) => u.kind))).toContain("whisperer")
+  })
+  test("alien skills rank up at Force Level 4 and 7, and each 3 levels add 1 HP", () => {
+    const at = (force: number) => aliens(force).find((u) => u.kind === "warchief")!
+    expect([1, 4, 7].map((f) => at(f).rank("rally"))).toEqual([1, 2, 3])
+    expect([1, 4, 7, 10].map((f) => at(f).maxHp - PROFILES.warchief.hp)).toEqual([0, 1, 2, 3])
+  })
+})

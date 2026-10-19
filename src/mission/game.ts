@@ -18,6 +18,8 @@ export interface Zone {
   kind: "smoke" | "fire" | "mine"
   tiles: Point[]
   rounds: number
+  /** A mine's damage. */
+  power?: number
 }
 
 export interface Entry {
@@ -56,6 +58,8 @@ export interface GameData {
   pad: Point | null
   /** Rises each round; at some values the aliens get help. */
   alarm: number
+  /** The alien Force Level of a campaign mission. */
+  force?: number
 }
 
 /** What a new game starts from. */
@@ -86,6 +90,7 @@ export class Game implements GameData {
   goal!: Goal
   pad!: Point | null
   alarm!: number
+  force?: number
   readonly dice = new Dice(this)
   readonly sight = new Sight(this)
   readonly cover = new Cover(this)
@@ -146,6 +151,7 @@ export class Game implements GameData {
       goal: this.goal,
       pad: this.pad,
       alarm: this.alarm,
+      force: this.force,
     })
     return new Game({ ...plain, board: this.board.clone(), units: this.units.map((u) => u.clone()) })
   }

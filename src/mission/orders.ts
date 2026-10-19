@@ -1,4 +1,4 @@
-import type { AbilityId } from "../combat/abilities"
+import { type AbilityId, power } from "../combat/abilities"
 import { canReach } from "../combat/combat"
 import { AROUND, adjacent, distance, key, type Point, plus, same } from "../map/point"
 import type { Unit } from "../units/unit"
@@ -120,7 +120,7 @@ export class Orders {
         if (u.kind === "assassin" && u.concealed) continue
         if (!x.has("killzone")) x.stance = "none"
         game.log.push({ key: "log.overwatch", params: { unit: x.id, target: u.id, x: step.x, y: step.y } })
-        combat.attack(x, u, { reaction: true, risky })
+        combat.attack(x, u, { reaction: true, risky, bonus: x.has("killzone") ? power(x, "killzone") : 0 })
       }
       for (const x of threats) {
         if (u.alive() && x.alive()) combat.attack(x, u)
@@ -213,14 +213,15 @@ export class Orders {
     this.walk(u, r.path(to), cost > u.mobility)
   }
 
-  /** A mine under an alien goes off: 2 damage, a push onward and a stop; returns true when it went off. */
+  /** A mine under an alien goes off: its damage, a push onward and a stop; returns true when it went off. */
   private trip(u: Unit, from: Point): boolean {
     const game = this.game
     const mine = game.zones.find((z) => z.kind === "mine" && z.tiles.some((t) => same(t, u.pos)))
     if (!mine) return false
     game.zones = game.zones.filter((z) => z !== mine)
-    game.log.push({ key: "log.mine", params: { target: u.id, dmg: 2 } })
-    if (!game.combat.hurt(u, 2)) game.combat.push(from, u)
+    const dmg = mine.power ?? 2
+    game.log.push({ key: "log.mine", params: { target: u.id, dmg } })
+    if (!game.combat.hurt(u, dmg)) game.combat.push(from, u)
     return true
   }
 

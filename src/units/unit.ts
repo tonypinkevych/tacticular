@@ -16,6 +16,7 @@ export type StatusId =
   | "killzone"
   | "deployed"
   | "captive"
+  | "steady"
 
 export interface Status {
   id: StatusId
@@ -75,6 +76,8 @@ export interface UnitData {
   stance: Stance
   statuses: Status[]
   cooldowns: Partial<Record<AbilityId, number>>
+  /** The rank of each skill; a skill at rank 0 cannot be used. */
+  ranks: Partial<Record<AbilityId, number>>
   ult: number
   concealed: boolean
   alert: Alert
@@ -108,6 +111,7 @@ export class Unit implements UnitData {
   stance!: Stance
   statuses!: Status[]
   cooldowns!: Partial<Record<AbilityId, number>>
+  ranks!: Partial<Record<AbilityId, number>>
   ult!: number
   concealed!: boolean
   alert!: Alert
@@ -120,7 +124,7 @@ export class Unit implements UnitData {
     Object.assign(this, data)
   }
 
-  /** A fresh unit of a kind, with its class profile and a spread. */
+  /** A fresh unit of a kind, with its class profile, a spread, and its ranks or rank 1 in each skill of its kit. */
   static of(
     id: string,
     kind: Kind,
@@ -129,8 +133,10 @@ export class Unit implements UnitData {
     name: string,
     group: string | null = null,
     spread: Spread = { hp: 0, aim: 0, will: 0 },
+    ranks?: Partial<Record<AbilityId, number>>,
   ): Unit {
     const p = PROFILES[kind]
+    const kit = [...p.abilities, ...(p.ultimate ? [p.ultimate] : [])]
     return new Unit({
       id,
       kind,
@@ -153,6 +159,7 @@ export class Unit implements UnitData {
       stance: "none",
       statuses: [],
       cooldowns: {},
+      ranks: ranks ? { ...ranks } : Object.fromEntries(kit.map((a) => [a, 1])),
       ult: 0,
       concealed: side === "squad" || kind === "assassin",
       alert: "unaware",
@@ -179,6 +186,10 @@ export class Unit implements UnitData {
   /** A squad member that is a soldier, not a gadget. */
   soldier(): boolean {
     return this.side === "squad" && this.kind !== "turret"
+  }
+
+  rank(id: AbilityId): number {
+    return this.ranks[id] ?? 0
   }
 
   has(id: StatusId): boolean {
