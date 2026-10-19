@@ -1,9 +1,9 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import type { Campaign } from "../../campaign/campaign"
-import { place, type RegionId } from "../../campaign/world"
+import type { RegionId } from "../../campaign/world"
 import { t } from "../../i18n/strings"
 import { ALIEN, AMBER, BEACON, BLACK, css, EVAC, type Rgb, rgb, SQUAD } from "../board/color"
-import { ICONS, LANDS, textWidth, UNITS } from "../board/glyphs"
+import { ICONS, textWidth, UNITS } from "../board/glyphs"
 import { Pixels } from "../board/pixels"
 import { Projection } from "../board/projection"
 import { EARTH, LABELS, land } from "./atlas"
@@ -12,11 +12,10 @@ const CELL = 6
 const W = EARTH[0].length * CELL
 const H = EARTH.length * CELL
 const WASTE = rgb("#3e5660")
-const SEA = rgb("#26343a")
 const BORDER = rgb("#c8d0d4")
 
 /**
- * The world map: the Earth in glyphs, each region in the color of its state, with its name, the glyph of each
+ * The world map: the Earth in dots, each region in the color of its state, with its name, the glyph of each
  * operation in it, and a squad mark that blinks when its operation can launch; a flashed region blinks amber. A
  * region is picked by a click on its land. When the names do not fit, only the picked one shows.
  */
@@ -89,7 +88,7 @@ export function Earth(props: {
   return <canvas class="earth" ref={canvas} onClick={pick} onMouseMove={pick} aria-label={t("world.map")} />
 }
 
-/** Draws every cell of the Earth at one pixel a world pixel, with a line between regions and the flashed one lit amber. */
+/** Draws a dot on each land cell in its region's color, a line between regions, and the flashed region lit amber. */
 function paint(ctx: CanvasRenderingContext2D, c: Campaign, chosen: RegionId, flash: RegionId | null): void {
   ctx.fillStyle = css(BLACK)
   ctx.fillRect(0, 0, W, H)
@@ -97,17 +96,17 @@ function paint(ctx: CanvasRenderingContext2D, c: Campaign, chosen: RegionId, fla
   EARTH.forEach((row, y) => {
     ;[...row].forEach((ch, x) => {
       const id = land(x, y)
-      const cx = x * CELL + 3
-      const cy = y * CELL + 6
-      if (id) px.dot(x * CELL, y * CELL, tint(c, id), id === chosen ? 0.18 : 0.06, CELL, CELL)
+      if (!id) {
+        if (ch === "x") px.dot(x * CELL + 2, y * CELL + 2, WASTE, 1, 2, 2)
+        return
+      }
+      if (id === chosen) px.dot(x * CELL, y * CELL, tint(c, id), 0.12, CELL, CELL)
+      if (id === flash) px.dot(x * CELL, y * CELL, AMBER, 0.45, CELL, CELL)
       const right = land(x + 1, y)
       const below = land(x, y + 1)
-      if (id && right && right !== id) px.dot(x * CELL + CELL - 1, y * CELL, BORDER, 0.45, 1, CELL)
-      if (id && below && below !== id) px.dot(x * CELL, y * CELL + CELL - 1, BORDER, 0.45, CELL, 1)
-      if (id && id === flash) px.dot(x * CELL, y * CELL, AMBER, 0.45, CELL, CELL)
-      if (id) px.glyph(LANDS[place(id).biome], cx, cy, tint(c, id), id === chosen ? 1 : 0.7)
-      else if (ch === "x") px.glyph(LANDS.waste, cx, cy, WASTE)
-      else if ((x + y) % 3 === 0) px.glyph(LANDS.sea, cx, cy, SEA)
+      if (right && right !== id) px.dot(x * CELL + CELL - 1, y * CELL, BORDER, 0.25, 1, CELL)
+      if (below && below !== id) px.dot(x * CELL, y * CELL + CELL - 1, BORDER, 0.25, CELL, 1)
+      px.dot(x * CELL + 2, y * CELL + 2, tint(c, id), id === chosen ? 1 : 0.55, 2, 2)
     })
   })
 }

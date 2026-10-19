@@ -46,15 +46,6 @@ export const TILES = {
   mine: g([".......", ".......", ".......", ".......", "..#.#..", "...#...", "..#.#..", ".......", "......."]),
 } as const
 
-/** World map cells, 5×5: the land of each biome, land of no region and the sea. */
-export const LANDS = {
-  forest: g(["..#..", ".###.", "#####", "..#..", "....."]),
-  village: g([".....", "..#..", ".###.", ".#.#.", "....."]),
-  town: g(["#.##.", "#.##.", ".....", ".##.#", ".##.#"]),
-  waste: g([".....", ".#.#.", ".....", "#.#.#", "....."]),
-  sea: g([".....", ".....", ".##..", "#..##", "....."]),
-} as const
-
 /** The goal mark over a mission objective, 5×5. */
 export const GOAL: Glyph = g(["..#..", ".###.", "#####", ".###.", "..#.."])
 
