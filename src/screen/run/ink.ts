@@ -1,14 +1,14 @@
 import { rgb } from "../board/color"
 
-/** The inks of the world screen, a day tactical map on paper. */
-export const PAPER = rgb("#efe6cc")
-export const LAND = rgb("#dcc89c")
-export const INK = rgb("#3b2a17")
-export const SEPIA = rgb("#7a5a34")
-export const RULE = rgb("#b39a6e")
-export const FAINT = rgb("#d6c49c")
-export const RED = rgb("#a8322a")
-export const BLUE = rgb("#2c5a8c")
-export const GREEN = rgb("#4f7a3a")
-export const OCHRE = rgb("#9a5a10")
-export const GREY = rgb("#7a6a52")
+/** The inks of the world screen, a muted day tactical map on paper. */
+export const PAPER = rgb("#c9c0a3")
+export const LAND = rgb("#b5a782")
+export const INK = rgb("#2e2418")
+export const SEPIA = rgb("#5a4630")
+export const RULE = rgb("#8a785a")
+export const FAINT = rgb("#b6ac8e")
+export const RED = rgb("#843a2e")
+export const BLUE = rgb("#2f4c68")
+export const GREEN = rgb("#495f36")
+export const OCHRE = rgb("#7a5218")
+export const GREY = rgb("#605646")

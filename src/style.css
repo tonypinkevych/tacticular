@@ -860,17 +860,17 @@ main.extended .more-mark {
 #world,
 .run {
   color-scheme: light;
-  --bg: #efe6cc;
-  --panel: #e4d6b2;
-  --well: #f3ecd6;
-  --line: #b39a6e;
-  --line-hi: #7a5a34;
-  --text: #3b2a17;
-  --muted: #7a6446;
-  --accent: #2c5a8c;
-  --good: #4f7a3a;
-  --bad: #a8322a;
-  --crit: #9a5a10;
+  --bg: #c9c0a3;
+  --panel: #bdb395;
+  --well: #d2c9ad;
+  --line: #8a785a;
+  --line-hi: #5a4630;
+  --text: #2e2418;
+  --muted: #5f5240;
+  --accent: #2f4c68;
+  --good: #495f36;
+  --bad: #843a2e;
+  --crit: #7a5218;
   color: var(--text);
   background: var(--bg);
 }
@@ -1118,7 +1118,7 @@ main.extended .more-mark {
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--crit);
-  background: linear-gradient(90deg, transparent, rgb(243 236 214 / 96%) 20%, rgb(243 236 214 / 96%) 80%, transparent);
+  background: linear-gradient(90deg, transparent, rgb(210 201 173 / 96%) 20%, rgb(210 201 173 / 96%) 80%, transparent);
   border-block: 1px solid var(--crit);
   animation: unfold 0.4s ease-out;
 }
@@ -1133,7 +1133,7 @@ main.extended .more-mark {
   font-size: 18px;
   font-weight: 700;
   color: var(--text);
-  background: rgb(243 236 214 / 96%);
+  background: rgb(210 201 173 / 96%);
   border: 1px solid var(--line-hi);
   animation: unfold 0.25s ease-out;
 }
