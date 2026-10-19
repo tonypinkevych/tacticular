@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from "solid-js"
-import { type Campaign, GOALS, type Note, RECRUIT_COST, ROSTER } from "../../campaign/campaign"
+import { type Campaign, GOALS, RECRUIT_COST, ROSTER } from "../../campaign/campaign"
 import { level } from "../../campaign/soldier"
 import type { RegionId } from "../../campaign/world"
 import { t } from "../../i18n/strings"
@@ -8,12 +8,14 @@ import { ICONS } from "../board/glyphs"
 import type { Expedition } from "../expedition"
 import { Icon } from "../hud/icon"
 import { SPEEDS } from "../playback/motion"
+import { type Beat, beats, glance } from "./beat"
 import { Brief } from "./brief"
 import { Earth } from "./earth"
 import { Operation } from "./operation"
 import { Pips } from "./pips"
 import { Popup } from "./popup"
 import { Profile } from "./profile"
+import { Recap, say } from "./recap"
 import { Region } from "./region"
 import { Research } from "./research"
 import { Soldier } from "./soldier"
@@ -23,19 +25,9 @@ import { Tip } from "./tip"
 /** The popup open over the map, if any. */
 type Pane = { kind: "op"; id: number } | { kind: "soldier"; id: string } | { kind: "research" } | { kind: "log" } | null
 
-/** One line of the week's report in the active language, its region, operation, event and tech by name. */
-export function say(n: Note): string {
-  const p: Record<string, string | number> = { ...n.params }
-  if (p.region !== undefined) p.region = t(`region.${p.region}`)
-  if (p.op !== undefined) p.op = t(`op.${p.op}`)
-  if (p.event !== undefined) p.event = t(`event.${p.event}`)
-  if (p.tech !== undefined) p.tech = t(`tech.${p.tech}`)
-  return t(n.key, p)
-}
-
 /**
  * The world map of a campaign: resources and the alien clock on top, the Earth with the picked region and the
- * operations beside it, the roster and the week's actions below, and details in popups.
+ * operations beside it, the roster and the week's actions below, details in popups, and the playback of each week.
  */
 export function World(props: { expedition: Expedition }) {
   const x = props.expedition
@@ -59,9 +51,13 @@ export function World(props: { expedition: Expedition }) {
   }
   const end = () => {
     const due = c().due()
-    if (due) setPane({ kind: "op", id: due.id })
-    else x.choose({ type: "week" })
+    if (due) return setPane({ kind: "op", id: due.id })
+    const before = glance(c())
+    x.choose({ type: "week" })
+    setRecap({ week: c().week, beats: beats(before, glance(c()), c().report) })
   }
+  const [recap, setRecap] = createSignal<{ week: number; beats: Beat[] } | null>(null)
+  const [flash, setFlash] = createSignal<RegionId | null>(null)
   const [menu, setMenu] = createSignal(false)
   const [help, setHelp] = createSignal(false)
   return (
@@ -134,7 +130,7 @@ export function World(props: { expedition: Expedition }) {
         </Show>
         <div class="middle">
           <div class="map">
-            <Earth campaign={c()} chosen={region()} onPick={setChosen} />
+            <Earth campaign={c()} chosen={region()} flash={flash()} onPick={setChosen} />
           </div>
           <aside class="side">
             <Region expedition={x} id={region()} />
@@ -231,6 +227,17 @@ export function World(props: { expedition: Expedition }) {
               </ul>
             </Show>
           </Popup>
+        </Show>
+        <Show when={recap()} keyed>
+          {(r) => (
+            <Recap
+              week={r.week}
+              beats={r.beats}
+              speed={x.speed()}
+              onBeat={(b) => setFlash(b?.region ?? null)}
+              onDone={() => setRecap(null)}
+            />
+          )}
         </Show>
         <Tip />
       </section>

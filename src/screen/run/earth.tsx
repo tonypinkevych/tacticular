@@ -16,10 +16,15 @@ const SEA = rgb("#26343a")
 
 /**
  * The world map: the Earth in glyphs, each region in the color of its state, with its name, the glyph of each
- * operation in it, and a squad mark that blinks when its operation can launch. A region is picked by a click on its
- * land. When the names do not fit, only the picked one shows.
+ * operation in it, and a squad mark that blinks when its operation can launch; a flashed region blinks amber. A
+ * region is picked by a click on its land. When the names do not fit, only the picked one shows.
  */
-export function Earth(props: { campaign: Campaign; chosen: RegionId; onPick: (id: RegionId) => void }) {
+export function Earth(props: {
+  campaign: Campaign
+  chosen: RegionId
+  flash: RegionId | null
+  onPick: (id: RegionId) => void
+}) {
   let canvas!: HTMLCanvasElement
   const [tick, setTick] = createSignal(0)
   const sheet = document.createElement("canvas")
@@ -33,7 +38,7 @@ export function Earth(props: { campaign: Campaign; chosen: RegionId; onPick: (id
     const dpr = window.devicePixelRatio || 1
     canvas.width = Math.round(box.width * dpr)
     canvas.height = Math.round(box.height * dpr)
-    paint(sheet.getContext("2d")!, c, chosen)
+    paint(sheet.getContext("2d")!, c, chosen, props.flash && tick() % 2 === 0 ? props.flash : null)
     const ctx = canvas.getContext("2d")!
     ctx.imageSmoothingEnabled = false
     ctx.drawImage(sheet, 0, 0, canvas.width, canvas.height)
@@ -83,8 +88,8 @@ export function Earth(props: { campaign: Campaign; chosen: RegionId; onPick: (id
   return <canvas class="earth" ref={canvas} onClick={pick} onMouseMove={pick} aria-label={t("world.map")} />
 }
 
-/** Draws every cell of the Earth at one pixel a world pixel. */
-function paint(ctx: CanvasRenderingContext2D, c: Campaign, chosen: RegionId): void {
+/** Draws every cell of the Earth at one pixel a world pixel, the flashed region lit amber. */
+function paint(ctx: CanvasRenderingContext2D, c: Campaign, chosen: RegionId, flash: RegionId | null): void {
   ctx.fillStyle = css(BLACK)
   ctx.fillRect(0, 0, W, H)
   const px = new Pixels(ctx, new Projection(0, 0))
@@ -94,6 +99,7 @@ function paint(ctx: CanvasRenderingContext2D, c: Campaign, chosen: RegionId): vo
       const cx = x * CELL + 3
       const cy = y * CELL + 6
       if (id === chosen) px.dot(x * CELL, y * CELL, tint(c, id), 0.18, CELL, CELL)
+      if (id && id === flash) px.dot(x * CELL, y * CELL, AMBER, 0.45, CELL, CELL)
       if (id) px.glyph(LANDS[place(id).biome], cx, cy, tint(c, id), id === chosen ? 1 : 0.7)
       else if (ch === "x") px.glyph(LANDS.waste, cx, cy, WASTE)
       else if ((x + y) % 3 === 0) px.glyph(LANDS.sea, cx, cy, SEA)
