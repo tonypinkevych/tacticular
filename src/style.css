@@ -587,6 +587,7 @@ main.extended .odds .more {
 }
 #help {
   position: absolute;
+  z-index: 6;
   top: 56px;
   left: 50%;
   transform: translateX(-50%);
@@ -871,6 +872,9 @@ main.extended .more-mark {
   padding: 8px 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
+}
+#world header.bar {
+  z-index: 5;
 }
 #world footer.bar {
   border-top: 1px solid var(--line);

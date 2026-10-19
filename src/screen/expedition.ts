@@ -3,6 +3,7 @@ import type { Campaign, Choice, Goal } from "../campaign/campaign"
 import { type Lang, locale } from "../i18n/strings"
 import type { Chronicle } from "../save/chronicle"
 import { Model, SPEED_KEY, savedSpeed } from "./model"
+import type { Cue } from "./playback/cues"
 import type { Speed } from "./playback/motion"
 import { Sound } from "./playback/sound"
 
@@ -81,6 +82,10 @@ export class Expedition {
     } catch {
       return
     }
+  }
+
+  play(cue: Cue): void {
+    this.sound.play(cue)
   }
 
   toggleSound(): void {

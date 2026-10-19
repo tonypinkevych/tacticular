@@ -7,11 +7,11 @@ describe("beats", () => {
   test("a quiet week has none", () => {
     expect(beats(calm, calm, [])).toEqual([])
   })
-  test("each resource that grew is a beat with its gain", () => {
+  test("each resource that grew is a beat with its gain that counts its counter up", () => {
     const b = beats(calm, { ...calm, supplies: 22, materials: 2 }, [])
-    expect(b.map((x) => [x.icon, x.note.key, x.note.params.amount])).toEqual([
-      ["world:supplies", "recap.supplies", 12],
-      ["world:materials", "recap.materials", 2],
+    expect(b.map((x) => [x.icon, x.note.key, x.note.params.amount, x.counter])).toEqual([
+      ["world:supplies", "recap.supplies", 12, "supplies"],
+      ["world:materials", "recap.materials", 2, "materials"],
     ])
   })
   test("a new soldier, a Force Level and a Project rise are beats", () => {

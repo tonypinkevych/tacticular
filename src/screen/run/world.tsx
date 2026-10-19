@@ -8,7 +8,7 @@ import { ICONS } from "../board/glyphs"
 import type { Expedition } from "../expedition"
 import { Icon } from "../hud/icon"
 import { SPEEDS } from "../playback/motion"
-import { type Beat, beats, glance } from "./beat"
+import { type Beat, beats, type Counter, glance } from "./beat"
 import { Brief } from "./brief"
 import { Earth } from "./earth"
 import { Operation } from "./operation"
@@ -23,7 +23,13 @@ import { Stat } from "./stat"
 import { Tip } from "./tip"
 
 /** The popup open over the map, if any. */
-type Pane = { kind: "op"; id: number } | { kind: "soldier"; id: string } | { kind: "research" } | { kind: "log" } | null
+type Pane =
+  | { kind: "op"; id: number }
+  | { kind: "soldier"; id: string }
+  | { kind: "research" }
+  | { kind: "log" }
+  | { kind: "recruit" }
+  | null
 
 /**
  * The world map of a campaign: resources and the alien clock on top, the Earth with the picked region and the
@@ -54,7 +60,28 @@ export function World(props: { expedition: Expedition }) {
     if (due) return setPane({ kind: "op", id: due.id })
     const before = glance(c())
     x.choose({ type: "week" })
+    setShown({
+      supplies: before.supplies,
+      intel: before.intel,
+      materials: before.materials,
+      force: before.force,
+      project: before.project,
+    })
     setRecap({ week: c().week, beats: beats(before, glance(c()), c().report) })
+  }
+  const [shown, setShown] = createSignal<Partial<Record<Counter, number>>>({})
+  const num = (k: Counter) => shown()[k] ?? c()[k]
+  const count = (k: Counter) => {
+    const from = shown()[k]
+    const to = c()[k]
+    if (from === undefined) return
+    const steps = Math.min(12, Math.abs(to - from))
+    let n = 0
+    const tick = setInterval(() => {
+      n += 1
+      if (n >= steps || shown()[k] === undefined) clearInterval(tick)
+      if (shown()[k] !== undefined) setShown((v) => ({ ...v, [k]: Math.round(from + ((to - from) * n) / steps) }))
+    }, 60)
   }
   const [recap, setRecap] = createSignal<{ week: number; beats: Beat[] } | null>(null)
   const [flash, setFlash] = createSignal<RegionId | null>(null)
@@ -68,13 +95,13 @@ export function World(props: { expedition: Expedition }) {
             {c().week}
           </Stat>
           <Stat icon="world:supplies" color={AMBER} tip={t("world.supplies")} info={t("world.suppliesInfo")}>
-            {c().supplies}
+            {num("supplies")}
           </Stat>
           <Stat icon="world:intel" color={BEACON} tip={t("world.intel")} info={t("world.intelInfo")}>
-            {c().intel}
+            {num("intel")}
           </Stat>
           <Stat icon="world:materials" color={SMOKE} tip={t("world.materials")} info={t("world.materialsInfo")}>
-            {c().materials}
+            {num("materials")}
           </Stat>
           <Stat
             icon="world:freed"
@@ -91,7 +118,7 @@ export function World(props: { expedition: Expedition }) {
             tip={t("world.force", { force: c().force })}
             info={t("world.forceInfo")}
           >
-            <Pips on={c().force} of={10} tone="bad" />
+            <Pips on={num("force")} of={10} tone="bad" />
           </Stat>
           <Stat
             icon="world:project"
@@ -100,9 +127,9 @@ export function World(props: { expedition: Expedition }) {
             info={t("world.projectInfo")}
           >
             <span class="clock">
-              <i style={{ width: `${(100 * c().project) / GOALS[c().goal].end}%` }} />
+              <i style={{ width: `${(100 * num("project")) / GOALS[c().goal].end}%` }} />
             </span>
-            {c().project}/{GOALS[c().goal].end}
+            {num("project")}/{GOALS[c().goal].end}
           </Stat>
           <Show when={c().event}>
             {(e) => (
@@ -185,7 +212,7 @@ export function World(props: { expedition: Expedition }) {
             class="big"
             disabled={c().supplies < RECRUIT_COST || c().roster.length >= ROSTER}
             data-tip={t("world.recruit", { cost: RECRUIT_COST })}
-            onClick={() => x.choose({ type: "recruit" })}
+            onClick={() => setPane({ kind: "recruit" })}
           >
             <Icon glyph={ICONS["world:recruit"]} color={css(SQUAD)} class="icon" />
             <Icon glyph={ICONS["world:supplies"]} color={css(AMBER)} class="icon" />
@@ -219,6 +246,28 @@ export function World(props: { expedition: Expedition }) {
             <Research expedition={x} />
           </Popup>
         </Show>
+        <Show when={pane()?.kind === "recruit"}>
+          <Popup title={t("world.recruitTitle")} onClose={close}>
+            <p class="small">{t("world.recruitInfo")}</p>
+            <div class="row">
+              <span class="spacer" />
+              <button type="button" onClick={close}>
+                {t("ui.close")}
+              </button>
+              <button
+                type="button"
+                class="primary"
+                onClick={() => {
+                  x.choose({ type: "recruit" })
+                  close()
+                }}
+              >
+                <Icon glyph={ICONS["world:supplies"]} color={css(AMBER)} class="icon" />
+                {RECRUIT_COST} · {t("ui.confirm")}
+              </button>
+            </div>
+          </Popup>
+        </Show>
         <Show when={pane()?.kind === "log"}>
           <Popup title={t("world.report")} onClose={close}>
             <Show when={c().report.length > 0} fallback={<p class="small muted">{t("world.quiet")}</p>}>
@@ -234,8 +283,15 @@ export function World(props: { expedition: Expedition }) {
               week={r.week}
               beats={r.beats}
               speed={x.speed()}
-              onBeat={(b) => setFlash(b?.region ?? null)}
-              onDone={() => setRecap(null)}
+              play={(cue) => x.play(cue)}
+              onBeat={(b) => {
+                setFlash(b?.region ?? null)
+                if (b?.counter) count(b.counter)
+              }}
+              onDone={() => {
+                setShown({})
+                setRecap(null)
+              }}
             />
           )}
         </Show>

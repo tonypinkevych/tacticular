@@ -26,6 +26,9 @@ export type Cue =
   | "horn"
   | "select"
   | "denied"
+  | "week"
+  | "gain"
+  | "threat"
 
 const WEAPON_CUES: Partial<Record<WeaponId, Cue>> = {
   shotgun: "shotgun",

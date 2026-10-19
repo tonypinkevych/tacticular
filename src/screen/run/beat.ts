@@ -1,11 +1,15 @@
 import type { Campaign, Note, OpKind } from "../../campaign/campaign"
 import type { RegionId } from "../../campaign/world"
 
-/** One change of a week as the playback shows it: an icon, a line of text, and the region it happened in. */
+/** A number of the top bar that a beat counts up. */
+export type Counter = "supplies" | "intel" | "materials" | "force" | "project"
+
+/** One change of a week as the playback shows it: an icon, a line of text, its region and the counter it raises. */
 export interface Beat {
   icon: string
   note: Note
   region: RegionId | null
+  counter?: Counter
 }
 
 /** What of a campaign the playback compares before and after a week. */
@@ -49,6 +53,7 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
     icon: `world:${r}`,
     note: { key: `recap.${r}`, params: { amount: after[r] - before[r] } },
     region: null,
+    counter: r,
   }))
   const recruits: Beat[] = after.roster
     .filter((s) => !before.roster.some((b) => b.id === s.id))
@@ -60,7 +65,14 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
   }))
   const aliens: Beat[] = [
     ...(after.force > before.force
-      ? [{ icon: "world:force", note: { key: "recap.force", params: { force: after.force } }, region: null }]
+      ? [
+          {
+            icon: "world:force",
+            note: { key: "recap.force", params: { force: after.force } },
+            region: null,
+            counter: "force" as const,
+          },
+        ]
       : []),
     ...(after.project > before.project
       ? [
@@ -68,6 +80,7 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
             icon: "world:project",
             note: { key: "recap.project", params: { amount: after.project - before.project } },
             region: null,
+            counter: "project" as const,
           },
         ]
       : []),

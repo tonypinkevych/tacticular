@@ -170,4 +170,18 @@ const RECIPES: Record<Cue, (v: Voice, t: number) => void> = {
   },
   select: (v, t) => v.tone(t, 880, 880, 0.05, "square", 0.12),
   denied: (v, t) => v.tone(t, 180, 160, 0.15, "square", 0.15),
+  week: (v, t) => {
+    v.tone(t, 392, 392, 0.18, "square", 0.14)
+    v.tone(t + 0.18, 523, 523, 0.18, "square", 0.14)
+    v.tone(t + 0.36, 659, 659, 0.18, "square", 0.14)
+    v.tone(t + 0.54, 784, 784, 0.45, "square", 0.16)
+  },
+  gain: (v, t) => {
+    v.tone(t, 988, 988, 0.07, "square", 0.12)
+    v.tone(t + 0.07, 1319, 1319, 0.2, "square", 0.12)
+  },
+  threat: (v, t) => {
+    v.tone(t, 220, 110, 0.5, "sawtooth", 0.18)
+    v.tone(t, 233, 116, 0.5, "sawtooth", 0.14)
+  },
 }

@@ -4,6 +4,7 @@ import { t } from "../../i18n/strings"
 import { ALIEN, AMBER, BEACON, css, DASH, type Rgb } from "../board/color"
 import { ICONS } from "../board/glyphs"
 import { Icon } from "../hud/icon"
+import type { Cue } from "../playback/cues"
 import type { Speed } from "../playback/motion"
 import type { Beat } from "./beat"
 
@@ -25,6 +26,7 @@ export function Recap(props: {
   week: number
   beats: Beat[]
   speed: Speed
+  play: (cue: Cue) => void
   onBeat: (b: Beat | null) => void
   onDone: () => void
 }) {
@@ -38,9 +40,11 @@ export function Recap(props: {
     if (at() >= last) return done()
     setAt(at() + 1)
     props.onBeat(props.beats[at()])
-    timer = setTimeout(next, 1100 / props.speed)
+    props.play(cue(props.beats[at()].icon))
+    timer = setTimeout(next, 2000 / props.speed)
   }
-  let timer = setTimeout(next, props.speed === 0 ? 600 : 1400 / props.speed)
+  props.play("week")
+  let timer = setTimeout(next, props.speed === 0 ? 800 : 2200 / props.speed)
   onCleanup(() => clearTimeout(timer))
   return (
     <button type="button" class="recap" onClick={done}>
@@ -64,8 +68,16 @@ export function Recap(props: {
   )
 }
 
+const THREATS = ["world:force", "world:project", "world:strength", "world:event", "world:resistance"]
+
 /** Amber for an operation, red for the aliens, blue for the rest. */
 function tone(icon: string): Rgb {
   if (icon.startsWith("op:")) return AMBER
-  return ["world:force", "world:project", "world:strength", "world:event"].includes(icon) ? ALIEN : BEACON
+  return THREATS.includes(icon) ? ALIEN : BEACON
+}
+
+/** A chime for an operation, a low drone for the aliens, a coin for the rest. */
+function cue(icon: string): Cue {
+  if (icon.startsWith("op:")) return "spotted"
+  return THREATS.includes(icon) ? "threat" : "gain"
 }
