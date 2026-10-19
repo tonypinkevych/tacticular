@@ -5,7 +5,7 @@ import type { Game } from "../mission/game"
 import { type Conditions, NAMES } from "../mission/mission"
 import { CLASSES, type ClassId, PROFILES } from "../units/profiles"
 import type { Recruit, Unit } from "../units/unit"
-import { kit, rankable, type Soldier } from "./soldier"
+import { kit, level, rankable, type Soldier } from "./soldier"
 import { PLACES, place, type Region, type RegionId } from "./world"
 
 /** How many regions the player must free to win. */
@@ -53,10 +53,14 @@ const PENALTIES: Partial<Record<OpKind, Penalty | null>> = {
   liberation: null,
 }
 
-/** How a mission ended for the campaign: won or not, and the HP each soldier in it left with; 0 is dead. */
+/**
+ * How a mission ended for the campaign: won or not, the HP each soldier in it left with (0 is dead), and the ranks
+ * of each soldier who ranked up in it.
+ */
 export interface Result {
   won: boolean
   hp: Record<string, number>
+  ranks?: Record<string, Partial<Record<AbilityId, number>>>
 }
 
 /** One line of the week's report. */
@@ -313,6 +317,7 @@ export class Campaign {
     for (const s of this.roster) {
       if (op.squad.includes(s.id)) {
         s.hp = result.hp[s.id] ?? 0
+        s.ranks = result.ranks?.[s.id] ?? s.ranks
         s.xp += result.won ? xp : xp / 2
       } else if (!this.away(s.id)) s.xp += result.won ? home : 0
     }
@@ -490,6 +495,7 @@ export class Campaign {
       hp: s.hp + armor,
       ranks: { ...s.ranks },
       might: weapons,
+      level: level(s),
     }
   }
 
@@ -525,8 +531,8 @@ export class Campaign {
 }
 
 /**
- * The result of a finished mission: a downed soldier counts 1 HP after a win and 0 after a loss, or when it was
- * left outside the evac zone while aliens still live.
+ * The result of a finished mission, with each soldier's ranks: a downed soldier counts 1 HP after a win and 0 after
+ * a loss, or when it was left outside the evac zone while aliens still live.
  */
 export function outcome(game: Game): Result {
   const won = game.phase === "won"
@@ -534,9 +540,13 @@ export function outcome(game: Game): Result {
   const clear = !game.units.some((u) => u.alive() && u.side === "enemy")
   const carried = (u: Unit) => clear || !("tiles" in goal) || goal.tiles.some((p) => same(p, u.pos))
   const hp: Record<string, number> = {}
-  for (const u of game.units)
-    if (u.side === "squad" && u.kind !== "turret") hp[u.id] = u.alive() ? u.hp : won && u.down > 0 && carried(u) ? 1 : 0
-  return { won, hp }
+  const ranks: Record<string, Partial<Record<AbilityId, number>>> = {}
+  for (const u of game.units) {
+    if (u.side !== "squad" || u.kind === "turret") continue
+    hp[u.id] = u.alive() ? u.hp : won && u.down > 0 && carried(u) ? 1 : 0
+    if (u.level !== undefined) ranks[u.id] = { ...u.ranks }
+  }
+  return { won, hp, ranks }
 }
 
 /** The most HP a soldier can have without armor. */

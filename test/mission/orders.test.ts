@@ -352,3 +352,22 @@ describe("objectives", () => {
     expect(g.phase).toBe("lost")
   })
 })
+
+describe("rank-ups in a mission", () => {
+  const ranked = (level: number) => {
+    const v = squad("v", "vanguard", { x: 0, y: 0 })
+    v.ranks = { close: 1 }
+    v.level = level
+    return setup(open(8, 3), [v, enemy("e", "orc", { x: 7, y: 2 })])
+  }
+  test("a soldier with a free point raises a skill its level allows, with no AP", () => {
+    const g = ranked(2).apply({ type: "rank", unit: "v", skill: "run" })
+    expect([find(g, "v").rank("run"), find(g, "v").ap]).toEqual([1, 2])
+    expect(() => g.apply({ type: "rank", unit: "v", skill: "breach" })).toThrow(Illegal)
+  })
+  test("a skill the level does not allow, or a soldier with no level, cannot rank", () => {
+    expect(() => ranked(2).apply({ type: "rank", unit: "v", skill: "close" })).toThrow(Illegal)
+    const g = setup(open(8, 3), [squad("v", "vanguard", { x: 0, y: 0 }), enemy("e", "orc", { x: 7, y: 2 })])
+    expect(() => g.apply({ type: "rank", unit: "v", skill: "close" })).toThrow(Illegal)
+  })
+})

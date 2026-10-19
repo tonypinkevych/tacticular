@@ -1,5 +1,5 @@
 import type { AbilityId } from "../combat/abilities"
-import { PROFILES } from "../units/profiles"
+import { learnable, PROFILES } from "../units/profiles"
 import type { Recruit } from "../units/unit"
 
 /** A soldier of the campaign roster: a recruit with XP and the weeks of rest it still needs. */
@@ -26,13 +26,7 @@ export function kit(s: Recruit): AbilityId[] {
   return [...p.abilities, ...(p.ultimate ? [p.ultimate] : [])]
 }
 
-/**
- * True when the soldier can put a point in a skill: a basic skill at rank n needs level 2n−1 and stops at 3; the
- * ultimate needs level 6 for rank 1 and 11 for rank 2.
- */
+/** True when the soldier can put a point in a skill. */
 export function rankable(s: Soldier, id: AbilityId): boolean {
-  if (points(s) <= 0 || !kit(s).includes(id)) return false
-  const next = (s.ranks?.[id] ?? 0) + 1
-  if (id === PROFILES[s.kind].ultimate) return next <= 2 && level(s) >= (next === 1 ? 6 : 11)
-  return next <= 3 && level(s) >= 2 * next - 1
+  return learnable(s.kind, level(s), s.ranks ?? {}, id)
 }

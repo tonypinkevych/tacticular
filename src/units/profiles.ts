@@ -191,3 +191,21 @@ export const PROFILES: Record<Kind, Profile> = {
 }
 
 export const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric", "rogue", "mage", "engineer"]
+
+/**
+ * True when a unit of a kind at a level, with these ranks, can put a point in a skill: it has a point left, a basic
+ * skill at rank n needs level 2n−1 and stops at 3, and the ultimate needs level 6 for rank 1 and 11 for rank 2.
+ */
+export function learnable(
+  kind: Kind,
+  level: number,
+  ranks: Partial<Record<AbilityId, number>>,
+  id: AbilityId,
+): boolean {
+  const p = PROFILES[kind]
+  const spent = Object.values(ranks).reduce((sum, r) => sum + (r ?? 0), 0)
+  if (level - spent <= 0 || ![...p.abilities, p.ultimate].includes(id)) return false
+  const next = (ranks[id] ?? 0) + 1
+  if (id === p.ultimate) return next <= 2 && level >= (next === 1 ? 6 : 11)
+  return next <= 3 && level >= 2 * next - 1
+}

@@ -55,6 +55,7 @@ function squad(r: Dice, board: Board, taken: Set<number>, recruits?: Recruit[]):
     const u = Unit.of(s.id, s.kind, "squad", spots[i], s.name, null, s.spread, s.ranks)
     u.hp = Math.min(u.maxHp, s.hp)
     if (s.might) u.might = s.might
+    if (s.level) u.level = s.level
     return u
   })
 }

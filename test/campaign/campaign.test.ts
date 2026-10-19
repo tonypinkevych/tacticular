@@ -193,6 +193,15 @@ describe("campaign", () => {
     const s = c.conditions().squad![0]
     expect(s.hp).toBe(c.roster.find((x) => x.id === s.id)!.hp + 2)
   })
+  test("a mission takes each soldier's level, and its result brings back the ranks spent in it", () => {
+    const c = fresh()
+    const op = c.ops[0]
+    launch(c, op)
+    const s = c.roster.find((x) => x.id === op.squad[0])!
+    expect(c.conditions().squad![0].level).toBe(1)
+    c.play({ type: "finish", result: { ...win(c, op), ranks: { [s.id]: { [kit(s)[0]]: 1 } } } })
+    expect(s.ranks).toEqual({ [kit(s)[0]]: 1 })
+  })
   test("a rank point is spent only where the level allows", () => {
     const c = fresh()
     const s = c.roster[0]

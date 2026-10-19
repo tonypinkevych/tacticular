@@ -2,7 +2,7 @@ import type { AbilityId } from "../combat/abilities"
 import { WEAPONS, type Weapon, type WeaponId } from "../combat/weapons"
 import type { Point } from "../map/point"
 import { climb, passable, type Tile } from "../map/tile"
-import { type ClassId, type Kind, PROFILES } from "./profiles"
+import { type ClassId, type Kind, learnable, PROFILES } from "./profiles"
 
 export type Side = "squad" | "enemy"
 
@@ -59,6 +59,8 @@ export interface Recruit {
   ranks?: Partial<Record<AbilityId, number>>
   /** Extra damage of its weapon. */
   might?: number
+  /** The soldier's level, which lets it spend rank points in a mission. */
+  level?: number
 }
 
 /** The saved fields of a unit. */
@@ -98,6 +100,8 @@ export interface UnitData {
   waited?: boolean
   /** Extra damage of its weapon. */
   might?: number
+  /** The soldier's level; with one, it can spend rank points in a mission. */
+  level?: number
 }
 
 /** A soldier, an alien or a gadget on the board, with its stats and its state in the fight. */
@@ -133,6 +137,7 @@ export class Unit implements UnitData {
   intent!: Intent | null
   waited?: boolean
   might?: number
+  level?: number
 
   constructor(data: UnitData) {
     Object.assign(this, data)
@@ -205,6 +210,11 @@ export class Unit implements UnitData {
 
   rank(id: AbilityId): number {
     return this.ranks[id] ?? 0
+  }
+
+  /** True when the soldier has a level and a free point that its level lets it put in the skill. */
+  promotable(id: AbilityId): boolean {
+    return this.level !== undefined && learnable(this.kind, this.level, this.ranks, id)
   }
 
   has(id: StatusId): boolean {

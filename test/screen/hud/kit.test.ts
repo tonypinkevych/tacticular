@@ -141,3 +141,20 @@ describe("cues", () => {
     expect(cue(g, "c", "ability:heal")).toBe(true)
   })
 })
+
+describe("rank-ups on the bar", () => {
+  test("a soldier with a free point shows every skill of its kit, with a + where its level allows", () => {
+    const v = squad("v", "vanguard", { x: 0, y: 1 })
+    v.ranks = { close: 1 }
+    v.level = 3
+    const slots = new Kit(setup(open(8, 3), [v, enemy("e", "orc", { x: 7, y: 1 })]), v).slots()
+    const up = (id: string) => slots.find((s) => s.id === `ability:${id}`)?.up
+    expect([up("close"), up("run"), up("breach"), up("rampage")]).toEqual([true, true, true, false])
+    expect(slots.find((s) => s.id === "ability:run")?.disabled).toBe(true)
+  })
+  test("a soldier with no level shows no +", () => {
+    const v = squad("v", "vanguard", { x: 0, y: 1 })
+    const slots = new Kit(setup(open(8, 3), [v, enemy("e", "orc", { x: 7, y: 1 })]), v).slots()
+    expect(slots.some((s) => s.up)).toBe(false)
+  })
+})

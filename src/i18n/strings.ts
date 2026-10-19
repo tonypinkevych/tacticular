@@ -1,6 +1,7 @@
 export type Lang = "en" | "ru"
 
 const en = {
+  "ui.rankUp": "Rank up {skill}",
   "ui.title": "Tacticular",
   "ui.round": "Round {round}",
   "ui.goal.kill": "Kill all aliens",
@@ -487,6 +488,7 @@ const en = {
   "about.poisoned": "1 damage at round end.",
   "about.running": "A dash costs 1 AP.",
   "reason.suppressed": "suppressed",
+  "illegal.rank": "This skill cannot rank up now.",
   "illegal.uses": "No uses left this mission.",
   "illegal.flank": "Needs an Exposed or flanked target, or concealment.",
   "illegal.stasis": "In stasis.",
@@ -498,6 +500,7 @@ const en = {
 export type Key = keyof typeof en
 
 const ru: Record<Key, string> = {
+  "ui.rankUp": "Повысить ранг: {skill}",
   "ui.title": "Tacticular",
   "ui.round": "Раунд {round}",
   "ui.goal.kill": "Уничтожить всех пришельцев",
@@ -986,6 +989,7 @@ const ru: Record<Key, string> = {
   "about.poisoned": "1 урон в конце раунда.",
   "about.running": "Рывок стоит 1 ОД.",
   "reason.suppressed": "подавлен",
+  "illegal.rank": "Этот навык сейчас не повысить.",
   "illegal.uses": "В этой миссии использований не осталось.",
   "illegal.flank": "Нужна открытая или фланкированная цель, или скрытность.",
   "illegal.stasis": "В стазисе.",

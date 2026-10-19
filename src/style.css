@@ -156,6 +156,28 @@ h2 {
 .slots {
   display: flex;
 }
+.cell {
+  position: relative;
+}
+.rankup {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 14px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 12px;
+  color: #000;
+  background: var(--crit);
+  border: 0;
+}
+.rankup:hover:not(:disabled) {
+  color: #000;
+  background: var(--accent);
+}
 .slot {
   width: 44px;
   height: 44px;

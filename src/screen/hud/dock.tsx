@@ -1,4 +1,5 @@
 import { For, Index, Show } from "solid-js"
+import type { AbilityId } from "../../combat/abilities"
 import { t } from "../../i18n/strings"
 import { key, same } from "../../map/point"
 import { AMBER, css } from "../board/color"
@@ -11,7 +12,7 @@ import { type Contact, Kit } from "./kit"
 const GROUPS = ["weapon", "skill", "ult", "stance"] as const
 const FAMILY = { weapon: "#efe4cc", skill: "#7fc8e8", ult: "#ffb347", stance: "#a8c49a" } as const
 
-/** Action slots grouped as weapon, skills, ultimate and stances, then End turn. */
+/** Action slots grouped as weapon, skills, ultimate and stances, then End turn; a + over a skill spends a rank point. */
 function Bar(props: { model: Model }) {
   const m = props.model
   const list = () => {
@@ -25,27 +26,44 @@ function Bar(props: { model: Model }) {
           <div class="slots">
             <Index each={list().filter((s) => s.group === k)}>
               {(s) => (
-                <button
-                  type="button"
-                  class="slot"
-                  aria-label={s().label}
-                  classList={{
-                    active: m.armed()?.slot === s().id,
-                    ready: (s().group === "ult" && !s().disabled) || !!s().cue,
-                  }}
-                  disabled={s().disabled}
-                  onClick={() => m.press(s())}
-                  onMouseEnter={() => m.setHint(s())}
-                  onMouseLeave={() => m.setHint(null)}
-                >
-                  <span class="face">
-                    <span class="key">{s().key}</span>
-                    <Show when={s().badge}>
-                      <span class="badge">{s().badge}</span>
-                    </Show>
-                    <Icon glyph={ICONS[s().id] ?? ICONS.unknown} color={FAMILY[s().group]} class="glyph" />
-                  </span>
-                </button>
+                <span class="cell">
+                  <Show when={s().up}>
+                    <button
+                      type="button"
+                      class="rankup"
+                      aria-label={t("ui.rankUp", { skill: s().label })}
+                      onClick={() => {
+                        m.setHint(null)
+                        m.act({ type: "rank", unit: m.unit()!.id, skill: s().id.slice(8) as AbilityId })
+                      }}
+                      onMouseEnter={() => m.setHint({ ...s(), info: t("ui.rankUp", { skill: s().label }) })}
+                      onMouseLeave={() => m.setHint(null)}
+                    >
+                      +
+                    </button>
+                  </Show>
+                  <button
+                    type="button"
+                    class="slot"
+                    aria-label={s().label}
+                    classList={{
+                      active: m.armed()?.slot === s().id,
+                      ready: (s().group === "ult" && !s().disabled) || !!s().cue,
+                    }}
+                    disabled={s().disabled}
+                    onClick={() => m.press(s())}
+                    onMouseEnter={() => m.setHint(s())}
+                    onMouseLeave={() => m.setHint(null)}
+                  >
+                    <span class="face">
+                      <span class="key">{s().key}</span>
+                      <Show when={s().badge}>
+                        <span class="badge">{s().badge}</span>
+                      </Show>
+                      <Icon glyph={ICONS[s().id] ?? ICONS.unknown} color={FAMILY[s().group]} class="glyph" />
+                    </span>
+                  </button>
+                </span>
               )}
             </Index>
           </div>

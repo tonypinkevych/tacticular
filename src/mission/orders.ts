@@ -15,6 +15,7 @@ export type Action =
   | { type: "aim"; unit: string; target: string; from?: Point }
   | { type: "shoot"; unit: string; at: Point }
   | { type: "use"; unit: string }
+  | { type: "rank"; unit: string; skill: AbilityId }
   | { type: "endTurn" }
 
 const inside = (p: Point, tiles: Point[]): boolean => tiles.some((t) => same(t, p))
@@ -41,6 +42,11 @@ export class Orders {
     const u = game.unit(action.unit)
     check(u.alive(), "dead")
     check(u.allegiance() === game.phase || game.reactions.includes(u.id), "not your turn")
+    if (action.type === "rank") {
+      check(u.promotable(action.skill), "rank")
+      u.ranks = { ...u.ranks, [action.skill]: u.rank(action.skill) + 1 }
+      return
+    }
     check(!u.has("stasis"), "stasis")
     if (action.type === "aim") {
       this.aim(u, game.unit(action.target), action.from)

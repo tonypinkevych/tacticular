@@ -38,6 +38,8 @@ export interface Slot {
   aim: Aim
   /** True when a pay-off skill has its target on the board. */
   cue?: boolean
+  /** True when the soldier can put a rank point in the skill. */
+  up?: boolean
 }
 
 /** The action the player has picked and not yet confirmed. */
@@ -122,19 +124,23 @@ export class Kit {
         disabled: none || blocked,
         aim: UNIT_ABILITIES.includes(a) ? "unit" : TILE_ABILITIES.includes(a) ? "tile" : "none",
         cue: !none && !blocked && this.cue(a),
+        up: game.phase === "squad" && u.promotable(a),
       })
+    const learning = u.level !== undefined
+    if (learning) for (const a of p.abilities.filter((x) => ABILITIES[x].passive)) skill(a, "skill", "", "", true)
     p.abilities
       .filter((a) => !ABILITIES[a].passive)
       .forEach((a, i) => {
-        if (u.rank(a) === 0) return
+        if (u.rank(a) === 0 && !learning) return
         const cd = u.cooldowns[a] ?? 0
         const left = ABILITIES[a].uses ? ranked(ABILITIES[a].uses!, u.rank(a)) - (u.used[a] ?? 0) : null
-        skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : left !== null ? `${left}` : "", cd > 0 || left === 0)
+        const badge = cd ? `⟳${cd}` : left !== null ? `${left}` : ""
+        skill(a, "skill", SKILL_KEYS[i] ?? "", badge, cd > 0 || left === 0 || u.rank(a) === 0)
       })
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
       skill("rouse", "skill", ROUSE_KEY, "", false)
-    if (p.ultimate && u.rank(p.ultimate) > 0)
-      skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT)
+    if (p.ultimate && (u.rank(p.ultimate) > 0 || learning))
+      skill(p.ultimate, "ult", ULT_KEY, u.ult >= ULT ? "★" : `${u.ult}/${ULT}`, u.ult < ULT || u.rank(p.ultimate) === 0)
     for (const id of ["reload", "overwatch", "hunker", "use", "door"] as const) {
       if (id === "reload" && WEAPONS[u.weapon].ammo === null) continue
       if (id === "use" && !game.orders.usable(u)) continue
