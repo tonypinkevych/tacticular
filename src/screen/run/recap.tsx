@@ -22,11 +22,11 @@ export function say(n: Note): string {
 }
 
 /**
- * The playback of a week: a banner with its number, then each beat in turn at the playback speed. A click ends it;
- * at instant speed only the banner shows, briefly.
+ * The playback of a week or a mission: a banner with its title, then each beat in turn at the playback speed. A click
+ * ends it; at instant speed only the banner shows, briefly.
  */
 export function Recap(props: {
-  week: number
+  title: string
   beats: Beat[]
   speed: Speed
   play: (cue: Cue) => void
@@ -56,7 +56,7 @@ export function Recap(props: {
         fallback={
           <span class="banner">
             <Icon glyph={ICONS["world:week"]} color={css(OCHRE)} class="icon" />
-            {t("world.week", { week: props.week })}
+            {props.title}
             <Icon glyph={ICONS["world:week"]} color={css(OCHRE)} class="icon" />
           </span>
         }

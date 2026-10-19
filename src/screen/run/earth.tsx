@@ -71,7 +71,6 @@ export function Earth(props: {
     const at = (id: RegionId) => cell(LABELS[id].x + 0.5, LABELS[id].y + 0.5)
     instruments(px, cell)
     if (props.from && props.flash) arrow(px, at(props.from), at(props.flash))
-    if (props.flight) flight(px, at(c.home), at(props.flight.to), props.flight.t)
     for (const r of c.regions) {
       const ops = c.ops.filter((o) => o.region === r.id)
       const marks = [
@@ -94,6 +93,7 @@ export function Earth(props: {
           m === "world:project" ? RED : m === "world:away" ? BLUE : OCHRE,
         )
     }
+    if (props.flight) flight(px, at(c.home), at(props.flight.to), props.flight.t)
   }
   const pick = (e: MouseEvent) => {
     const box = canvas.getBoundingClientRect()

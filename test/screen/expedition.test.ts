@@ -57,6 +57,14 @@ describe("expedition", () => {
     expect(x.model).toBeNull()
     expect(x.campaign()?.stage).not.toBe("mission")
   })
+  test("ending a mission leaves the beats of what it gave for the world map, once", () => {
+    const x = opened()
+    launch(x)
+    x.finish()
+    const keys = x.debrief()?.map((b) => b.note.key) ?? []
+    expect(keys.some((k) => k === "week.won" || k === "week.lost")).toBe(true)
+    expect(x.debrief()).toBeNull()
+  })
   test("the mission menu's new campaign goes back to the goal pick", () => {
     const x = opened()
     launch(x)

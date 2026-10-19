@@ -1,4 +1,5 @@
 import type { Campaign, Note, OpKind } from "../../campaign/campaign"
+import { level } from "../../campaign/soldier"
 import type { RegionId } from "../../campaign/world"
 
 /** A number of the top bar that a beat counts up. */
@@ -23,11 +24,14 @@ export interface Glance {
   materials: number
   force: number
   project: number
-  roster: { id: string; name: string }[]
+  roster: { id: string; name: string; level: number }[]
   ops: { id: number; kind: OpKind; region: RegionId }[]
 }
 
 const RESOURCES = ["supplies", "intel", "materials"] as const
+
+/** Report lines shown with the icon of their operation. */
+const OPS = ["week.ignored", "week.won", "week.lost"]
 
 const ICONS: Record<string, string> = {
   "week.research": "world:research",
@@ -43,14 +47,14 @@ export function glance(c: Campaign): Glance {
     materials: c.materials,
     force: c.force,
     project: c.project,
-    roster: c.roster.map((s) => ({ id: s.id, name: s.name })),
+    roster: c.roster.map((s) => ({ id: s.id, name: s.name, level: level(s) })),
     ops: c.ops.map((o) => ({ id: o.id, kind: o.kind, region: o.region })),
   }
 }
 
 /**
- * The beats of a week in the order they play: income, new soldiers, the report's lines, the Force Level, the Project
- * and the new operations.
+ * The beats of a week or a mission in the order they play: income, new soldiers, the report's lines, new levels, the
+ * Force Level, the Project and the new operations.
  */
 export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
   const gains: Beat[] = RESOURCES.filter((r) => after[r] > before[r]).map((r) => ({
@@ -63,11 +67,18 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
     .filter((s) => !before.roster.some((b) => b.id === s.id))
     .map((s) => ({ icon: "world:recruit", note: { key: "recap.recruit", params: { name: s.name } }, region: null }))
   const lines: Beat[] = report.map((n) => ({
-    icon: n.key === "week.ignored" ? `op:${n.params.op}` : (ICONS[n.key] ?? "world:log"),
+    icon: OPS.includes(n.key) ? `op:${n.params.op}` : (ICONS[n.key] ?? "world:log"),
     note: n,
     region: (n.params.region as RegionId | undefined) ?? null,
     ...(n.params.from ? { from: n.params.from as RegionId } : {}),
   }))
+  const levels: Beat[] = after.roster
+    .filter((s) => s.level > (before.roster.find((b) => b.id === s.id)?.level ?? s.level))
+    .map((s) => ({
+      icon: "world:rank",
+      note: { key: "recap.level", params: { name: s.name, level: s.level } },
+      region: null,
+    }))
   const aliens: Beat[] = [
     ...(after.force > before.force
       ? [
@@ -97,5 +108,5 @@ export function beats(before: Glance, after: Glance, report: Note[]): Beat[] {
       note: { key: "recap.new", params: { op: o.kind, region: o.region } },
       region: o.region,
     }))
-  return [...gains, ...recruits, ...lines, ...aliens, ...opened]
+  return [...gains, ...recruits, ...lines, ...levels, ...aliens, ...opened]
 }

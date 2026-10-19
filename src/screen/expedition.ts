@@ -6,6 +6,7 @@ import { Model, SPEED_KEY, savedSpeed } from "./model"
 import type { Cue } from "./playback/cues"
 import type { Speed } from "./playback/motion"
 import { Sound } from "./playback/sound"
+import { type Beat, beats, glance } from "./run/beat"
 
 /**
  * The campaign as the screen shows it: the saved chronicle, a version that changes with each choice, the mission
@@ -18,6 +19,7 @@ export class Expedition {
   readonly muted: Accessor<boolean>
   model: Model | null = null
   private readonly sound = new Sound()
+  private results: Beat[] | null = null
   private readonly bump: Setter<number>
   private readonly setLang: Setter<Lang>
   private readonly setSpeedSignal: Setter<Speed>
@@ -57,10 +59,21 @@ export class Expedition {
     this.mount()
   }
 
-  /** Ends the mission in play and goes back to the world map. */
+  /** Ends the mission in play and goes back to the world map, keeping the beats of what the mission gave. */
   finish(): void {
+    const c = this.chronicle.campaign
+    const before = c && glance(c)
+    const told = c?.report.length ?? 0
     this.chronicle.finish()
+    if (c && before) this.results = beats(before, glance(c), c.report.slice(told))
     this.mount()
+  }
+
+  /** The beats of the mission that just ended, given once, or null. */
+  debrief(): Beat[] | null {
+    const out = this.results
+    this.results = null
+    return out
   }
 
   /** Gives up the campaign and goes back to the goal pick. */

@@ -65,7 +65,7 @@ export function World(props: { expedition: Expedition }) {
       force: before.force,
       project: before.project,
     })
-    setRecap({ week: c().week, beats: beats(before, glance(c()), c().report) })
+    setRecap({ title: t("world.week", { week: c().week }), beats: beats(before, glance(c()), c().report) })
   }
   const [shown, setShown] = createSignal<Partial<Record<Counter, number>>>({})
   const num = (k: Counter) => shown()[k] ?? c()[k]
@@ -81,7 +81,10 @@ export function World(props: { expedition: Expedition }) {
       if (shown()[k] !== undefined) setShown((v) => ({ ...v, [k]: Math.round(from + ((to - from) * n) / steps) }))
     }, 60)
   }
-  const [recap, setRecap] = createSignal<{ week: number; beats: Beat[] } | null>(null)
+  const told = x.debrief()
+  const [recap, setRecap] = createSignal<{ title: string; beats: Beat[] } | null>(
+    told && { title: t("recap.mission"), beats: told },
+  )
   const [flash, setFlash] = createSignal<Beat | null>(null)
   const [flight, setFlight] = createSignal<{ to: RegionId; t: number } | null>(null)
   let frame = 0
@@ -296,7 +299,7 @@ export function World(props: { expedition: Expedition }) {
         <Show when={recap()} keyed>
           {(r) => (
             <Recap
-              week={r.week}
+              title={r.title}
               beats={r.beats}
               speed={x.speed()}
               play={(cue) => x.play(cue)}

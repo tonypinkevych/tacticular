@@ -15,7 +15,7 @@ describe("beats", () => {
     ])
   })
   test("a new soldier, a Force Level and a Project rise are beats", () => {
-    const after = { ...calm, force: 2, project: 5, roster: [{ id: "s9", name: "Vega" }] }
+    const after = { ...calm, force: 2, project: 5, roster: [{ id: "s9", name: "Vega", level: 1 }] }
     expect(beats(calm, after, []).map((x) => x.note)).toEqual([
       { key: "recap.recruit", params: { name: "Vega" } },
       { key: "recap.force", params: { force: 2 } },
@@ -33,6 +33,17 @@ describe("beats", () => {
       ["world:strength", "sa", "na"],
       ["op:intel", "af", undefined],
     ])
+  })
+  test("a soldier who reached a new level is a beat", () => {
+    const before = { ...calm, roster: [{ id: "s1", name: "Vega", level: 1 }] }
+    const after = { ...calm, roster: [{ id: "s1", name: "Vega", level: 2 }] }
+    expect(beats(before, after, []).map((x) => [x.icon, x.note])).toEqual([
+      ["world:rank", { key: "recap.level", params: { name: "Vega", level: 2 } }],
+    ])
+  })
+  test("a won or lost mission is a beat with its operation's icon", () => {
+    const b = beats(calm, calm, [{ key: "week.won", params: { op: "relay", region: "af" } }])
+    expect(b.map((x) => [x.icon, x.region])).toEqual([["op:relay", "af"]])
   })
   test("a new operation is announced in its region", () => {
     const after = { ...calm, ops: [{ id: 2, kind: "captain" as const, region: "eas" as const }] }
