@@ -30,14 +30,16 @@ const SCALE = { x: 62, y: 42, cells: 18, km: 6000 }
 /**
  * The world map as a day tactical map: the Earth in a ruled frame with grid coordinates, a compass rose and a scale
  * bar; each region hatched in the ink of its state, with its name, the glyph of each operation in it and its alien
- * site. A flashed region blinks ochre, with an arrow from where a push came. A region is picked by a click on its
- * land. When the names do not fit, only the picked one shows.
+ * site, and a mark for a squad away there. A flashed region blinks ochre, with an arrow from where a push came; a
+ * flight draws the squad's way out from home. A region is picked by a click on its land. When the names do not fit,
+ * only the picked one shows.
  */
 export function Earth(props: {
   campaign: Campaign
   chosen: RegionId
   flash: RegionId | null
   from: RegionId | null
+  flight: { to: RegionId; t: number } | null
   onPick: (id: RegionId) => void
 }) {
   let canvas!: HTMLCanvasElement
@@ -69,9 +71,13 @@ export function Earth(props: {
     const at = (id: RegionId) => cell(LABELS[id].x + 0.5, LABELS[id].y + 0.5)
     instruments(px, cell)
     if (props.from && props.flash) arrow(px, at(props.from), at(props.flash))
+    if (props.flight) flight(px, at(c.home), at(props.flight.to), props.flight.t)
     for (const r of c.regions) {
       const ops = c.ops.filter((o) => o.region === r.id)
-      const marks = [...ops.map((o) => `op:${o.kind}`), ...(r.site ? ["world:project"] : [])]
+      const marks = [
+        ...ops.flatMap((o) => (o.squad.length > 0 ? [`op:${o.kind}`, "world:away"] : [`op:${o.kind}`])),
+        ...(r.site ? ["world:project"] : []),
+      ]
       const name = crowded && r.id !== chosen ? "" : t(`region.${r.id}`).toUpperCase()
       if (!name && marks.length === 0) continue
       const head = name ? textWidth(name) + 2 : 0
@@ -81,7 +87,12 @@ export function Earth(props: {
       px.dot(x - 2, y - 3, PAPER, 0.85, w + 4, 11)
       px.label(name, x, y, r.id === chosen ? INK : tint(c, r.id))
       for (const [i, m] of marks.entries())
-        px.glyph(ICONS[m], x + head + i * 10 + 3, y + 7, m === "world:project" ? RED : OCHRE)
+        px.glyph(
+          ICONS[m],
+          x + head + i * 10 + 3,
+          y + 7,
+          m === "world:project" ? RED : m === "world:away" ? BLUE : OCHRE,
+        )
     }
   }
   const pick = (e: MouseEvent) => {
@@ -235,6 +246,16 @@ function arrow(px: Pixels, a: { x: number; y: number }, b: { x: number; y: numbe
         2,
         2,
       )
+}
+
+/** A squad's way from one point to another, drawn up to a share of it: a dotted blue trail and the squad's mark. */
+function flight(px: Pixels, a: { x: number; y: number }, b: { x: number; y: number }, share: number): void {
+  const len = Math.hypot(b.x - a.x, b.y - a.y) * share
+  const [ux, uy] = [(b.x - a.x) / (len / share || 1), (b.y - a.y) / (len / share || 1)]
+  for (let d = 0; d < len; d += 3) px.dot(Math.round(a.x + ux * d), Math.round(a.y + uy * d), BLUE, 1, 2, 2)
+  const head = { x: Math.round(a.x + ux * len), y: Math.round(a.y + uy * len) }
+  px.dot(head.x - 3, head.y - 3, PAPER, 1, 7, 7)
+  px.dot(head.x - 2, head.y - 2, INK, 1, 5, 5)
 }
 
 /** Green ink for a free region, blue for one in contact, red for one the aliens hold. */

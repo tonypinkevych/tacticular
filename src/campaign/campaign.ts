@@ -27,7 +27,10 @@ export type Penalty = "project" | "strength" | "resistance"
 /** 1 Easy, 2 Moderate, 3 Hard, 4 Very hard: the pods of an operation and the size of its reward. */
 export type Difficulty = 1 | 2 | 3 | 4
 
-/** An operation posted this week: it launches with a squad at once or expires at the week's end. */
+/**
+ * An operation posted this week: it launches with a squad or expires at the week's end. A launched operation waits
+ * for its squad's infiltration and plays in the week it arrives.
+ */
 export interface Op {
   id: number
   kind: OpKind
@@ -36,6 +39,8 @@ export interface Op {
   penalty: Penalty | null
   /** The squad of a launched operation. */
   squad: string[]
+  /** The week the mission of a launched operation plays. */
+  arrives?: number
   scouted: boolean
   /** The Dark Event a win ends. */
   event?: DarkEvent
@@ -77,6 +82,7 @@ export type Choice =
   | { type: "rank"; soldier: string; skill: AbilityId }
   | { type: "scout"; op: number }
   | { type: "launch"; op: number; squad: string[] }
+  | { type: "deploy" }
   | { type: "week" }
   | { type: "finish"; result: Result }
 
@@ -95,6 +101,9 @@ export const TECHS: Record<Tech, { supplies: number; materials: number; needs?: 
   armor3: { supplies: 18, materials: 8, needs: "armor2" },
   squad: { supplies: 16, materials: 6 },
 }
+
+/** The weeks a squad infiltrates before the mission of each difficulty plays. */
+export const INFILTRATION: Record<Difficulty, number> = { 1: 0, 2: 0, 3: 1, 4: 2 }
 
 export const RESEARCH_WEEKS = 2
 export const RECRUIT_COST = 6
@@ -120,6 +129,8 @@ export class Campaign {
   intel = 4
   materials = 0
   regions: Region[] = []
+  /** The region the war started from, where squads fly out. */
+  home: RegionId = PLACES[0].id
   ops: Op[] = []
   roster: Soldier[] = []
   techs: Tech[] = []
@@ -150,6 +161,7 @@ export class Campaign {
   static start(seed: number, goal: Goal): Campaign {
     const c = new Campaign(seed, goal)
     const home = c.dice.pick(PLACES).id
+    c.home = home
     const sites = c.dice
       .shuffle(PLACES.filter((p) => p.id !== home))
       .slice(0, SITES)
@@ -174,6 +186,7 @@ export class Campaign {
     if (choice.type === "rank") this.rank(choice.soldier, choice.skill)
     if (choice.type === "scout") this.scout(choice.op)
     if (choice.type === "launch") this.launch(choice.op, choice.squad)
+    if (choice.type === "deploy") this.deploy()
     if (choice.type === "week") this.end()
     if (choice.type === "finish") this.finish(choice.result)
   }
@@ -211,6 +224,11 @@ export class Campaign {
   /** The most soldiers an operation takes: 3, or 4 after the Squad size research. */
   most(): number {
     return this.techs.includes("squad") ? 4 : 3
+  }
+
+  /** The launched operation whose squad has arrived and whose mission waits to play, or null. */
+  due(): Op | null {
+    return this.ops.find((o) => o.arrives !== undefined && o.arrives <= this.week && o.id !== this.at) ?? null
   }
 
   freed(): number {
@@ -281,30 +299,41 @@ export class Campaign {
   /** Spends Intel to mark the alien groups of a posted operation. */
   scout(id: number): void {
     const op = this.op(id)
-    must(this.stage === "world" && !this.launched && !op.scouted && this.intel >= SCOUT_COST, "scout")
+    must(this.stage === "world" && op.squad.length === 0 && !op.scouted && this.intel >= SCOUT_COST, "scout")
     this.intel -= SCOUT_COST
     op.scouted = true
   }
 
-  /** Plays a posted operation now with a squad of ready soldiers; one operation launches each week. */
+  /**
+   * Sends a squad of ready soldiers to a posted operation; one operation launches each week. Its mission plays at
+   * once, or after the infiltration weeks of its difficulty.
+   */
   launch(id: number, squad: string[]): void {
     const op = this.op(id)
     const ready = this.ready()
-    must(this.stage === "world" && !this.launched, "launch")
+    must(this.stage === "world" && !this.launched && op.squad.length === 0, "launch")
     must(squad.length >= this.fewest() && squad.length <= this.most() && new Set(squad).size === squad.length, "squad")
     must(
       squad.every((s) => ready.some((x) => x.id === s)),
       "squad",
     )
     op.squad = [...squad]
+    op.arrives = this.week + INFILTRATION[op.difficulty]
     this.launched = true
-    this.at = id
+    if (op.arrives === this.week) this.deploy()
+  }
+
+  /** Plays the mission of the operation whose squad has arrived. */
+  deploy(): void {
+    const op = this.due()
+    must(this.stage === "world" && !!op, "deploy")
+    this.at = op!.id
     this.stage = "mission"
   }
 
-  /** Ends the week and moves the world on. */
+  /** Ends the week and moves the world on; a squad that has arrived must deploy first. */
   end(): void {
-    must(this.stage === "world", "week")
+    must(this.stage === "world" && !this.due(), "week")
     this.report = []
     this.turn()
   }
@@ -373,8 +402,9 @@ export class Campaign {
 
   /** A new week: ignored operations pay, rest and healing, research, monthly income, the aliens' moves, new operations. */
   private turn(): void {
-    for (const op of this.ops) this.ignore(op)
-    this.ops = []
+    const posted = this.ops.filter((o) => o.squad.length === 0)
+    for (const op of posted) this.ignore(op)
+    this.ops = this.ops.filter((o) => !posted.includes(o))
     this.launched = false
     this.week += 1
     for (const s of this.roster) {
@@ -457,16 +487,19 @@ export class Campaign {
       r.vigilance = Math.max(0, r.vigilance - 3)
     }
     for (const r of open.filter((x) => x.resistance >= RESISTANCE)) this.open(r.id, "liberation")
-    for (let tries = 0; tries < 20 && this.ops.length < (open.length > 1 ? 3 : 2); tries++) {
+    const posted = () => this.ops.filter((o) => o.squad.length === 0).length
+    for (let tries = 0; tries < 20 && posted() < (open.length > 1 ? 3 : 2); tries++) {
       const r = this.dice.pick(open)
       const kind = this.dice.pick(r.site ? KINDS : KINDS.filter((k) => k !== "relay"))
-      if (!this.ops.some((o) => o.region === r.id && o.kind === kind)) this.open(r.id, kind)
+      this.open(r.id, kind)
     }
-    const marked = this.ops.find((o) => o.kind !== "defend" && o.kind !== "liberation")
+    const marked = this.ops.find((o) => o.squad.length === 0 && o.kind !== "defend" && o.kind !== "liberation")
     if (this.event && marked) marked.event = this.event.id
   }
 
+  /** Posts an operation of a kind in a region, unless one of that kind is there already. */
   private open(region: RegionId, kind: OpKind): void {
+    if (this.ops.some((o) => o.region === region && o.kind === kind)) return
     this.made += 1
     const r = this.region(region)
     const raw =

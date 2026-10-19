@@ -11,6 +11,18 @@ const memory = () => {
   }
 }
 
+/** Launches the first posted operation with 3 ready soldiers and, after its infiltration weeks, deploys them. */
+const launch = (c: Chronicle): string[] => {
+  const squad = c
+    .campaign!.ready()
+    .slice(0, 3)
+    .map((s) => s.id)
+  c.choose({ type: "launch", op: c.campaign!.ops[0].id, squad })
+  while (c.campaign!.stage === "world" && !c.campaign!.due()) c.choose({ type: "week" })
+  if (c.campaign!.stage === "world") c.choose({ type: "deploy" })
+  return squad
+}
+
 const started = (store = memory()) => {
   const c = Chronicle.open(store)
   c.begin(21, 3)
@@ -37,11 +49,7 @@ describe("chronicle", () => {
   })
   test("a launched operation starts its mission with the squad, and it survives a reload", () => {
     const { c, store } = started()
-    const squad = c
-      .campaign!.ready()
-      .slice(0, 3)
-      .map((s) => s.id)
-    c.choose({ type: "launch", op: c.campaign!.ops[0].id, squad })
+    const squad = launch(c)
     const sent = c.session?.game.units.filter((u) => u.side === "squad" && !u.has("captive")).map((u) => u.id)
     expect(sent).toEqual(squad)
     c.session?.act({ type: "endTurn" })
@@ -51,11 +59,7 @@ describe("chronicle", () => {
   })
   test("finishing a mission reads its result into the campaign", () => {
     const { c, store } = started()
-    const squad = c
-      .campaign!.ready()
-      .slice(0, 3)
-      .map((s) => s.id)
-    c.choose({ type: "launch", op: c.campaign!.ops[0].id, squad })
+    launch(c)
     const game = c.session!.game
     for (const u of game.units) if (u.side === "squad") u.hp = 0
     game.phase = "lost"

@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, For, onCleanup, Show } from "solid-js"
 import { type Campaign, GOALS, RECRUIT_COST, ROSTER } from "../../campaign/campaign"
 import { level } from "../../campaign/soldier"
 import type { RegionId } from "../../campaign/world"
@@ -83,6 +83,28 @@ export function World(props: { expedition: Expedition }) {
   }
   const [recap, setRecap] = createSignal<{ week: number; beats: Beat[] } | null>(null)
   const [flash, setFlash] = createSignal<Beat | null>(null)
+  const [flight, setFlight] = createSignal<{ to: RegionId; t: number } | null>(null)
+  let frame = 0
+  onCleanup(() => cancelAnimationFrame(frame))
+  const fly = (to: RegionId, then: () => void) => {
+    const length = x.speed() === 0 ? 0 : 1600 / x.speed()
+    const start = performance.now()
+    const step = (now: number) => {
+      const t = length === 0 ? 1 : Math.min(1, (now - start) / length)
+      setFlight({ to, t })
+      if (t < 1) frame = requestAnimationFrame(step)
+      else {
+        setFlight(null)
+        then()
+      }
+    }
+    x.play("horn")
+    frame = requestAnimationFrame(step)
+  }
+  const arrival = () => {
+    const due = c().due()
+    if (due) setPane({ kind: "op", id: due.id })
+  }
   const [menu, setMenu] = createSignal(false)
   const [help, setHelp] = createSignal(false)
   return (
@@ -155,6 +177,7 @@ export function World(props: { expedition: Expedition }) {
               chosen={region()}
               flash={flash()?.region ?? null}
               from={flash()?.from ?? null}
+              flight={flight()}
               onPick={setChosen}
             />
           </div>
@@ -166,6 +189,7 @@ export function World(props: { expedition: Expedition }) {
                   <Brief
                     op={o}
                     on={o.region === region()}
+                    arrived={c().due()?.id === o.id}
                     onClick={() => {
                       setChosen(o.region)
                       setPane({ kind: "op", id: o.id })
@@ -219,7 +243,13 @@ export function World(props: { expedition: Expedition }) {
           <button type="button" class="big" data-tip={t("world.report")} onClick={() => setPane({ kind: "log" })}>
             <Icon glyph={ICONS["world:log"]} color={css(INK)} class="icon" />
           </button>
-          <button type="button" class="big primary" onClick={end}>
+          <button
+            type="button"
+            class="big primary"
+            disabled={!!c().due() || !!flight()}
+            data-tip={c().due() ? t("world.deployFirst") : ""}
+            onClick={end}
+          >
             <Icon glyph={ICONS["world:week"]} color={css(OCHRE)} class="icon" />
             {t("world.endWeek")}
           </button>
@@ -228,7 +258,12 @@ export function World(props: { expedition: Expedition }) {
           {(o) => (
             <Popup title={`${t(`op.${o.kind}`)} · ${t(`region.${o.region}`)}`} onClose={close}>
               <p class="small muted">{t(`op.info.${o.kind}`)}</p>
-              <Operation expedition={x} op={o} onDone={close} />
+              <Operation
+                expedition={x}
+                op={o}
+                onDone={close}
+                onLaunch={(squad) => fly(o.region, () => x.choose({ type: "launch", op: o.id, squad }))}
+              />
             </Popup>
           )}
         </Show>
@@ -272,6 +307,7 @@ export function World(props: { expedition: Expedition }) {
               onDone={() => {
                 setShown({})
                 setRecap(null)
+                arrival()
               }}
             />
           )}

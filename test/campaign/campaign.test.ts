@@ -1,4 +1,12 @@
-import { Campaign, CONTACT_COST, GOALS, type Op, RECRUIT_COST, RESISTANCE } from "../../src/campaign/campaign"
+import {
+  Campaign,
+  CONTACT_COST,
+  GOALS,
+  INFILTRATION,
+  type Op,
+  RECRUIT_COST,
+  RESISTANCE,
+} from "../../src/campaign/campaign"
 import { kit, points } from "../../src/campaign/soldier"
 import { place } from "../../src/campaign/world"
 
@@ -9,7 +17,12 @@ const squad = (c: Campaign, n = 3) =>
     .ready()
     .slice(0, n)
     .map((s) => s.id)
-const launch = (c: Campaign, op: Op, n = 3) => c.play({ type: "launch", op: op.id, squad: squad(c, n) })
+/** Launches an operation and, after its infiltration weeks, deploys its squad. */
+const launch = (c: Campaign, op: Op, n = 3) => {
+  c.play({ type: "launch", op: op.id, squad: squad(c, n) })
+  while (c.stage === "world" && !c.due()) c.play({ type: "week" })
+  if (c.stage === "world") c.play({ type: "deploy" })
+}
 const win = (c: Campaign, op: Op) => ({
   won: true,
   hp: Object.fromEntries(op.squad.map((id) => [id, c.roster.find((s) => s.id === id)!.hp])),
@@ -51,6 +64,41 @@ describe("campaign", () => {
     expect(c.stage).toBe("mission")
     c.play({ type: "finish", result: win(c, op) })
     expect(() => launch(c, other)).toThrow()
+  })
+  test("Easy and Moderate operations play at once; a Hard one infiltrates 1 week and waits for its squad", () => {
+    const c = fresh()
+    const [easy, hard] = c.ops
+    easy.difficulty = 2
+    hard.difficulty = 3
+    c.play({ type: "launch", op: hard.id, squad: squad(c) })
+    expect([c.stage, c.due()]).toEqual(["world", null])
+    expect(hard.squad.every((id) => c.away(id))).toBe(true)
+    expect(() => c.play({ type: "deploy" })).toThrow()
+    c.play({ type: "week" })
+    expect(c.ops).toContainEqual(hard)
+    expect(c.ops.filter((o) => o.kind === hard.kind && o.region === hard.region)).toHaveLength(1)
+    expect(c.ops.filter((o) => o.squad.length === 0)).toHaveLength(2)
+    expect(c.report.some((n) => n.key === "week.ignored" && n.params.op === hard.kind)).toBe(false)
+    expect(c.due()).toBe(hard)
+    expect(() => c.play({ type: "week" })).toThrow()
+    c.play({ type: "deploy" })
+    expect(c.stage).toBe("mission")
+    expect(c.conditions().squad?.map((s) => s.id)).toEqual(hard.squad)
+    expect(INFILTRATION).toEqual({ 1: 0, 2: 0, 3: 1, 4: 2 })
+  })
+  test("soldiers at home launch another operation while a squad infiltrates", () => {
+    const c = fresh()
+    c.supplies = 20
+    c.play({ type: "recruit", kind: "mage" })
+    c.play({ type: "recruit", kind: "rogue" })
+    c.ops[0].difficulty = 4
+    c.play({ type: "launch", op: c.ops[0].id, squad: squad(c) })
+    c.play({ type: "week" })
+    const next = c.ops.find((o) => o.squad.length === 0)!
+    next.difficulty = 1
+    c.play({ type: "launch", op: next.id, squad: squad(c) })
+    expect(c.stage).toBe("mission")
+    expect(next.squad.some((id) => c.ops[0].squad.includes(id))).toBe(false)
   })
   test("a week moves the Project by 1, and each ignored operation pays its penalty and leaves", () => {
     const c = fresh()

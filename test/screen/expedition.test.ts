@@ -30,6 +30,8 @@ const launch = (x: Expedition) => {
       .slice(0, 3)
       .map((s) => s.id),
   })
+  while (c.stage === "world" && !c.due()) x.choose({ type: "week" })
+  if (c.stage === "world") x.choose({ type: "deploy" })
 }
 
 describe("expedition", () => {

@@ -41,8 +41,11 @@ const TONES: Record<string, ReturnType<typeof css>> = {
   "world:freed": css(GREEN),
 }
 
-/** A posted operation in the list: its kind, region, reward, difficulty and what leaving it costs. */
-export function Brief(props: { op: Op; on: boolean; onClick: () => void }) {
+/**
+ * An operation in the list: its kind, region, reward, difficulty and what leaving it costs; for a launched one, the
+ * week its squad arrives, or that it has arrived.
+ */
+export function Brief(props: { op: Op; on: boolean; arrived: boolean; onClick: () => void }) {
   const o = () => props.op
   const penalty = () => o().penalty
   return (
@@ -79,16 +82,26 @@ export function Brief(props: { op: Op; on: boolean; onClick: () => void }) {
           <Stat icon="world:event" color={RED} tip={t("op.counter")} />
         </Show>
         <span class="spacer" />
-        <span class="figure penalty" data-tip={t(`penalty.${penalty() ?? "none"}`)}>
-          <Show when={penalty()} fallback="—">
-            {(p) => (
-              <>
-                <Icon glyph={ICONS[PENALTIES[p()][0]]} color={css(RED)} class="icon" />
-                {PENALTIES[p()][1]}
-              </>
-            )}
-          </Show>
-        </span>
+        <Show
+          when={o().squad.length === 0}
+          fallback={
+            <span class="figure">
+              <Icon glyph={ICONS["world:away"]} color={css(BLUE)} class="icon" />
+              {props.arrived ? t("world.arrived") : t("world.infiltrating", { week: o().arrives ?? 0 })}
+            </span>
+          }
+        >
+          <span class="figure penalty" data-tip={t(`penalty.${penalty() ?? "none"}`)}>
+            <Show when={penalty()} fallback="—">
+              {(p) => (
+                <>
+                  <Icon glyph={ICONS[PENALTIES[p()][0]]} color={css(RED)} class="icon" />
+                  {PENALTIES[p()][1]}
+                </>
+              )}
+            </Show>
+          </span>
+        </Show>
       </span>
     </button>
   )
