@@ -10,7 +10,7 @@ import { type Armed, type Contact, Kit, type Slot } from "./hud/kit"
 import { Playback, SPEEDS, type Speed } from "./playback/motion"
 import { Sound } from "./playback/sound"
 
-const SPEED_KEY = "tacticular.speed"
+export const SPEED_KEY = "tacticular.speed"
 
 /** True in the squad phase when no soldier the player controls has AP left. */
 export function spent(game: Game): boolean {
@@ -18,6 +18,16 @@ export function spent(game: Game): boolean {
     game.phase === "squad" &&
     !game.units.some((u) => u.alive() && u.side === "squad" && u.allegiance() === "squad" && u.ap > 0)
   )
+}
+
+/** The playback speed the player last chose in this browser, else 1×. */
+export function savedSpeed(store: Storage): Speed {
+  try {
+    const s = Number(store.getItem(SPEED_KEY) ?? 1)
+    return (SPEEDS as readonly number[]).includes(s) ? (s as Speed) : 1
+  } catch {
+    return 1
+  }
 }
 
 /** All UI state as signals, and the commands that change it. */
@@ -63,8 +73,7 @@ export class Model {
     private readonly store: Storage,
     readonly expedition: Expedition | null = null,
   ) {
-    const saved = Number(this.read(SPEED_KEY) ?? 1)
-    this.playback = new Playback((SPEEDS as readonly number[]).includes(saved) ? (saved as Speed) : 1, session.game)
+    this.playback = new Playback(savedSpeed(store), session.game)
     ;[this.game, this.setGame] = createSignal(session.game, { equals: false })
     ;[this.shown, this.setShown] = createSignal(session.game, { equals: false })
     ;[this.selected, this.setSelected] = createSignal<string | null>(null)
@@ -387,13 +396,5 @@ export class Model {
       const current = this.armed()
       if (kit && current) this.setArmed(kit.retarget(current, p))
     })
-  }
-
-  private read(k: string): string | null {
-    try {
-      return this.store.getItem(k)
-    } catch {
-      return null
-    }
   }
 }

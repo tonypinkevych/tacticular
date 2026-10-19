@@ -72,6 +72,11 @@ const en = {
   "world.researching": "{tech}: ready in week {week}",
   "world.report": "Last week",
   "world.quiet": "A quiet week.",
+  "world.map": "World map",
+  "world.help": "Help",
+  "world.abandon": "Abandon campaign",
+  "world.helpText":
+    "Each week, give your orders, then press End week. · Supplies pay for recruits and research. Intel pays for contact and scouting. Materials pay for research. · Send 3 or 4 soldiers to an operation before it expires. Fewer soldiers and more weeks of prep give a better infiltration. · Wins raise Resistance and cut alien Strength. At Resistance 6 and Strength 2 or less, a Liberation opens. · The aliens grow stronger every few weeks and fill their Project. When the Project is full, you lose.",
   "region.na": "North America",
   "region.sa": "South America",
   "region.we": "Western Europe",
@@ -506,6 +511,11 @@ const ru: Record<Key, string> = {
   "world.researching": "{tech}: готово на неделе {week}",
   "world.report": "Прошлая неделя",
   "world.quiet": "Тихая неделя.",
+  "world.map": "Карта мира",
+  "world.help": "Помощь",
+  "world.abandon": "Бросить кампанию",
+  "world.helpText":
+    "Каждую неделю отдайте приказы и нажмите «Конец недели». · Припасы идут на новобранцев и исследования. Разведданные идут на контакт и разведку. Материалы идут на исследования. · Отправьте 3 или 4 бойцов на операцию до её срока. Меньше бойцов и больше недель подготовки дают лучшее проникновение. · Победы поднимают Сопротивление и снижают Силу пришельцев. При Сопротивлении 6 и Силе 2 или меньше открывается Освобождение. · Пришельцы крепнут каждые несколько недель и наполняют свой Проект. Когда Проект полон, вы проигрываете.",
   "region.na": "Северная Америка",
   "region.sa": "Южная Америка",
   "region.we": "Западная Европа",

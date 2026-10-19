@@ -821,10 +821,15 @@ main.extended .more-mark {
 }
 
 #world {
-  max-width: 1040px;
-  margin: 24px auto;
+  position: relative;
+  max-width: 1200px;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 12px 16px;
+  gap: 10px;
 }
 #world .bar {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -854,68 +859,26 @@ main.extended .more-mark {
   padding: 2px 8px;
 }
 #world .map {
-  position: relative;
-  aspect-ratio: 2.4;
-  background: var(--well);
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+#world .earth {
+  display: block;
+  width: min(100%, calc(42dvh * 60 / 22));
+  aspect-ratio: 60 / 22;
   border: 1px solid var(--line);
 }
-#world .map svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-#world .map .edge {
-  stroke: var(--line-hi);
-  stroke-width: 0.4;
-  vector-effect: non-scaling-stroke;
-}
-#world .region {
-  position: absolute;
-  white-space: nowrap;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
-  background: var(--bg);
-  border: 2px solid var(--line-hi);
-  color: var(--muted);
-  text-transform: none;
-  letter-spacing: 0;
-}
-#world .region .name {
-  font-size: 12px;
-  font-weight: 700;
-}
-#world .region.linked {
-  border-color: var(--accent);
-  color: var(--text);
-}
-#world .region.free {
-  border-color: var(--good);
-  color: var(--good);
-}
-#world .region.on {
-  box-shadow: 0 0 0 2px var(--text);
-}
-#world .region .ops {
-  position: absolute;
-  top: -10px;
-  right: -8px;
-  padding: 0 5px;
-  background: var(--crit);
-  color: var(--bg);
-  font-weight: 700;
-}
 #world .columns {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
 }
 #world .column {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -981,20 +944,14 @@ main.extended .more-mark {
   margin: 4px 0;
 }
 @media (max-width: 640px) {
-  #world .region {
-    padding: 3px 4px;
-    white-space: normal;
-    width: 76px;
-    text-align: center;
+  #world {
+    padding: 8px;
   }
-  #world .region .name {
-    font-size: 10px;
+  #world .columns {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
   }
-  #world .region .small {
-    display: none;
-  }
-  #world .map {
-    aspect-ratio: 1;
-    margin: 0 8px;
+  #world .column {
+    overflow: visible;
   }
 }

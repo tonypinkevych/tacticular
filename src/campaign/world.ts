@@ -5,25 +5,23 @@ export type RegionId = "na" | "sa" | "we" | "ee" | "af" | "me" | "sas" | "eas"
 /** What a free region gives for the rest of the campaign. */
 export type Bonus = "supplies" | "recruits" | "intel" | "materials" | "healing" | "drills" | "stealth" | "delay"
 
-/** A region of the world map: its biome, its neighbours, its bonus once free and where the map draws it. */
+/** A region of the world: its biome, its neighbours and its bonus once free. */
 export interface Place {
   id: RegionId
   biome: Biome
   next: RegionId[]
   bonus: Bonus
-  x: number
-  y: number
 }
 
 export const PLACES: Place[] = [
-  { id: "na", biome: "forest", next: ["sa", "we", "eas"], bonus: "supplies", x: 12, y: 30 },
-  { id: "sa", biome: "forest", next: ["na", "af"], bonus: "recruits", x: 24, y: 76 },
-  { id: "we", biome: "village", next: ["na", "ee", "af"], bonus: "intel", x: 38, y: 22 },
-  { id: "ee", biome: "town", next: ["we", "me", "eas"], bonus: "materials", x: 60, y: 14 },
-  { id: "af", biome: "village", next: ["sa", "we", "me"], bonus: "healing", x: 44, y: 66 },
-  { id: "me", biome: "town", next: ["ee", "af", "sas"], bonus: "drills", x: 63, y: 46 },
-  { id: "sas", biome: "forest", next: ["me", "eas"], bonus: "stealth", x: 78, y: 76 },
-  { id: "eas", biome: "town", next: ["ee", "sas", "na"], bonus: "delay", x: 87, y: 32 },
+  { id: "na", biome: "forest", next: ["sa", "we", "eas"], bonus: "supplies" },
+  { id: "sa", biome: "forest", next: ["na", "af"], bonus: "recruits" },
+  { id: "we", biome: "village", next: ["na", "ee", "af"], bonus: "intel" },
+  { id: "ee", biome: "town", next: ["we", "me", "eas"], bonus: "materials" },
+  { id: "af", biome: "village", next: ["sa", "we", "me"], bonus: "healing" },
+  { id: "me", biome: "town", next: ["ee", "af", "sas"], bonus: "drills" },
+  { id: "sas", biome: "forest", next: ["me", "eas"], bonus: "stealth" },
+  { id: "eas", biome: "town", next: ["ee", "sas", "na"], bonus: "delay" },
 ]
 
 /** The state of a region in a campaign. */
