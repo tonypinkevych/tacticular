@@ -70,7 +70,7 @@ export const PROFILES: Record<Kind, Profile> = {
   rogue: {
     hp: 7,
     aim: 4,
-    defense: 12,
+    defense: 13,
     mobility: 5,
     vision: 6,
     will: 1,
@@ -79,7 +79,7 @@ export const PROFILES: Record<Kind, Profile> = {
     ultimate: "ghost",
   },
   mage: {
-    hp: 6,
+    hp: 7,
     aim: 4,
     defense: 10,
     mobility: 4,

@@ -24,6 +24,12 @@ describe("cues", () => {
     })
     expect(cues(g, f).end).toEqual(["hurt", "death"])
   })
+  test("a Flash bangs like a blast", () => {
+    const f = frame({ type: "ability", unit: "w", ability: "flash", at: { x: 5, y: 1 } }, (a) =>
+      a.log.push({ key: "log.flash", params: { unit: "w" } }),
+    )
+    expect(cues(g, f).end).toEqual(["blast"])
+  })
   test("a walk sounds steps", () => {
     expect(cues(g, frame({ type: "move", unit: "w", to: { x: 1, y: 1 } })).start).toEqual(["step"])
   })

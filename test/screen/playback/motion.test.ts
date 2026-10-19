@@ -126,6 +126,17 @@ describe("shot styles", () => {
     const at = { x: 5, y: 1 }
     expect(style(g, { action: { type: "ability", unit: "h", ability: "rocket", at }, game: g.clone() })).toBe("arc")
   })
+  test("Cripple plays as a strike and a Flash as a thrown arc", () => {
+    const g = setup(open(8, 3), [
+      squad("s", "rogue", { x: 0, y: 1 }),
+      squad("n", "engineer", { x: 0, y: 0 }),
+      enemy("e", "orc", { x: 1, y: 1 }),
+    ])
+    const cripple = { type: "ability" as const, unit: "s", ability: "cripple" as const, target: "e" }
+    expect(style(g, { action: cripple, game: g.clone() })).toBe("melee")
+    const flash = { type: "ability" as const, unit: "n", ability: "flash" as const, at: { x: 3, y: 1 } }
+    expect(style(g, { action: flash, game: g.clone() })).toBe("arc")
+  })
   test("the Scout's Hook throws a chain and drags the alien to where it lands, Mark closes a sight, Ghost fades", () => {
     const g = setup(open(8, 2), [squad("s", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 4, y: 0 })])
     find(g, "s").ult = 4

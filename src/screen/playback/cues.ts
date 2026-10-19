@@ -58,8 +58,7 @@ export function cues(before: Game, frame: Frame): { start: Cue[]; end: Cue[] } {
   const squad = (id: unknown) => after.units.some((u) => u.id === id && u.side === "squad")
   for (const e of after.log.slice(before.log.length)) {
     if (HURTS.includes(e.key)) add(squad(e.params.target) ? "hurt" : "hit")
-    if (e.key === "log.shrapnel" || e.key === "log.rocket" || e.key === "log.mine" || e.key === "log.barrel")
-      add("blast")
+    if (["log.shrapnel", "log.rocket", "log.mine", "log.barrel", "log.flash"].includes(e.key)) add("blast")
     if (e.key === "log.crit") add("crit")
     if (e.key === "log.miss") add("miss")
     if (e.key === "log.dies") add("death")

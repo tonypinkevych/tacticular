@@ -430,7 +430,7 @@ export interface AbilityRule {
 
 export const ABILITIES: Record<AbilityId, AbilityRule> = {
   charge: { cooldown: [3, 2, 2], endsTurn: true, power: [0, 0, 1] },
-  volley: { cooldown: [2], endsTurn: true, range: [6], power: [2, 2, 3] },
+  volley: { cooldown: [2], endsTurn: false, range: [6], power: [2, 2, 3] },
   heal: { cooldown: [2], endsTurn: false, power: [2, 3, 4] },
   ward: { cooldown: [3], endsTurn: false, range: [4, 5, 6], power: [2, 2, 3] },
   fear: { cooldown: [3], endsTurn: true, range: [6], power: [0, 1, 2] },
@@ -448,7 +448,7 @@ export const ABILITIES: Record<AbilityId, AbilityRule> = {
   hook: { cooldown: [3], endsTurn: false, range: [4], power: [2, 2, 3] },
   tag: { cooldown: [3, 2, 2], endsTurn: false, range: [7] },
   swap: { cooldown: [3], endsTurn: false, range: [5, 6, 7] },
-  barricade: { cooldown: [3, 2, 2], endsTurn: false },
+  barricade: { cooldown: [3, 2, 2], endsTurn: false, free: true },
   mine: { cooldown: [3], endsTurn: false, range: [3], power: [2, 3, 4] },
   rampage: { cooldown: [0], endsTurn: true, power: [3, 5] },
   killzone: { cooldown: [0], endsTurn: true, power: [0, 1] },

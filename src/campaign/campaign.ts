@@ -65,8 +65,8 @@ export type Choice =
 /** The pace of each goal: the Project's end, the weeks per Force Level, and the XP of a won mission. */
 export const GOALS: Record<Goal, { end: number; pace: number; xp: number }> = {
   1: { end: 30, pace: 3, xp: 32 },
-  3: { end: 55, pace: 5, xp: 16 },
-  8: { end: 110, pace: 9, xp: 8 },
+  3: { end: 70, pace: 5, xp: 20 },
+  8: { end: 150, pace: 9, xp: 12 },
 }
 
 /** Research: its cost, the tech it needs first, and its weeks. */

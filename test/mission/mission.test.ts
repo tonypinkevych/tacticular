@@ -190,7 +190,9 @@ describe("conditions", () => {
       for (const group of g.groups) expect(g.units.filter((u) => u.group === group.id)).toHaveLength(1)
       expect(g.pad).not.toBeNull()
       const squad = g.units.filter((u) => u.side === "squad")
-      expect(squad.map((u) => [u.id, u.kind, u.name, u.hp, u.maxHp])).toEqual([["s1", "mage", "Voss", 3, 7]])
+      expect(squad.map((u) => [u.id, u.kind, u.name, u.hp, u.maxHp])).toEqual([
+        ["s1", "mage", "Voss", 3, PROFILES.mage.hp + 1],
+      ])
     }
   })
   test("place a squad of 4 on distinct floor tiles", () => {
