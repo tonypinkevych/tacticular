@@ -71,7 +71,10 @@ describe("fire", () => {
     expect(out.tile({ x: 1, y: 1 })).toBe("low")
   })
   test("walking into fire costs 1 HP", () => {
-    const g = setup([".....", "....."], [squad("s", "warden", { x: 0, y: 0 }), enemy("e", "orc", { x: 4, y: 1 })])
+    const g = setup(
+      [".....", "....."],
+      [squad("s", "warden", { x: 0, y: 0 }), enemy("e", "shieldwall", { x: 4, y: 1 })],
+    )
     g.zones.push({ kind: "fire", tiles: [{ x: 1, y: 0 }], rounds: 2 })
     const a = g.apply({ type: "move", unit: "s", to: { x: 2, y: 0 } })
     expect(find(a, "s").hp).toBe(find(g, "s").hp - 1)

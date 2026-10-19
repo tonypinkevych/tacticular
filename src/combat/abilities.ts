@@ -18,17 +18,10 @@ export type AbilityId =
   | "dread"
   | "dominate"
   | "mark"
-  | "shove"
-  | "rally"
   | "blast"
   | "grapple"
-  | "guard"
   | "rocket"
-  | "smoke"
   | "hook"
-  | "tag"
-  | "swap"
-  | "barricade"
   | "mine"
   | "rampage"
   | "killzone"
@@ -36,28 +29,42 @@ export type AbilityId =
   | "hospital"
   | "ghost"
   | "turret"
-  | "rush"
-  | "steady"
-  | "brace"
-  | "cripple"
   | "flash"
+  | "close"
+  | "run"
+  | "breach"
+  | "squadsight"
+  | "headshot"
+  | "shredder"
+  | "medic"
+  | "shadow"
+  | "backstab"
+  | "mindshield"
+  | "stasis"
+  | "tripwire"
+  | "covering"
+  | "knockback"
+  | "poison"
+  | "warcry"
 
-/** Statuses a Field hospital clears. */
-const BAD: StatusId[] = ["shaken", "burning", "exposed"]
+/** Statuses a Medkit and a Field hospital clear. */
+export const BAD: StatusId[] = ["shaken", "burning", "exposed", "poisoned"]
 
 /** The class abilities and ultimates units use in a game. */
 export class Abilities {
   constructor(private readonly game: Game) {}
 
   /**
-   * Uses an ability or an ultimate, with its target or its place, then spends its AP and starts its cooldown. An
-   * ultimate's own hits do not charge the meter again.
+   * Uses an ability or an ultimate, with its target or its place, then spends its AP, a use and starts its cooldown.
+   * An ultimate's own hits do not charge the meter again.
    */
   use(u: Unit, id: AbilityId, targetId?: string, at?: Point): void {
     const game = this.game
+    const rule = ABILITIES[id]
     const ultimate = PROFILES[u.kind].ultimate === id
-    check(u.rank(id) > 0 || (id === "rouse" && u.side === "squad"), "ability")
+    check((u.rank(id) > 0 || (id === "rouse" && u.side === "squad")) && !rule.passive, "ability")
     check(!u.cooldowns[id], "cooldown")
+    check((u.used[id] ?? 0) < (rule.uses ? ranked(rule.uses, u.rank(id)) : Infinity), "uses")
     if (ultimate) {
       check(u.ult >= ULT, "ult")
       u.ult = 0
@@ -79,39 +86,60 @@ export class Abilities {
         }
         break
       }
-      case "shove": {
-        check(!!t && u.foe(t) && adjacent(u.pos, t.pos), "target")
-        game.log.push({ key: "log.shove", params: { unit: u.id, target: t!.id } })
-        if (power(u, id) > 0) {
-          game.log.push({ key: "log.shrapnel", params: { target: t!.id, dmg: power(u, id) } })
-          if (game.combat.hurt(t!, power(u, id))) break
+      case "run": {
+        u.give({ id: "running", rounds: 1 })
+        game.log.push({ key: "log.run", params: { unit: u.id } })
+        break
+      }
+      case "breach": {
+        check(!!at && !same(at, u.pos), "place")
+        const cone = this.cone(u, at!, span(u, id))
+        game.log.push({ key: "log.breach", params: { unit: u.id } })
+        for (const p of area(u.pos, span(u, id)))
+          if (game.board.inside(p) && cone(p) && game.tile(p) === "low") game.combat.smash(p)
+        const hits = game.units.filter((x) => x.alive() && u.foe(x) && cone(x.pos))
+        for (const x of hits) {
+          if (power(u, id) > 0) {
+            game.log.push({ key: "log.shrapnel", params: { target: x.id, dmg: power(u, id) } })
+            if (game.combat.hurt(x, power(u, id))) continue
+          }
+          x.give({ id: "exposed", rounds: 1, source: u.id })
         }
-        game.combat.push(u.pos, t!, u.id)
+        game.stealth.noise(u.pos, WEAPONS[u.weapon].noise, u)
+        for (const x of hits) game.stealth.attacked(u, x, u.weapon)
+        break
+      }
+      case "headshot": {
+        check(!!t && game.orders.canTarget(u, t), "target")
+        check(u.ammo > 0, "ammo")
+        check(game.combat.odds(u, t!).advantages.includes("flanked"), "flank")
+        game.combat.attack(u, t!, { certain: true, bonus: power(u, id) })
         game.stealth.attacked(u, t!, u.weapon)
         break
       }
-      case "rally": {
-        check(
-          !!t && t !== u && !u.foe(t) && distance(u.pos, t.pos) <= span(u, "rally") && game.sight.sees(u, t.pos),
-          "target",
-        )
-        t!.ap = Math.min(3, t!.ap + 1)
-        game.log.push({ key: "log.rally", params: { unit: u.id, target: t!.id } })
+      case "backstab": {
+        check(!!t && game.orders.canTarget(u, t) && adjacent(u.pos, t.pos), "target")
+        check(u.concealed || game.combat.odds(u, t!).advantages.includes("flanked"), "flank")
+        game.combat.attack(u, t!, { double: true })
+        game.stealth.attacked(u, t!, u.weapon)
         break
       }
       case "volley": {
-        check(!!t && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= span(u, "volley"), "target")
-        check(u.ammo >= 2, "ammo")
-        u.ammo -= 2
-        t!.give({ id: "shaken", rounds: power(u, id), source: u.id })
+        check(!!t && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= span(u, id), "target")
+        check(u.ammo > 0, "ammo")
+        u.ammo -= 1
+        const near = u.rank(id) >= 2 ? game.units.filter((x) => x.alive() && u.foe(x) && adjacent(x.pos, t!.pos)) : []
+        for (const x of [t!, ...near]) x.give({ id: "suppressed", rounds: 1, source: u.id })
         game.log.push({ key: "log.volley", params: { unit: u.id, target: t!.id } })
-        game.stealth.noise(u.pos, WEAPONS[u.weapon].noise, u)
+        game.stealth.attacked(u, t!, u.weapon)
         break
       }
       case "heal": {
-        check(!!t && !u.foe(t) && (t === u || adjacent(u.pos, t.pos)) && (t.alive() || t.down > 0), "target")
+        const near = !!t && (t === u || adjacent(u.pos, t.pos) || game.sight.sees(u, t.pos))
+        check(!!t && !u.foe(t) && near && distance(u.pos, t.pos) <= span(u, id) && (t.alive() || t.down > 0), "target")
         const amount = Math.min(t!.maxHp - t!.hp, game.dice.roll({ count: 1, sides: 3, bonus: power(u, id) }))
         t!.hp += amount
+        t!.statuses = t!.statuses.filter((s) => !BAD.includes(s.id))
         game.log.push({ key: t!.down > 0 ? "log.revive" : "log.heal", params: { unit: u.id, target: t!.id, amount } })
         t!.down = 0
         break
@@ -121,8 +149,22 @@ export class Abilities {
           !!t && !u.foe(t) && distance(u.pos, t.pos) <= span(u, "ward") && (t === u || game.sight.sees(u, t.pos)),
           "target",
         )
-        t!.give({ id: "ward", rounds: power(u, id), source: u.id })
+        const shield = { id: "ward" as const, rounds: 2, source: u.id, amount: power(u, id) }
+        t!.give(shield)
+        if (u.rank(id) >= 3) u.give({ ...shield })
         game.log.push({ key: "log.ward", params: { unit: u.id, target: t!.id } })
+        break
+      }
+      case "stasis": {
+        check(
+          !!t && t !== u && t.alive() && distance(u.pos, t.pos) <= span(u, id) && game.sight.sees(u, t.pos),
+          "target",
+        )
+        t!.give({ id: "stasis", rounds: u.foe(t!) ? power(u, id) : 1, source: u.id })
+        t!.stance = "none"
+        t!.ap = 0
+        game.log.push({ key: "log.stasis", params: { unit: u.id, target: t!.id } })
+        if (u.foe(t!)) game.stealth.attacked(u, t!, u.weapon)
         break
       }
       case "fear":
@@ -130,10 +172,10 @@ export class Abilities {
       case "dominate": {
         check(!!t && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= span(u, id), "target")
         if (id === "dominate") check(u.foe(t!), "target")
-        const edge = t!.stance === "hunker" ? 1 : 0
+        const edge = this.resolve(t!)
         const roll = game.dice.d20()
         const dc = 10 + u.will + (id === "fear" ? power(u, id) : 0)
-        const saved = roll + t!.will + EDGE * edge >= dc
+        const saved = this.immune(t!) || roll + t!.will + EDGE * edge >= dc
         game.log.push({
           key: `log.${id}`,
           params: {
@@ -143,7 +185,7 @@ export class Abilities {
             total: roll + t!.will + EDGE * edge,
             dc,
             saved,
-            chance: Math.round(failChance(t!.will, dc, edge) * 100),
+            chance: this.immune(t!) ? 0 : Math.round(failChance(t!.will, dc, edge) * 100),
           },
         })
         if (id === "dominate") u.intent = null
@@ -174,6 +216,15 @@ export class Abilities {
         game.log.push({ key: "log.mark", params: { unit: u.id } })
         break
       }
+      case "warcry": {
+        game.log.push({ key: "log.warcry", params: { unit: u.id } })
+        for (const x of game.units) {
+          if (x === u || !x.alive() || u.foe(x) || distance(u.pos, x.pos) > span(u, id)) continue
+          x.ap = Math.min(3, x.ap + 1)
+          game.stealth.engage(x.group, game.groups.find((g) => g.id === u.group)?.target ?? u.pos)
+        }
+        break
+      }
       case "grapple": {
         check(!!at && (game.tile(at) === "roof" || game.tile(at) === "ridge") && !game.unitAt(at), "place")
         check(distance(u.pos, at!) <= span(u, "grapple") && game.sight.line(u.pos, at!, false), "range")
@@ -182,28 +233,9 @@ export class Abilities {
         game.stealth.scan()
         break
       }
-      case "guard": {
-        check(
-          !!t && t !== u && !u.foe(t) && distance(u.pos, t.pos) <= span(u, "guard") && game.sight.sees(u, t.pos),
-          "target",
-        )
-        t!.give({ id: "guarded", rounds: 1, source: u.id })
-        game.log.push({ key: "log.guard", params: { unit: u.id, target: t!.id } })
-        break
-      }
       case "rocket": {
         check(!!at && distance(u.pos, at) <= span(u, "rocket") && game.sight.line(u.pos, at!, false), "range")
         this.rocket(u, at!, power(u, id))
-        break
-      }
-      case "smoke": {
-        check(!!at && distance(u.pos, at) <= span(u, "smoke") && game.sight.line(u.pos, at!, false), "range")
-        game.zones.push({
-          kind: "smoke",
-          tiles: area(at!, 1).filter((p) => game.board.inside(p)),
-          rounds: power(u, id),
-        })
-        game.log.push({ key: "log.smoke", params: { unit: u.id } })
         break
       }
       case "hook": {
@@ -218,32 +250,6 @@ export class Abilities {
         game.log.push({ key: "log.hook", params: { unit: u.id, target: t!.id } })
         game.fire.scorch(t!)
         game.stealth.attacked(u, t!, "dagger")
-        break
-      }
-      case "tag": {
-        check(!!t && game.orders.canTarget(u, t) && distance(u.pos, t.pos) <= span(u, "tag"), "target")
-        t!.give({ id: "exposed", rounds: 1, source: u.id })
-        game.log.push({ key: "log.tag", params: { unit: u.id, target: t!.id } })
-        break
-      }
-      case "swap": {
-        check(
-          !!t && t !== u && t.alive() && distance(u.pos, t.pos) <= span(u, "swap") && game.sight.sees(u, t.pos),
-          "target",
-        )
-        const here = u.pos
-        u.pos = t!.pos
-        t!.pos = here
-        game.log.push({ key: "log.swap", params: { unit: u.id, target: t!.id } })
-        if (u.foe(t!)) game.stealth.attacked(u, t!, u.weapon)
-        game.stealth.scan()
-        break
-      }
-      case "barricade": {
-        check(!!at && adjacent(u.pos, at) && game.tile(at) !== "roof" && walkable(game.tile(at)), "place")
-        check(!game.unitAt(at!), "place")
-        game.board.set(at!, "high")
-        game.log.push({ key: "log.barricade", params: { unit: u.id } })
         break
       }
       case "mine": {
@@ -320,32 +326,6 @@ export class Abilities {
         this.blast(u, at!, power(u, id))
         break
       }
-      case "rush": {
-        u.ap += 1
-        game.log.push({ key: "log.rush", params: { unit: u.id } })
-        break
-      }
-      case "steady": {
-        u.give({ id: "steady", rounds: 1 })
-        game.log.push({ key: "log.steady", params: { unit: u.id } })
-        break
-      }
-      case "brace": {
-        for (const x of game.units)
-          if (x.alive() && !u.foe(x) && (x === u || adjacent(u.pos, x.pos)))
-            x.give({ id: "ward", rounds: power(u, id), source: u.id })
-        game.log.push({ key: "log.brace", params: { unit: u.id } })
-        break
-      }
-      case "cripple": {
-        check(!!t && game.orders.canTarget(u, t) && adjacent(u.pos, t.pos), "target")
-        const before = t!.hp
-        game.log.push({ key: "log.cripple", params: { unit: u.id, target: t!.id } })
-        game.combat.attack(u, t!)
-        if (t!.alive() && t!.hp < before) t!.give({ id: "shaken", rounds: power(u, id), source: u.id })
-        game.stealth.attacked(u, t!, u.weapon)
-        break
-      }
       case "flash": {
         check(!!at && distance(u.pos, at) <= span(u, id) && game.sight.line(u.pos, at!, false), "range")
         game.log.push({ key: "log.flash", params: { unit: u.id } })
@@ -353,26 +333,50 @@ export class Abilities {
           .map((p) => game.unitAt(p))
           .filter((x): x is Unit => !!x && x.alive() && u.foe(x))
         for (const x of hits) x.give({ id: "shaken", rounds: power(u, id), source: u.id })
+        if (u.rank(id) >= 3) for (const x of hits) x.give({ id: "exposed", rounds: 1, source: u.id })
         game.stealth.noise(at!, FLASH_NOISE, u)
         for (const x of hits) game.stealth.attacked(u, x, u.weapon)
         break
       }
     }
     if (ultimate) u.ult = 0
-    u.cooldowns[id] = ranked(ABILITIES[id].cooldown, u.rank(id)) || undefined
-    if (ABILITIES[id].endsTurn) u.ap = 0
-    else if (!ABILITIES[id].free) u.ap -= 1
+    if (rule.uses) u.used[id] = (u.used[id] ?? 0) + 1
+    u.cooldowns[id] = ranked(rule.cooldown, u.rank(id)) || undefined
+    if (rule.endsTurn) u.ap = 0
+    else if (!rule.free) u.ap -= 1
+  }
+
+  /** The edge a unit has on a Will save: hunkered, or next to an ally's Mind shield. */
+  resolve(t: Unit): number {
+    return (t.stance === "hunker" ? 1 : 0) + (this.minded(t) ? 1 : 0)
+  }
+
+  /** True when a Mind shield at rank 3 makes the unit pass every Will save. */
+  immune(t: Unit): boolean {
+    return this.minded(t, 3)
+  }
+
+  /** True when the unit stands in reach of an ally's Mind shield of at least a rank. */
+  private minded(t: Unit, rank = 1): boolean {
+    return this.game.units.some(
+      (x) => x.alive() && !x.foe(t) && x.rank("mindshield") >= rank && distance(x.pos, t.pos) <= span(x, "mindshield"),
+    )
+  }
+
+  /** The tiles of a 90° cone from the unit toward a point, up to a reach. */
+  private cone(u: Unit, at: Point, reach: number): (p: Point) => boolean {
+    const aim = Math.atan2(at.y - u.pos.y, at.x - u.pos.x)
+    return (p: Point) => {
+      if (same(p, u.pos) || distance(u.pos, p) > reach) return false
+      const turn = Math.abs(Math.atan2(p.y - u.pos.y, p.x - u.pos.x) - aim)
+      return Math.min(turn, 2 * Math.PI - turn) <= Math.PI / 4 + 1e-9
+    }
   }
 
   /** Saturation fire: damage to every other unit in a 90° cone up to 6 tiles toward a point, and all cover in it breaks. */
   private saturate(u: Unit, at: Point, dmg: number): void {
     const game = this.game
-    const aim = Math.atan2(at.y - u.pos.y, at.x - u.pos.x)
-    const cone = (p: Point) => {
-      if (same(p, u.pos) || distance(u.pos, p) > span(u, "saturation")) return false
-      const turn = Math.abs(Math.atan2(p.y - u.pos.y, p.x - u.pos.x) - aim)
-      return Math.min(turn, 2 * Math.PI - turn) <= Math.PI / 4 + 1e-9
-    }
+    const cone = this.cone(u, at, span(u, "saturation"))
     game.log.push({ key: "log.saturation", params: { unit: u.id } })
     const hits = game.units.filter((x) => x !== u && x.alive() && cone(x.pos))
     for (const p of area(u.pos, span(u, "saturation"))) if (game.board.inside(p) && cone(p)) game.combat.smash(p)
@@ -418,50 +422,61 @@ export class Abilities {
 }
 
 /**
- * A skill's numbers by rank, first rank first; a rank past the last row takes the last. Cooldown is in rounds; the
- * skill ends the turn, costs no AP (free), or else costs 1 AP. Power is what the rank raises: damage, rounds or AP.
+ * A skill's numbers by rank, first rank first; a rank past the last row takes the last. Cooldown is in rounds; uses
+ * are per mission. The skill ends the turn, costs no AP (free), or else costs 1 AP; a passive is never used. Power is
+ * what the rank raises: damage, rounds or AP. Perks are the ranks that add an effect of their own.
  */
 export interface AbilityRule {
   cooldown: number[]
   endsTurn: boolean
   free?: boolean
+  passive?: boolean
+  uses?: number[]
   range?: number[]
   power?: number[]
+  perks?: number[]
 }
+
+const PASSIVE = { cooldown: [0], endsTurn: false, passive: true }
 
 export const ABILITIES: Record<AbilityId, AbilityRule> = {
   charge: { cooldown: [3, 2, 2], endsTurn: true, power: [0, 0, 1] },
-  volley: { cooldown: [2], endsTurn: false, range: [6], power: [2, 2, 3] },
-  heal: { cooldown: [2], endsTurn: false, power: [2, 3, 4] },
-  ward: { cooldown: [3], endsTurn: false, range: [4, 5, 6], power: [2, 2, 3] },
-  fear: { cooldown: [3], endsTurn: true, range: [6], power: [0, 1, 2] },
+  volley: { cooldown: [2], endsTurn: false, range: [6], perks: [2] },
+  heal: { cooldown: [0], endsTurn: false, free: true, uses: [2, 3, 3], range: [1, 1, 3], power: [2] },
+  ward: { cooldown: [3], endsTurn: false, range: [5], power: [3, 4, 4], perks: [3] },
+  fear: { cooldown: [3], endsTurn: false, range: [6], power: [0, 1, 2] },
   rouse: { cooldown: [0], endsTurn: false },
   dread: { cooldown: [3], endsTurn: true, range: [6] },
   dominate: { cooldown: [4], endsTurn: true, range: [6], power: [2, 3] },
   mark: { cooldown: [0], endsTurn: true },
-  shove: { cooldown: [2], endsTurn: false, power: [1, 2, 3] },
-  rally: { cooldown: [4, 3, 3], endsTurn: false, range: [4, 5, 6] },
   blast: { cooldown: [0], endsTurn: true, range: [5], power: [3, 3, 4] },
   grapple: { cooldown: [3], endsTurn: false, free: true, range: [4, 6, 8] },
-  guard: { cooldown: [2], endsTurn: false, range: [7, 9, 11] },
-  rocket: { cooldown: [3, 3, 2], endsTurn: true, range: [6], power: [2, 3, 3] },
-  smoke: { cooldown: [3], endsTurn: false, range: [6], power: [2, 2, 3] },
+  rocket: { cooldown: [0], endsTurn: false, uses: [2, 2, 3], range: [6], power: [2, 3, 3] },
   hook: { cooldown: [3], endsTurn: false, range: [4], power: [2, 2, 3] },
-  tag: { cooldown: [3, 2, 2], endsTurn: false, range: [7] },
-  swap: { cooldown: [3], endsTurn: false, range: [5, 6, 7] },
-  barricade: { cooldown: [3, 2, 2], endsTurn: false, free: true },
-  mine: { cooldown: [3], endsTurn: false, range: [3], power: [2, 3, 4] },
+  mine: { cooldown: [3], endsTurn: false, free: true, range: [3], power: [2, 3, 4] },
   rampage: { cooldown: [0], endsTurn: true, power: [3, 5] },
   killzone: { cooldown: [0], endsTurn: true, power: [0, 1] },
   saturation: { cooldown: [0], endsTurn: true, range: [6], power: [2, 3] },
   hospital: { cooldown: [0], endsTurn: false, range: [3], power: [3, 5] },
   ghost: { cooldown: [0], endsTurn: false, free: true, power: [1, 2] },
   turret: { cooldown: [0], endsTurn: false, power: [3, 5] },
-  rush: { cooldown: [5, 4, 3], endsTurn: false, free: true },
-  steady: { cooldown: [4, 3, 2], endsTurn: false, free: true },
-  brace: { cooldown: [3, 3, 2], endsTurn: false, power: [1, 1, 2] },
-  cripple: { cooldown: [3, 2, 2], endsTurn: false, power: [1, 2, 2] },
-  flash: { cooldown: [3, 3, 2], endsTurn: false, range: [5], power: [1, 1, 2] },
+  flash: { cooldown: [3, 3, 2], endsTurn: false, range: [5], power: [1, 1, 2], perks: [3] },
+  close: { ...PASSIVE, power: [2, 3, 3], perks: [3] },
+  run: { cooldown: [3, 3, 2], endsTurn: false, free: true },
+  breach: { cooldown: [3], endsTurn: false, range: [3, 3, 4], power: [0, 2, 2] },
+  squadsight: { ...PASSIVE, power: [0, 1, 2] },
+  headshot: { cooldown: [3, 3, 2], endsTurn: false, power: [0, 2, 2] },
+  shredder: { ...PASSIVE, power: [1, 2, 2], perks: [3] },
+  medic: { ...PASSIVE, range: [1, 1, 2], power: [1, 2, 2] },
+  shadow: { ...PASSIVE, power: [0, 2, 2], perks: [3] },
+  backstab: { cooldown: [3, 2, 2], endsTurn: false },
+  mindshield: { ...PASSIVE, range: [1, 2, 2], perks: [3] },
+  stasis: { cooldown: [4], endsTurn: false, range: [6], power: [1, 1, 2] },
+  tripwire: { ...PASSIVE, power: [0, 0, 1], perks: [2] },
+  covering: PASSIVE,
+  knockback: PASSIVE,
+  poison: { ...PASSIVE, power: [3] },
+  warcry: { cooldown: [0], endsTurn: false, uses: [1], range: [6] },
 }
 
 /** How far a Flash is heard. */
@@ -477,12 +492,12 @@ export const span = (u: Unit, id: AbilityId): number => ranked(ABILITIES[id].ran
 export const power = (u: Unit, id: AbilityId): number => ranked(ABILITIES[id].power ?? [0], u.rank(id))
 
 /** A number of a skill that a rank raises. */
-export type Stat = "cooldown" | "range" | "power"
+export type Stat = "cooldown" | "uses" | "range" | "power"
 
 /** Each number of the skill that differs between the rank and the next one, now and next. */
 export function growth(id: AbilityId, rank: number): { stat: Stat; now: number; next: number }[] {
   const rule = ABILITIES[id]
-  return (["cooldown", "range", "power"] as const)
+  return (["cooldown", "uses", "range", "power"] as const)
     .map((stat) => ({ stat, now: ranked(rule[stat] ?? [0], rank), next: ranked(rule[stat] ?? [0], rank + 1) }))
     .filter((g) => g.now !== g.next)
 }

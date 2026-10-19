@@ -15,7 +15,7 @@ import { type Action, Orders } from "./orders"
 import { Turn } from "./turn"
 
 export interface Zone {
-  kind: "smoke" | "fire" | "mine"
+  kind: "fire" | "mine"
   tiles: Point[]
   rounds: number
   /** A mine's damage. */

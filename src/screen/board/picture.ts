@@ -374,27 +374,10 @@ export class Picture {
     }
   }
 
-  /** Smoke, lamp embers, floating dust by day and the rising texts. */
+  /** Lamp embers, floating dust by day and the rising texts. */
   private ambient(): void {
     const { game, daylight, texts, now, life } = this.scene
     const t = this.t
-    for (const z of game.zones)
-      if (z.kind === "smoke")
-        for (const p of z.tiles) {
-          if (!this.explored(p)) continue
-          const a = this.px.projection.ground(p)
-          this.px.glow(a.x, a.y - 4, 14, SMOKE, 0.12)
-          for (let k = 0; k < 3; k++) {
-            const life = (t / 2400 + hash(p.x, p.y, k)) % 1
-            this.px.dot(
-              a.x - 6 + hash(p.y, k, 3) * 12 + Math.sin(t / 600 + k) * 2,
-              a.y - life * 14,
-              SMOKE,
-              0.5 * (1 - life),
-              2,
-            )
-          }
-        }
     if (daylight.lamps > 0)
       for (const l of this.light.lamps) {
         if (l.color !== AMBER) continue

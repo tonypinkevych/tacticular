@@ -7,7 +7,7 @@ import {
   RECRUIT_COST,
   RESISTANCE,
 } from "../../src/campaign/campaign"
-import { kit } from "../../src/campaign/soldier"
+import { kit, points } from "../../src/campaign/soldier"
 import { place } from "../../src/campaign/world"
 
 const fresh = (seed = 7, goal: 1 | 3 | 8 = 1) => Campaign.start(seed, goal)
@@ -193,5 +193,12 @@ describe("campaign", () => {
     c.play({ type: "rank", soldier: s.id, skill: first })
     expect(s.ranks![first]).toBe(1)
     expect(() => c.play({ type: "rank", soldier: s.id, skill: second })).toThrow()
+  })
+  test("a rank-up of a skill that left the kit is skipped, so the point stays", () => {
+    const c = fresh()
+    const s = c.roster[0]
+    c.play({ type: "rank", soldier: s.id, skill: "shove" as never })
+    expect(s.ranks).toEqual({})
+    expect(points(s)).toBe(1)
   })
 })

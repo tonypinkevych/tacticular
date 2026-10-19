@@ -1,4 +1,4 @@
-import { type AbilityId, span } from "../combat/abilities"
+import { ABILITIES, type AbilityId, ranked, span } from "../combat/abilities"
 import { WEAPONS } from "../combat/weapons"
 import { area, distance, key, type Point, pointOf } from "../map/point"
 import type { Game } from "../mission/game"
@@ -27,16 +27,13 @@ const AIMED: AbilityId[] = [
   "fear",
   "dread",
   "rouse",
-  "shove",
-  "rally",
-  "guard",
   "hook",
-  "tag",
-  "swap",
   "ward",
-  "cripple",
+  "headshot",
+  "backstab",
+  "stasis",
 ]
-const PLACED: AbilityId[] = ["grapple", "rocket", "smoke", "barricade", "mine", "saturation", "turret", "flash"]
+const PLACED: AbilityId[] = ["grapple", "rocket", "mine", "saturation", "turret", "flash", "breach"]
 
 /** Dice streams a skill is tried with when it rolls. */
 const SAMPLES = 3
@@ -46,9 +43,11 @@ const STATUS: Partial<Record<string, number>> = {
   exposed: -1,
   dominated: -5,
   burning: -1,
+  poisoned: -1,
+  suppressed: -1.5,
+  stasis: -2,
   ward: 1,
-  guarded: 1,
-  steady: 1.5,
+  running: 1,
   killzone: 1.5,
 }
 
@@ -56,7 +55,7 @@ const STATUS: Partial<Record<string, number>> = {
 const SHAKEN = 0.4
 
 /** Statuses worth more on a unit the more foes see it. */
-const GUARDS = ["ward", "guarded"]
+const GUARDS = ["ward"]
 
 /**
  * The look ahead of a unit at its skills: it tries each ready skill on each target in reach on copies of the game,
@@ -88,6 +87,8 @@ export class Foresight {
       (id) =>
         u.rank(id) > 0 &&
         !u.cooldowns[id] &&
+        !ABILITIES[id].passive &&
+        (u.used[id] ?? 0) < ranked(ABILITIES[id].uses ?? [Infinity], u.rank(id)) &&
         (id !== p.ultimate || u.ult >= ULT) &&
         !(u.side === "enemy" && TELEGRAPHED.includes(id)),
     )
@@ -189,8 +190,6 @@ export class Foresight {
 
   /** How many foes see a unit with no cover against them. */
   private exposure(game: Game, x: Unit): number {
-    const smoke = game.zones.some((z) => z.kind === "smoke" && z.tiles.some((t) => t.x === x.pos.x && t.y === x.pos.y))
-    if (smoke) return 0
     return game.units.filter(
       (f) => f.alive() && f.foe(x) && game.sight.sees(f, x.pos) && game.cover.against(x.pos, f.pos) === 0,
     ).length

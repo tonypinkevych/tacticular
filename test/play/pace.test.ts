@@ -18,14 +18,13 @@ describe("weapons and keys", () => {
   test("the sniper rifle has a magazine of 3", () => {
     expect(WEAPONS.longbow.ammo).toBe(3)
   })
-  test("weapon 1, skills 2 3 4, ultimate 5, Reload 6, Overwatch 7, Hunker 8", () => {
+  test("weapon 1, skills 2 3, ultimate 5, Reload 6, Overwatch 7, Hunker 8; a passive has no slot", () => {
     const v = squad("v", "vanguard", { x: 0, y: 0 })
     const g = setup(open(4, 4), [v])
     expect(new Kit(g, v).slots().map((x) => `${x.id}=${x.key}`)).toEqual([
       "weapon:shotgun=1",
-      "ability:shove=2",
-      "ability:charge=3",
-      "ability:rush=4",
+      "ability:run=2",
+      "ability:breach=3",
       "ability:rampage=5",
       "reload=6",
       "overwatch=7",

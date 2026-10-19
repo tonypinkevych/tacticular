@@ -1,7 +1,7 @@
 import { type AbilityId, power } from "../combat/abilities"
 import { canReach } from "../combat/combat"
 import { AROUND, adjacent, distance, key, type Point, plus, same } from "../map/point"
-import type { Unit } from "../units/unit"
+import type { StatusId, Unit } from "../units/unit"
 import type { Game } from "./game"
 
 export type Action =
@@ -41,6 +41,7 @@ export class Orders {
     const u = game.unit(action.unit)
     check(u.alive(), "dead")
     check(u.allegiance() === game.phase || game.reactions.includes(u.id), "not your turn")
+    check(!u.has("stasis"), "stasis")
     if (action.type === "aim") {
       this.aim(u, game.unit(action.target), action.from)
       return
@@ -83,8 +84,9 @@ export class Orders {
   }
 
   /**
-   * Steps tile by tile; each step can trigger fire, a mine, a Guard, overwatch and zone of control. Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it
-   * vaults, and a tree or low cover a Heavy walks into turns to floor.
+   * Steps tile by tile; each step can trigger fire, a mine, Suppress, Covering fire, overwatch and zone of control.
+   * Reaction shots lose their disadvantage against a dash or a vault; a Brute breaks the low cover it vaults, and a
+   * tree or low cover a Heavy walks into turns to floor.
    */
   walk(u: Unit, path: Point[], dash = false): void {
     const game = this.game
@@ -100,6 +102,7 @@ export class Orders {
           x.arms().melee &&
           x.stance !== "hunker" &&
           !x.has("exposed") &&
+          !x.has("stasis") &&
           adjacent(x.pos, u.pos) &&
           !adjacent(x.pos, step),
       )
@@ -111,10 +114,11 @@ export class Orders {
       if (!u.alive()) return
       if (u.allegiance() === "enemy" && this.trip(u, from)) return
       game.stealth.scan()
-      this.guard(u, risky)
+      this.suppression(u, risky)
+      this.cover(u, risky)
       for (const x of game.units) {
         if (!u.alive()) return
-        if (!x.alive() || !x.foe(u) || x.stance !== "overwatch" || x.has("exposed")) continue
+        if (!x.alive() || !x.foe(u) || x.stance !== "overwatch" || x.has("exposed") || x.has("stasis")) continue
         const w = x.arms()
         if (w.melee ? !adjacent(x.pos, u.pos) : !sight.sees(x, u.pos) || (w.ammo !== null && x.ammo <= 0)) continue
         if (u.kind === "assassin" && u.concealed) continue
@@ -139,10 +143,11 @@ export class Orders {
 
   canTarget(u: Unit, t: Unit): boolean {
     const { sight, units } = this.game
-    if (!t.alive() || t.has("captive") || !(u.foe(t) || (t.has("dominated") && t.side !== u.allegiance()))) return false
+    if (!t.alive() || t.has("captive") || t.has("stasis")) return false
+    if (!(u.foe(t) || (t.has("dominated") && t.side !== u.allegiance()))) return false
     if (t.kind === "assassin" && t.concealed && distance(u.pos, t.pos) > 3) return false
     if (sight.sees(u, t.pos)) return true
-    return u.kind === "ranger" && units.some((a) => a.alive() && a !== u && !a.foe(u) && sight.sees(a, t.pos))
+    return u.rank("squadsight") > 0 && units.some((a) => a.alive() && a !== u && !a.foe(u) && sight.sees(a, t.pos))
   }
 
   /** Checks the end of the mission after each action, and marks the Warchief slain when it dies. */
@@ -208,7 +213,7 @@ export class Orders {
     const r = game.reach(u, u.stride())
     const cost = r.cost.get(key(to))
     check(cost !== undefined && cost > 0, "unreachable")
-    u.ap -= cost <= u.mobility ? 1 : 2
+    u.ap -= cost <= u.mobility || u.has("running") ? 1 : 2
     u.moved = true
     this.walk(u, r.path(to), cost > u.mobility)
   }
@@ -225,16 +230,29 @@ export class Orders {
     return true
   }
 
-  /** A Sniper fires at the first foe that steps next to the ally it guards. */
-  private guard(u: Unit, risky: boolean): void {
+  /** A unit under Suppress that moves draws one reaction shot from the unit that suppresses it. */
+  private suppression(u: Unit, risky: boolean): void {
     const game = this.game
+    const s = u.statuses.find((x) => x.id === "suppressed")
+    if (!s) return
+    u.lift("suppressed")
+    const by = game.units.find((x) => x.id === s.source)
+    if (!by?.alive() || by.has("stasis") || !game.sight.sees(by, u.pos) || by.ammo <= 0) return
+    game.combat.attack(by, u, { reaction: true, risky })
+  }
+
+  /** Covering fire: each Grunt that sees a soldier step takes one reaction shot at it each round. */
+  private cover(u: Unit, risky: boolean): void {
+    const game = this.game
+    if (!u.soldier() || u.concealed) return
     for (const x of game.units) {
-      const g = x.statuses.find((s) => s.id === "guarded")
-      if (!g || !x.alive() || !u.alive() || !x.foe(u) || !adjacent(x.pos, u.pos)) continue
-      x.lift("guarded")
-      const sniper = game.units.find((s) => s.id === g.source)
-      if (!sniper?.alive() || !game.sight.sees(sniper, u.pos) || sniper.ammo <= 0) continue
-      game.combat.attack(sniper, u, { reaction: true, risky })
+      if (!u.alive()) return
+      if (!x.alive() || !x.foe(u) || x.rank("covering") === 0 || x.cooldowns.covering) continue
+      if (["stasis", "suppressed", "exposed"].some((s) => x.has(s as StatusId))) continue
+      if (x.ammo <= 0 || !game.sight.sees(x, u.pos)) continue
+      x.cooldowns.covering = 1
+      game.log.push({ key: "log.covering", params: { unit: x.id, target: u.id } })
+      game.combat.attack(x, u, { reaction: true, risky })
     }
   }
 
@@ -256,6 +274,9 @@ export class Orders {
     this.game.combat.attack(u, t)
     this.game.stealth.attacked(u, t, u.weapon)
     u.ap = 0
+    if (t.alive() || u.rank("close") < 3 || u.cooldowns.close || distance(u.pos, t.pos) > 2) return
+    u.ap = 1
+    u.cooldowns.close = 1
   }
 
   /** Fires at a barrel in sight and in weapon range; it blows up. */
@@ -305,6 +326,7 @@ export class Orders {
   private overwatch(u: Unit): void {
     const w = u.arms()
     check(w.ammo === null || u.ammo > 0, "ammo")
+    check(!u.has("suppressed"), "suppressed")
     u.stance = "overwatch"
     u.ap = 0
   }

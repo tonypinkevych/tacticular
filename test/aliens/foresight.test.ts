@@ -34,7 +34,6 @@ describe("foresight", () => {
     const g = setup(open(12, 5), [squad("w", "warden", { x: 0, y: 2 }), enemy("a", "orc", { x: 6, y: 2 })])
     const w = find(g, "w")
     w.cooldowns = { rocket: 2, volley: 1 }
-    w.ranks = { ...w.ranks, brace: 0 }
     expect(look(g).best(w)).toBeNull()
   })
   test("an alien leaves its marked skills to its intent", () => {
@@ -43,7 +42,7 @@ describe("foresight", () => {
   })
   test("a skill that leaves AP counts the shot the unit can still take after it", () => {
     const g = setup(open(12, 5), [squad("w", "warden", { x: 0, y: 2 }), enemy("a", "orc", { x: 5, y: 2 })])
-    find(g, "w").cooldowns = { rocket: 2, brace: 2 }
+    find(g, "w").cooldowns = { rocket: 2 }
     const plain = look(g).best(find(g, "w"))!
     const follow = new Foresight(
       g,
@@ -53,12 +52,16 @@ describe("foresight", () => {
     expect(follow.action).toMatchObject({ ability: "volley" })
     expect(follow.value).toBeCloseTo(plain.value + 3)
   })
-  test("Shaken on a foe is worth more the longer it lasts", () => {
-    const g = setup(open(12, 5), [squad("w", "warden", { x: 0, y: 2 }), enemy("a", "orc", { x: 5, y: 2 })])
+  test("Suppress is worth more when it holds more aliens", () => {
+    const g = setup(open(12, 5), [
+      squad("w", "warden", { x: 0, y: 2 }),
+      enemy("a", "orc", { x: 5, y: 2 }),
+      enemy("b", "orc", { x: 6, y: 2 }),
+    ])
     const w = find(g, "w")
-    w.cooldowns = { rocket: 2, brace: 2 }
-    const short = look(g).best(w)!.value
-    w.ranks = { ...w.ranks, volley: 3 }
-    expect(look(g).best(w)!.value).toBeGreaterThan(short)
+    w.cooldowns = { rocket: 2 }
+    const one = look(g).best(w)!.value
+    w.ranks = { ...w.ranks, volley: 2 }
+    expect(look(g).best(w)!.value).toBeGreaterThan(one)
   })
 })

@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js"
 import { kit, LEVELS, level, points, rankable, type Soldier } from "../../campaign/soldier"
-import { type AbilityId, growth, power, span } from "../../combat/abilities"
+import { ABILITIES, type AbilityId, growth, power, span } from "../../combat/abilities"
 import { t } from "../../i18n/strings"
 import { PROFILES } from "../../units/profiles"
 import { Unit } from "../../units/unit"
@@ -12,11 +12,17 @@ export function Profile(props: { expedition: Expedition; soldier: Soldier }) {
   const goal = () => LEVELS[level(s())] ?? LEVELS[LEVELS.length - 1]
   const unit = () => Unit.of(s().id, s().kind, "squad", { x: 0, y: 0 }, s().name, null, s().spread, s().ranks)
   const next = (id: AbilityId) => {
-    const changes = growth(id, s().ranks?.[id] ?? 0)
-      .map((g) => `${t(`stat.${g.stat}`)} ${g.now} → ${g.next}`)
-      .join(" · ")
+    const rank = s().ranks?.[id] ?? 0
+    const perk = ABILITIES[id].perks?.includes(rank + 1) ? [t(`perk.${id}.${rank + 1}`)] : []
+    const changes = [...growth(id, rank).map((g) => `${t(`stat.${g.stat}`)} ${g.now} → ${g.next}`), ...perk].join(" · ")
     return changes ? t("soldier.next", { changes }) : ""
   }
+  const tag = (id: AbilityId) =>
+    id === PROFILES[s().kind].ultimate
+      ? `· ${t("soldier.ultimate")}`
+      : ABILITIES[id].passive
+        ? `· ${t("soldier.passive")}`
+        : ""
   const need = (id: string) => (id === PROFILES[s().kind].ultimate ? 6 : 2 * ((s().ranks?.[id as never] ?? 0) + 1) - 1)
   return (
     <div class="profile">
@@ -27,7 +33,7 @@ export function Profile(props: { expedition: Expedition; soldier: Soldier }) {
         {(id) => (
           <div class="skill">
             <span class="name">
-              {t(`ability.${id}`)} {id === PROFILES[s().kind].ultimate ? `· ${t("soldier.ultimate")}` : ""}
+              {t(`ability.${id}`)} {tag(id)}
             </span>
             <span class="small muted">
               {t("ui.rank", { rank: s().ranks?.[id] ?? 0 })} ·{" "}

@@ -30,7 +30,7 @@ export interface Float {
  */
 export type Style = "bolt" | "melee" | "arc" | "hook" | "mark" | "ghost"
 
-const ARCS = ["rocket", "smoke", "mine", "blast", "flash"]
+const ARCS = ["rocket", "mine", "blast", "flash"]
 
 /** What the board shows at one moment of playback. */
 export interface Still {
@@ -130,9 +130,9 @@ function along(points: Point[], share: number): Point {
 function style(before: Game, frame: Frame): Style {
   const a = frame.action
   if (a.type === "attack") return WEAPONS[before.unit(a.unit).weapon].melee ? "melee" : "bolt"
-  if (a.type === "ability" && a.ability === "cripple") return "melee"
+  if (a.type === "ability" && a.ability === "backstab") return "melee"
   if (a.type === "ability" && a.ability === "hook") return "hook"
-  if (a.type === "ability" && a.ability === "tag") return "mark"
+  if (a.type === "ability" && a.ability === "stasis") return "mark"
   if (a.type === "ability" && a.ability === "ghost") return "ghost"
   return a.type === "ability" && ARCS.includes(a.ability) ? "arc" : "bolt"
 }

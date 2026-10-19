@@ -22,25 +22,17 @@ describe("range and position", () => {
 })
 
 describe("cooperation statuses", () => {
-  test("Mark exposes a target: no cover and advantage, for 1 AP", () => {
+  test("an Exposed target behind cover has no cover and gives advantage", () => {
     const rows = open(8, 12)
-    rows[7] = "...:...."
-    const r = squad("r", "rogue", { x: 4, y: 2 })
+    rows[7] = "...H...."
     const w = squad("w", "warden", { x: 3, y: 2 })
     const e = enemy("e", "orc", { x: 3, y: 8 })
-    const g = setup(rows, [r, w, e]).apply({ type: "ability", unit: "r", ability: "tag", target: "e" })
-    expect(find(g, "r").ap).toBe(1)
-    const o = g.combat.odds(find(g, "w"), find(g, "e"))
+    const g = setup(rows, [w, e])
+    expect(g.combat.odds(w, e).cover).toBeGreaterThan(0)
+    e.give({ id: "exposed", rounds: 1 })
+    const o = g.combat.odds(w, e)
     expect(o.cover).toBe(0)
     expect(o.advantages).toContain("flanked")
-  })
-  test("Shove pushes an adjacent enemy 1 tile and exposes it", () => {
-    const v = squad("v", "vanguard", { x: 1, y: 1 })
-    const e = enemy("e", "orc", { x: 2, y: 1 })
-    const g = setup(open(6, 3), [v, e]).apply({ type: "ability", unit: "v", ability: "shove", target: "e" })
-    expect(find(g, "e").pos).toEqual({ x: 3, y: 1 })
-    expect(find(g, "e").statuses.map((s) => s.id)).toContain("exposed")
-    expect(g.combat.odds(find(g, "v"), find(g, "e")).advantages).toContain("flanked")
   })
   test("an exposed enemy makes no overwatch shot", () => {
     const w = squad("w", "warden", { x: 0, y: 0 })

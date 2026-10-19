@@ -250,7 +250,7 @@ describe("force level", () => {
   })
   test("alien skills rank up at Force Level 4 and 7, and each 3 levels add 1 HP", () => {
     const at = (force: number) => aliens(force).find((u) => u.kind === "warchief")!
-    expect([1, 4, 7].map((f) => at(f).rank("rally"))).toEqual([1, 2, 3])
+    expect([1, 4, 7].map((f) => at(f).rank("warcry"))).toEqual([1, 2, 3])
     expect([1, 4, 7, 10].map((f) => at(f).maxHp - PROFILES.warchief.hp)).toEqual([0, 1, 2, 3])
   })
 })

@@ -2,13 +2,14 @@ import { adjacent, area, distance, type Point, same } from "../map/point"
 import { climb, high, walkable } from "../map/tile"
 import type { Game } from "../mission/game"
 import { ULT, type Unit } from "../units/unit"
+import { power } from "./abilities"
 import { chance, EDGE, failChance } from "./dice"
 import type { Weapon } from "./weapons"
 
 /** How far a blast or a Rocket is heard. */
 export const BLAST_NOISE = 10
 
-export type Reason = "flanked" | "unaware" | "steady" | "range" | "reaction" | "hunkered" | "shaken"
+export type Reason = "flanked" | "unaware" | "range" | "reaction" | "hunkered" | "shaken" | "suppressed"
 
 /** Everything a player sees before an attack: modifiers, the edge, the hit chance and whether it is a sure critical. */
 export interface Odds {
@@ -30,15 +31,17 @@ export interface Odds {
 
 /** One named number that adds up to Aim or Defense, for the chance breakdown. */
 export interface Part {
-  key: "aim" | "warchief" | "height" | "defense" | "low" | "high" | "ward" | "wall"
+  key: "aim" | "warchief" | "height" | "defense" | "low" | "high" | "wall"
   value: number
 }
 
-/** How a shot is fired: as a reaction, against a dash or a vault, and with extra damage on a hit. */
+/** How a shot is fired: as a reaction, against a dash or a vault, with extra damage, sure to hit, or for double damage. */
 export interface Shot {
   reaction?: boolean
   risky?: boolean
   bonus?: number
+  certain?: boolean
+  double?: boolean
 }
 
 /** Damage of a critical hit: half again, rounded up. */
@@ -52,22 +55,34 @@ export function canReach(attacker: Unit, target: Unit, weapon: Weapon): boolean 
 export class Combat {
   constructor(private readonly game: Game) {}
 
-  smoke(u: Unit): boolean {
-    return this.game.zones.some((z) => z.kind === "smoke" && z.tiles.some((t) => same(t, u.pos)))
-  }
-
   /** +1 Aim while a living Warchief leads the unit's group. */
   groupAim(u: Unit): number {
     if (!u.group) return 0
     return this.game.units.some((x) => x.alive() && x.kind === "warchief" && x.group === u.group) ? 1 : 0
   }
 
-  /** +1 Defense when a Shield trooper ally stands next to the unit. */
+  /** +3 Defense when a Shield trooper ally stands next to the unit. */
   wall(u: Unit): number {
     const wall = this.game.units.some(
       (x) => x.alive() && x !== u && x.kind === "shieldwall" && !x.foe(u) && adjacent(x.pos, u.pos),
     )
-    return wall ? 1 : 0
+    return wall ? 3 : 0
+  }
+
+  /** Damage the attacker's passive skills add: Close quarters, Squadsight at long range, Shadow and Tripwire. */
+  extra(attacker: Unit, target: Unit, shot: Shot = {}): number {
+    const range = distance(attacker.pos, target.pos)
+    return (
+      (attacker.rank("close") > 0 && range <= 2 ? power(attacker, "close") : 0) +
+      (range > 8 ? power(attacker, "squadsight") : 0) +
+      (attacker.concealed ? power(attacker, "shadow") : 0) +
+      (shot.reaction ? power(attacker, "tripwire") : 0)
+    )
+  }
+
+  /** True when the shot cannot miss: a Headshot, or an attack from concealment with Shadow at rank 3. */
+  private certain(attacker: Unit, shot: Shot): boolean {
+    return !!shot.certain || (attacker.concealed && attacker.rank("shadow") >= 3)
   }
 
   odds(attacker: Unit, target: Unit, shot: Shot = {}): Odds {
@@ -76,31 +91,32 @@ export class Combat {
     const adv: Reason[] = []
     const dis: Reason[] = []
     const exposed = target.has("exposed")
-    const smoke = this.smoke(target) ? 2 : 0
-    const facing = weapon.ignoresCover || exposed ? 0 : Math.max(smoke, game.cover.against(target.pos, attacker.pos))
+    const facing = weapon.ignoresCover || exposed ? 0 : game.cover.against(target.pos, attacker.pos)
     const above = !weapon.melee && high(game.tile(attacker.pos)) && !high(game.tile(target.pos))
     const cover = weapon.melee || (above && facing < 5) ? 0 : facing
     const open = weapon.melee ? this.pincer(attacker, target) : !weapon.ignoresCover && facing === 0
     if (exposed || open) adv.push("flanked")
     const caught = target.side === "enemy" && target.alert === "unaware" && !game.stealth.wary(target)
     if (caught || this.surprised(target)) adv.push("unaware")
-    if (attacker.has("steady")) adv.push("steady")
-    if (shot.reaction && !shot.risky && attacker.kind !== "ranger") dis.push("reaction")
+    if (shot.reaction && !shot.risky && attacker.kind !== "ranger" && attacker.rank("tripwire") === 0)
+      dis.push("reaction")
     if (target.stance === "hunker") dis.push("hunkered")
+    if (attacker.has("suppressed")) dis.push("suppressed")
     if (attacker.has("shaken") || attacker.wounded() || this.surprised(attacker)) dis.push("shaken")
     const range = distance(attacker.pos, target.pos)
     if (!weapon.melee && (range > weapon.max || range < weapon.min)) dis.push("range")
     const guarded = target.stance === "hunker" || (target.side === "enemy" && target.arms().melee)
     const sure = adv.length > dis.length && !guarded
-    const scale = (n: number) => (sure ? crit(n) : n)
+    const certain = this.certain(attacker, shot)
+    const more = this.extra(attacker, target, shot) + (shot.bonus ?? 0) + (attacker.might ?? 0)
+    const scale = (n: number) => (shot.double ? 2 : 1) * (sure ? crit(n) : n)
     const edge = Math.max(-2, Math.min(guarded ? 1 : 0, adv.length - dis.length))
     const aimParts: Part[] = [{ key: "aim", value: attacker.aim }]
     if (this.groupAim(attacker)) aimParts.push({ key: "warchief", value: this.groupAim(attacker) })
     if (above) aimParts.push({ key: "height", value: 2 })
     const defenseParts: Part[] = [{ key: "defense", value: target.defense }]
     if (cover) defenseParts.push({ key: cover >= 5 ? "high" : "low", value: cover })
-    if (target.has("ward")) defenseParts.push({ key: "ward", value: 2 })
-    if (this.wall(target)) defenseParts.push({ key: "wall", value: 1 })
+    if (this.wall(target)) defenseParts.push({ key: "wall", value: this.wall(target) })
     const aim = aimParts.reduce((sum, p) => sum + p.value, 0)
     const defense = defenseParts.reduce((sum, p) => sum + p.value, 0)
     return {
@@ -112,21 +128,23 @@ export class Combat {
       sure,
       advantages: adv,
       disadvantages: dis,
-      chance: weapon.saveHalf || sure ? 1 : chance(aim, defense, edge),
-      need: sure ? 1 : Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
+      chance: weapon.saveHalf || sure || certain ? 1 : chance(aim, defense, edge),
+      need: sure || certain ? 1 : Math.min(20, Math.max(2, defense - aim - EDGE * edge)),
       aimParts,
       defenseParts,
-      min: scale(weapon.dice.count + weapon.dice.bonus + (attacker.might ?? 0)),
-      max: scale(weapon.dice.count * weapon.dice.sides + weapon.dice.bonus + (attacker.might ?? 0)),
+      min: scale(weapon.dice.count + weapon.dice.bonus + more),
+      max: scale(weapon.dice.count * weapon.dice.sides + weapon.dice.bonus + more),
     }
   }
 
-  /** Rolls an attack, logs it in full and applies the damage; a soldier's hit fills its ultimate meter. */
+  /**
+   * Rolls an attack, logs it in full and applies the damage and what the attacker's passive skills add on a hit; a
+   * soldier's hit fills its ultimate meter.
+   */
   attack(attacker: Unit, target: Unit, shot: Shot = {}): void {
     const game = this.game
     const o = this.odds(attacker, target, shot)
     const w = o.weapon
-    attacker.lift("steady")
     if (w.ammo !== null) attacker.ammo -= 1
     if (w.saveHalf) {
       const edge = target.stance === "hunker" ? 1 : 0
@@ -152,8 +170,8 @@ export class Combat {
       return
     }
     const roll = game.dice.d20()
-    const critical = o.sure || roll === 20
-    const hit = critical || (roll !== 1 && roll + o.aim + EDGE * o.edge >= o.defense)
+    const critical = o.sure || (roll === 20 && !shot.certain)
+    const hit = critical || this.certain(attacker, shot) || (roll !== 1 && roll + o.aim + EDGE * o.edge >= o.defense)
     const params: Record<string, string | number | boolean> = {
       unit: attacker.id,
       target: target.id,
@@ -171,17 +189,23 @@ export class Combat {
       game.log.push({ key: "log.miss", params })
       return
     }
-    const raw = game.dice.roll(w.dice) + (shot.bonus ?? 0) + (attacker.might ?? 0)
-    const dmg = critical ? crit(raw) : raw
+    const raw = game.dice.roll(w.dice) + (shot.bonus ?? 0) + (attacker.might ?? 0) + this.extra(attacker, target, shot)
+    const dmg = (shot.double ? 2 : 1) * (critical ? crit(raw) : raw)
     game.log.push({ key: critical ? "log.crit" : "log.hit", params: { ...params, dmg } })
     if (o.sure) target.lift("exposed")
-    if (critical && !w.melee) {
+    if ((critical || attacker.rank("shredder") >= 3) && !w.melee) {
       const p = game.cover.tile(target.pos, attacker.pos)
       if (p) this.smash(p)
     }
     const killed = this.hurt(target, dmg)
     if (attacker.soldier()) attacker.ult = Math.min(ULT, attacker.ult + (killed ? 3 : 1))
-    if (w.push && !killed) this.push(attacker.pos, target, attacker.id)
+    if (killed) return
+    if (attacker.rank("shredder") > 0)
+      target.give({ id: "exposed", rounds: power(attacker, "shredder"), source: attacker.id })
+    if (shot.reaction && attacker.rank("tripwire") >= 2) target.give({ id: "exposed", rounds: 1, source: attacker.id })
+    if (attacker.rank("poison") > 0) target.give({ id: "poisoned", rounds: power(attacker, "poison") })
+    if (w.push) this.push(attacker.pos, target, attacker.id)
+    if (w.push && attacker.rank("knockback") > 0 && target.alive()) this.push(attacker.pos, target, attacker.id)
   }
 
   /**
@@ -212,12 +236,20 @@ export class Combat {
   }
 
   /**
-   * Applies damage and the effects of a fall; returns true when the target falls. A soldier goes down for 2
-   * rounds, 3 while a Medic stands.
+   * Applies damage and the effects of a fall; returns true when the target falls. Stasis takes no damage and a Shield
+   * absorbs what it can. A soldier goes down for 2 rounds, 3 while a Medic stands.
    */
   hurt(target: Unit, dmg: number): boolean {
     const game = this.game
-    target.hp = Math.max(0, target.hp - dmg)
+    if (target.has("stasis")) return false
+    const shield = target.statuses.find((s) => s.id === "ward")
+    const soak = Math.min(dmg, shield?.amount ?? 0)
+    if (shield && soak > 0) {
+      shield.amount = (shield.amount ?? 0) - soak
+      if (shield.amount === 0) target.lift("ward")
+      game.log.push({ key: "log.absorb", params: { target: target.id, dmg: soak } })
+    }
+    target.hp = Math.max(0, target.hp - (dmg - soak))
     if (target.hp > 0) return false
     target.stance = "none"
     target.intent = null

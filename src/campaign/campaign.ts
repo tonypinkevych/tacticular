@@ -5,7 +5,7 @@ import type { Game } from "../mission/game"
 import { type Conditions, NAMES } from "../mission/mission"
 import { CLASSES, type ClassId, PROFILES } from "../units/profiles"
 import type { Recruit, Unit } from "../units/unit"
-import { rankable, type Soldier } from "./soldier"
+import { kit, rankable, type Soldier } from "./soldier"
 import { PLACES, place, type Region, type RegionId } from "./world"
 
 /** How many regions the player must free to win. */
@@ -260,8 +260,10 @@ export class Campaign {
     this.research = { tech, ready: this.week + RESEARCH_WEEKS }
   }
 
+  /** Puts a rank point in a skill; a skill outside the kit, as an old save may name, is skipped. */
   rank(id: string, skill: AbilityId): void {
     const s = this.roster.find((x) => x.id === id)
+    if (s && !kit(s).includes(skill)) return
     must(!!s && rankable(s, skill), "rank")
     s!.ranks = { ...s!.ranks, [skill]: (s!.ranks?.[skill] ?? 0) + 1 }
   }

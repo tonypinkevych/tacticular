@@ -2,6 +2,13 @@ import type { Game } from "../../src/mission/game"
 import { Illegal } from "../../src/mission/orders"
 import { enemy, find, open, reseed, setup, squad } from "../fixture"
 
+/** A Brute's phase with a soldier 5 tiles away. */
+const brute = (): Game => {
+  const g = setup(open(10, 3), [squad("v", "vanguard", { x: 5, y: 1 }), enemy("o", "ogre", { x: 0, y: 1 })])
+  g.phase = "enemy"
+  find(g, "o").ap = 2
+  return g
+}
 const hits = (g: Game) => g.log.filter((e) => e.key === "log.hit" || e.key === "log.crit" || e.key === "log.miss")
 
 describe("action points", () => {
@@ -66,18 +73,16 @@ describe("reactions", () => {
 })
 
 describe("abilities and items", () => {
-  test("heal restores HP and sets the cooldown", () => {
+  test("a skill spends 1 AP and sets its cooldown", () => {
     const g = setup(open(6, 3), [
       squad("c", "cleric", { x: 0, y: 0 }),
       squad("v", "vanguard", { x: 1, y: 0 }),
       enemy("e", "orc", { x: 5, y: 2 }),
     ])
-    find(g, "v").hp = 3
-    const a = g.apply({ type: "ability", unit: "c", ability: "heal", target: "v" })
-    expect(find(a, "v").hp).toBeGreaterThanOrEqual(7)
-    expect(find(a, "c").cooldowns.heal).toBe(2)
+    const a = g.apply({ type: "ability", unit: "c", ability: "ward", target: "v" })
+    expect(find(a, "c").cooldowns.ward).toBe(3)
     expect(find(a, "c").ap).toBe(1)
-    expect(() => a.apply({ type: "ability", unit: "c", ability: "heal", target: "v" })).toThrow("cooldown")
+    expect(() => a.apply({ type: "ability", unit: "c", ability: "ward", target: "v" })).toThrow("cooldown")
   })
   test("cooldowns go down at round end", () => {
     const g = setup(open(6, 3), [
@@ -85,9 +90,9 @@ describe("abilities and items", () => {
       squad("v", "vanguard", { x: 1, y: 0 }),
       enemy("e", "orc", { x: 5, y: 2 }),
     ])
-    let a = g.apply({ type: "ability", unit: "c", ability: "heal", target: "v" })
+    let a = g.apply({ type: "ability", unit: "c", ability: "ward", target: "v" })
     a = a.apply({ type: "endTurn" }).apply({ type: "endTurn" })
-    expect(find(a, "c").cooldowns.heal).toBe(1)
+    expect(find(a, "c").cooldowns.ward).toBe(2)
     expect(a.round).toBe(2)
     expect(find(a, "c").ap).toBe(2)
   })
@@ -131,25 +136,23 @@ describe("abilities and items", () => {
     throw new Error("no failed save in 50 seeds")
   })
   test("charge moves next to the target and attacks", () => {
-    const g = setup(open(10, 3), [squad("v", "vanguard", { x: 0, y: 1 }), enemy("e", "orc", { x: 5, y: 1 })])
-    const a = g.apply({ type: "ability", unit: "v", ability: "charge", target: "e" })
-    expect(find(a, "v").pos.x).toBe(4)
+    const g = brute()
+    const a = g.apply({ type: "ability", unit: "o", ability: "charge", target: "v" })
+    expect(find(a, "o").pos.x).toBe(4)
     expect(hits(a)).toHaveLength(1)
-    expect(find(a, "v").ap).toBe(0)
+    expect(find(a, "o").ap).toBe(0)
   })
 })
 
 describe("charge landing", () => {
   test("charge lands on the chosen tile next to the target", () => {
-    const g = setup(open(10, 3), [squad("v", "vanguard", { x: 0, y: 1 }), enemy("e", "orc", { x: 5, y: 1 })])
-    const a = g.apply({ type: "ability", unit: "v", ability: "charge", target: "e", at: { x: 4, y: 0 } })
-    expect(find(a, "v").pos).toEqual({ x: 4, y: 0 })
+    const a = brute().apply({ type: "ability", unit: "o", ability: "charge", target: "v", at: { x: 4, y: 0 } })
+    expect(find(a, "o").pos).toEqual({ x: 4, y: 0 })
   })
   test("a landing tile not next to the target is illegal", () => {
-    const g = setup(open(10, 3), [squad("v", "vanguard", { x: 0, y: 1 }), enemy("e", "orc", { x: 5, y: 1 })])
-    expect(() => g.apply({ type: "ability", unit: "v", ability: "charge", target: "e", at: { x: 2, y: 1 } })).toThrow(
-      "place",
-    )
+    expect(() =>
+      brute().apply({ type: "ability", unit: "o", ability: "charge", target: "v", at: { x: 2, y: 1 } }),
+    ).toThrow("place")
   })
 })
 

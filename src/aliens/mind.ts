@@ -206,9 +206,10 @@ export class Mind {
     return this.watch(u)
   }
 
-  /** Overwatch when the weapon can fire, else nothing. */
+  /** Overwatch when the weapon can fire and the unit is not suppressed, else nothing. */
   private watch(u: Unit): Action | null {
-    return WEAPONS[u.weapon].ammo === null || u.ammo > 0 ? { type: "overwatch", unit: u.id } : null
+    const loaded = WEAPONS[u.weapon].ammo === null || u.ammo > 0
+    return loaded && !u.has("suppressed") ? { type: "overwatch", unit: u.id } : null
   }
 
   /** True when the unit is the unaware alien nearest to the evac zone. */
@@ -249,7 +250,8 @@ export class Mind {
    */
   aim(u: Unit): Action | null {
     const game = this.game
-    if (!u.alive() || u.allegiance() !== "enemy" || (u.intent && u.intent.type !== "shot")) return null
+    if (!u.alive() || u.has("stasis") || u.allegiance() !== "enemy" || (u.intent && u.intent.type !== "shot"))
+      return null
     const known = this.known(u)
     const tiles = [u.pos, ...[...game.reach(u, u.mobility).cost.keys()].map(pointOf).filter((p) => !game.unitAt(p))]
     let best: { at: Point; target: string; value: number } | null = null
@@ -338,7 +340,7 @@ export class Mind {
         .filter((x) => game.orders.canTarget(u, x) && distance(u.pos, x.pos) <= span(u, "dominate") && x.soldier())
         .sort((a, b) => b.hp - a.hp)[0]
       if (t) {
-        const value = failChance(t.will, 10 + u.will, t.stance === "hunker" ? 1 : 0) * 12
+        const value = game.abilities.immune(t) ? 0 : failChance(t.will, 10 + u.will, game.abilities.resolve(t)) * 12
         return { action: { type: "ability", unit: u.id, ability: "mark", target: t.id }, value }
       }
     }
@@ -357,8 +359,7 @@ export class Mind {
       const hunch = group && game.stealth.hunch(group)
       const goal = group?.target ?? (u.waited ? hunch : undefined)
       if (!beacon && goal) return this.search(u, goal, hunch)
-      if (u.ap > 0 && (WEAPONS[u.weapon].ammo === null || u.ammo > 0)) return { type: "overwatch", unit: u.id }
-      return null
+      return u.ap > 0 ? this.watch(u) : null
     }
     const attack = this.bestAttack(u, targets)
     const back = u.hp * 3 <= u.maxHp && !u.moved && !attack?.kill ? this.fallBack(u, targets) : null
@@ -388,7 +389,7 @@ export class Mind {
     const step = !attack && !u.moved && distance(u.pos, nearest.pos) > keep ? this.toward(u, nearest.pos) : null
     if (step) return step
     if (game.cover.covered(u.pos)) return { type: "hunker", unit: u.id }
-    return { type: "overwatch", unit: u.id }
+    return this.watch(u)
   }
 }
 

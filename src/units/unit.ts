@@ -12,16 +12,20 @@ export type StatusId =
   | "dominated"
   | "ward"
   | "exposed"
-  | "guarded"
   | "killzone"
   | "deployed"
   | "captive"
-  | "steady"
+  | "suppressed"
+  | "stasis"
+  | "poisoned"
+  | "running"
 
 export interface Status {
   id: StatusId
   rounds: number
   source?: string
+  /** The damage a Shield still absorbs. */
+  amount?: number
 }
 
 export type Stance = "none" | "overwatch" | "hunker"
@@ -80,6 +84,8 @@ export interface UnitData {
   stance: Stance
   statuses: Status[]
   cooldowns: Partial<Record<AbilityId, number>>
+  /** The uses of each skill spent in this mission. */
+  used: Partial<Record<AbilityId, number>>
   /** The rank of each skill; a skill at rank 0 cannot be used. */
   ranks: Partial<Record<AbilityId, number>>
   ult: number
@@ -117,6 +123,7 @@ export class Unit implements UnitData {
   stance!: Stance
   statuses!: Status[]
   cooldowns!: Partial<Record<AbilityId, number>>
+  used!: Partial<Record<AbilityId, number>>
   ranks!: Partial<Record<AbilityId, number>>
   ult!: number
   concealed!: boolean
@@ -166,6 +173,7 @@ export class Unit implements UnitData {
       stance: "none",
       statuses: [],
       cooldowns: {},
+      used: {},
       ranks: ranks ? { ...ranks } : Object.fromEntries(kit.map((a) => [a, 1])),
       ult: 0,
       concealed: side === "squad" || kind === "assassin",

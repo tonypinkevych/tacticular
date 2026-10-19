@@ -29,7 +29,10 @@ function Bar(props: { model: Model }) {
                   type="button"
                   class="slot"
                   aria-label={s().label}
-                  classList={{ active: m.armed()?.slot === s().id, ready: s().group === "ult" && !s().disabled }}
+                  classList={{
+                    active: m.armed()?.slot === s().id,
+                    ready: (s().group === "ult" && !s().disabled) || !!s().cue,
+                  }}
                   disabled={s().disabled}
                   onClick={() => m.press(s())}
                   onMouseEnter={() => m.setHint(s())}

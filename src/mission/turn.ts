@@ -1,3 +1,4 @@
+import { power, span } from "../combat/abilities"
 import { WEAPONS } from "../combat/weapons"
 import { distance, pointOf } from "../map/point"
 import type { Side, Unit } from "../units/unit"
@@ -11,6 +12,7 @@ export class Turn {
   end(): void {
     const game = this.game
     if (game.phase === "squad") {
+      this.mend()
       this.start("enemy")
       return
     }
@@ -29,7 +31,7 @@ export class Turn {
         u.ap = 0
         continue
       }
-      u.ap = u.has("captive") ? 0 : 2
+      u.ap = u.has("captive") || u.has("stasis") ? 0 : 2
       u.moved = false
       u.waited = u.stance === "overwatch" || u.stance === "hunker"
       u.stance = "none"
@@ -40,7 +42,33 @@ export class Turn {
       }
       advance(u)
     }
+    if (side === "squad") this.shade()
     game.stealth.observe()
+  }
+
+  /** Field medic: each downed soldier in reach of a standing Medic gets up. */
+  private mend(): void {
+    const game = this.game
+    for (const m of game.units) {
+      if (!m.alive() || m.rank("medic") === 0 || m.allegiance() !== "squad") continue
+      for (const x of game.units) {
+        if (x.down === 0 || x.side !== m.side || distance(m.pos, x.pos) > span(m, "medic")) continue
+        x.hp = power(m, "medic")
+        x.down = 0
+        game.log.push({ key: "log.revive", params: { unit: m.id, target: x.id, amount: x.hp } })
+      }
+    }
+  }
+
+  /** Shadow: a Scout that no alien sees is concealed again. */
+  private shade(): void {
+    const game = this.game
+    for (const u of game.units) {
+      if (!u.alive() || u.concealed || u.rank("shadow") === 0) continue
+      if (game.units.some((e) => e.alive() && e.foe(u) && game.sight.sees(e, u.pos))) continue
+      u.concealed = true
+      game.log.push({ key: "log.shadow", params: { unit: u.id } })
+    }
   }
 
   /**
@@ -120,6 +148,10 @@ export class Turn {
       if (u.statuses.some((s) => s.id === "burning")) {
         game.log.push({ key: "log.burning", params: { unit: u.id, dmg: 2 } })
         game.combat.hurt(u, 2)
+      }
+      if (u.alive() && u.has("poisoned")) {
+        game.log.push({ key: "log.poisoned", params: { unit: u.id, dmg: 1 } })
+        game.combat.hurt(u, 1)
       }
       u.statuses = u.statuses.map((s) => ({ ...s, rounds: s.rounds - 1 })).filter((s) => s.rounds > 0)
       for (const id of Object.keys(u.cooldowns) as (keyof typeof u.cooldowns)[]) {

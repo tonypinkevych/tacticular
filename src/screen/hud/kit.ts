@@ -1,4 +1,4 @@
-import { type AbilityId, power, span } from "../../combat/abilities"
+import { ABILITIES, type AbilityId, power, ranked, span } from "../../combat/abilities"
 import { canReach, type Odds } from "../../combat/combat"
 import { failChance } from "../../combat/dice"
 import { WEAPONS, type WeaponId } from "../../combat/weapons"
@@ -9,8 +9,8 @@ import type { Action } from "../../mission/orders"
 import { PROFILES } from "../../units/profiles"
 import { ULT, type Unit } from "../../units/unit"
 
-/** Keys of the bar: the weapon on 1, skills on 2 3 4, the ultimate on 5, then Reload, Overwatch, Hunker, Use and Door with letter aliases. */
-const SKILL_KEYS = "234"
+/** Keys of the bar: the weapon on 1, skills on 2 3, the ultimate on 5, then Reload, Overwatch, Hunker, Use and Door with letter aliases. */
+const SKILL_KEYS = "23"
 const ULT_KEY = "5"
 const ROUSE_KEY = "-"
 const STANCE_KEYS = {
@@ -36,6 +36,8 @@ export interface Slot {
   badge: string
   disabled: boolean
   aim: Aim
+  /** True when a pay-off skill has its target on the board. */
+  cue?: boolean
 }
 
 /** The action the player has picked and not yet confirmed. */
@@ -53,19 +55,16 @@ const UNIT_ABILITIES: AbilityId[] = [
   "heal",
   "fear",
   "rouse",
-  "shove",
-  "rally",
-  "guard",
   "hook",
-  "tag",
-  "swap",
   "ward",
-  "cripple",
+  "headshot",
+  "backstab",
+  "stasis",
 ]
-const TILE_ABILITIES: AbilityId[] = ["grapple", "rocket", "smoke", "barricade", "mine", "saturation", "turret", "flash"]
-/** Abilities that target an ally; Swap targets anyone; every other unit-target action targets a foe. */
-const FRIENDLY: AbilityId[] = ["heal", "rally", "rouse", "guard", "ward"]
-const ANY: AbilityId[] = ["swap"]
+const TILE_ABILITIES: AbilityId[] = ["grapple", "rocket", "mine", "saturation", "turret", "flash", "breach"]
+/** Abilities that target an ally; Stasis targets anyone; every other unit-target action targets a foe. */
+const FRIENDLY: AbilityId[] = ["heal", "rouse", "ward"]
+const ANY: AbilityId[] = ["stasis"]
 
 const dice = (w: WeaponId): string => {
   const d = WEAPONS[w].dice
@@ -122,12 +121,16 @@ export class Kit {
         badge,
         disabled: none || blocked,
         aim: UNIT_ABILITIES.includes(a) ? "unit" : TILE_ABILITIES.includes(a) ? "tile" : "none",
+        cue: !none && !blocked && this.cue(a),
       })
-    p.abilities.forEach((a, i) => {
-      if (u.rank(a) === 0) return
-      const cd = u.cooldowns[a] ?? 0
-      skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : "", cd > 0)
-    })
+    p.abilities
+      .filter((a) => !ABILITIES[a].passive)
+      .forEach((a, i) => {
+        if (u.rank(a) === 0) return
+        const cd = u.cooldowns[a] ?? 0
+        const left = ABILITIES[a].uses ? ranked(ABILITIES[a].uses!, u.rank(a)) - (u.used[a] ?? 0) : null
+        skill(a, "skill", SKILL_KEYS[i] ?? "", cd ? `⟳${cd}` : left !== null ? `${left}` : "", cd > 0 || left === 0)
+      })
     if (game.units.some((x) => x.alive() && x.side === "squad" && x.allegiance() === "enemy") && u.side === "squad")
       skill("rouse", "skill", ROUSE_KEY, "", false)
     if (p.ultimate && u.rank(p.ultimate) > 0)
@@ -141,6 +144,21 @@ export class Kit {
       out.push({ ...s, group: "stance", key: STANCE_KEYS[id][0], alias: STANCE_KEYS[id][1] })
     }
     return out
+  }
+
+  /** True when the skill's pay-off is on the board: a flanked alien for Headshot, a close one for Backstab, a hurt ally for Medkit. */
+  private cue(a: AbilityId): boolean {
+    const { game, unit: u } = this
+    if (a === "headshot") return this.sights().some((c) => c.unit && c.flanked)
+    if (a === "backstab")
+      return this.sights().some((c) => c.unit && adjacent(u.pos, c.at) && (u.concealed || c.flanked))
+    if (a !== "heal") return false
+    return game.units.some(
+      (x) =>
+        x.allegiance() === "squad" &&
+        distance(u.pos, x.pos) <= span(u, "heal") &&
+        (x.down > 0 || x.wounded() || x.has("poisoned")),
+    )
   }
 
   /** The foes the soldier could target from a tile, its own by default, best chance first, then the barrels its gun reaches. */
@@ -193,36 +211,31 @@ export class Kit {
       case "hospital":
         return within(0, span(u, "hospital"))
       case "turret":
-      case "heal":
       case "rouse":
-      case "shove":
-      case "barricade":
-      case "cripple":
+      case "backstab":
         return around()
+      case "heal":
+        return span(u, "heal") > 1 ? within(0, span(u, "heal")) : around()
       case "ward":
         return within(0, span(u, "ward"))
       case "flash":
         return within(1, span(u, "flash"))
-      case "tag":
-        return within(1, span(u, "tag"))
-      case "guard":
-        return within(1, span(u, "guard"))
       case "hook":
         return within(1, span(u, "hook"))
-      case "swap":
-        return within(1, span(u, "swap"))
+      case "stasis":
+        return within(1, span(u, "stasis"))
+      case "breach":
+        return within(1, span(u, "breach"))
+      case "headshot":
+        return within(u.arms().min, u.arms().max)
       case "rocket":
         return within(0, span(u, "rocket"))
-      case "smoke":
-        return within(0, span(u, "smoke"))
       case "mine":
         return within(1, span(u, "mine"))
       case "grapple":
         return new Set(
           [...within(1, span(u, "grapple"))].filter((k) => ["roof", "ridge"].includes(game.tile(pointOf(k)))),
         )
-      case "rally":
-        return within(1, span(u, "rally"))
       case "fear":
         return within(0, span(u, "fear"))
       case "volley":
@@ -247,20 +260,17 @@ export class Kit {
     if (a === "heal") {
       const near = game.units.filter(
         (x) =>
-          (x.down > 0 || (x.alive() && x.hp < x.maxHp)) && x.allegiance() === "squad" && distance(u.pos, x.pos) <= 1,
+          (x.down > 0 || (x.alive() && x.hp < x.maxHp)) &&
+          x.allegiance() === "squad" &&
+          distance(u.pos, x.pos) <= span(u, "heal"),
       )
       return near.sort((x, y) => x.hp / x.maxHp - y.hp / y.maxHp)[0]?.id ?? null
-    }
-    if (a === "guard") return friends.filter((x) => x !== u).sort((x, y) => x.hp - y.hp)[0]?.id ?? null
-    if (a === "rally") {
-      const near = friends.filter((x) => x !== u && distance(u.pos, x.pos) <= span(u, "rally") && x.ap < 3)
-      return near.sort((x, y) => x.ap - y.ap)[0]?.id ?? null
     }
     if (a === "ward") {
       const near = friends.filter((x) => distance(u.pos, x.pos) <= span(u, "ward") && !x.has("ward"))
       return near.sort((x, y) => x.hp - y.hp)[0]?.id ?? null
     }
-    if (a === "shove" || a === "cripple") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
+    if (a === "backstab") return foes.find((e) => adjacent(u.pos, e.pos))?.id ?? null
     if (a === "rouse")
       return game.units.find((x) => x.side === "squad" && x.has("dominated") && distance(u.pos, x.pos) <= 1)?.id ?? null
     const reachable = foes.filter((e) => game.orders.canTarget(u, e))
@@ -357,9 +367,13 @@ export class Kit {
       const from = u.at(aimed.at)
       return { kind: "attack", label: t("ability.charge"), target, odds: game.combat.odds(from, target) }
     }
+    if (kind === "ability" && (id === "headshot" || id === "backstab")) {
+      const shot = id === "headshot" ? { certain: true, bonus: power(u, id) } : { double: true }
+      return { kind: "attack", label: t(`ability.${id}`), target, odds: game.combat.odds(u, target, shot) }
+    }
     if (kind === "ability" && (id === "fear" || id === "dread" || id === "dominate")) {
       const dc = 10 + u.will
-      const edge = target.stance === "hunker" ? 1 : 0
+      const edge = game.abilities.resolve(target)
       return {
         kind: "save",
         label: t(`ability.${id}`),
@@ -367,7 +381,7 @@ export class Kit {
         will: target.will,
         dc,
         edge,
-        chance: failChance(target.will, dc, edge),
+        chance: game.abilities.immune(target) ? 0 : failChance(target.will, dc, edge),
       }
     }
     return null

@@ -43,8 +43,8 @@ describe("a controlled alien", () => {
     expect(new Kit(h, v).retarget(shot, e.pos).target).toBe("e")
     expect(new Kit(h, v).target("weapon:shotgun")).toBe("f")
   })
-  test("takes Guard", () => {
-    expect(new Kit(g, w).retarget({ slot: "ability:guard", target: null, at: null }, e.pos).target).toBe("e")
+  test("takes the Medic's Shield", () => {
+    expect(new Kit(g, c).retarget({ slot: "ability:ward", target: null, at: null }, e.pos).target).toBe("e")
   })
 })
 
@@ -116,5 +116,28 @@ describe("door", () => {
     })
     const far = squad("f", "rogue", { x: 4, y: 1 })
     expect(new Kit(setup(["#####", "#.+..", "#####"], [far]), far).slotFor("0")).toBeUndefined()
+  })
+})
+
+describe("cues", () => {
+  const cue = (g: ReturnType<typeof setup>, id: string, slot: string) =>
+    new Kit(g, g.units.find((u) => u.id === id)!).slots().find((s) => s.id === slot)?.cue
+  test("Headshot lights when a flanked alien is in reach, not when it stands in cover", () => {
+    const r = squad("r", "ranger", { x: 0, y: 0 })
+    expect(cue(setup(open(10, 2), [r, enemy("e", "orc", { x: 6, y: 0 })]), "r", "ability:headshot")).toBe(true)
+    const covered = setup(["......H.", "........"], [r.clone(), enemy("e", "orc", { x: 7, y: 0 })])
+    expect(cue(covered, "r", "ability:headshot")).toBe(false)
+  })
+  test("Backstab lights when the concealed Scout stands next to an alien", () => {
+    const g = setup(open(6, 2), [squad("g", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 1, y: 0 }, "unaware")])
+    expect(cue(g, "g", "ability:backstab")).toBe(true)
+    const far = setup(open(6, 2), [squad("g", "rogue", { x: 0, y: 0 }), enemy("e", "orc", { x: 4, y: 0 }, "unaware")])
+    expect(cue(far, "g", "ability:backstab")).toBe(false)
+  })
+  test("Medkit lights when an ally in reach is down, wounded or poisoned", () => {
+    const g = setup(open(6, 2), [squad("c", "cleric", { x: 0, y: 0 }), squad("v", "vanguard", { x: 1, y: 0 })])
+    expect(cue(g, "c", "ability:heal")).toBe(false)
+    g.units[1].give({ id: "poisoned", rounds: 3 })
+    expect(cue(g, "c", "ability:heal")).toBe(true)
   })
 })
