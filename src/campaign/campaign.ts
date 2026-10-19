@@ -102,7 +102,7 @@ export const CONTACT_COST = 4
 export const SCOUT_COST = 2
 export const ROSTER = 10
 const FEWEST = 3
-const START = 3
+const START = 4
 export const RESISTANCE = 2
 const SITES = 2
 const MOST_SITES = 3
@@ -144,8 +144,8 @@ export class Campaign {
   }
 
   /**
-   * A new campaign: a home region in contact, alien Strength 4–7 elsewhere, 2 alien sites away from home, 3 soldiers
-   * of 3 classes, and the first week's operations.
+   * A new campaign: a home region in contact, alien Strength 4–7 elsewhere, 2 alien sites away from home, 4 soldiers
+   * of 4 classes, and the first week's operations.
    */
   static start(seed: number, goal: Goal): Campaign {
     const c = new Campaign(seed, goal)

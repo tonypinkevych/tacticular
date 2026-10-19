@@ -28,7 +28,7 @@ describe("chronicle", () => {
   test("choices are signed events, and opening the store again replays the campaign", () => {
     const { c, store } = started()
     c.choose({ type: "recruit", kind: "ranger" })
-    const events = JSON.parse(store.raw.get("tacticular.squad")!)
+    const events = JSON.parse(store.raw.get("tacticular.field")!)
     expect(events).toHaveLength(2)
     expect(events.every(verifyEvent)).toBe(true)
     const again = Chronicle.open(store)
@@ -61,12 +61,12 @@ describe("chronicle", () => {
     game.phase = "lost"
     c.finish()
     expect(c.session).toBeNull()
-    expect(c.campaign?.roster).toHaveLength(0)
-    expect(Chronicle.open(store).campaign?.roster).toHaveLength(0)
+    expect(c.campaign?.roster).toHaveLength(1)
+    expect(Chronicle.open(store).campaign?.roster).toHaveLength(1)
   })
   test("a log that does not verify leaves no campaign", () => {
     const store = memory()
-    store.setItem("tacticular.squad", "[{}]")
+    store.setItem("tacticular.field", "[{}]")
     expect(Chronicle.open(store).campaign).toBeNull()
   })
 })

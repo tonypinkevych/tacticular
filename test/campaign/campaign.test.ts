@@ -19,12 +19,12 @@ const posted = (c: Campaign, kind: Op["kind"]) => {
   return c.ops.find((o) => o.kind === kind)!
 }
 describe("campaign", () => {
-  test("starts with one region in contact, two alien sites away from it, 3 soldiers of 3 classes and 2 posted ops", () => {
+  test("starts with one region in contact, two alien sites away from it, 4 soldiers of 4 classes and 2 posted ops", () => {
     const c = fresh()
     expect(c.regions.filter((r) => r.resistance > 0)).toHaveLength(1)
     expect(c.regions.filter((r) => r.site && r !== home(c))).toHaveLength(2)
-    expect(c.roster).toHaveLength(3)
-    expect(new Set(c.roster.map((s) => s.kind)).size).toBe(3)
+    expect(c.roster).toHaveLength(4)
+    expect(new Set(c.roster.map((s) => s.kind)).size).toBe(4)
     expect(c.ops.map((o) => o.region)).toEqual([home(c).id, home(c).id])
   })
   test("each week posts 3 operations once two regions are in contact, each with a difficulty from 1 to 4", () => {
@@ -152,15 +152,14 @@ describe("campaign", () => {
   test("a recruit costs Supplies and is of the class the player picks", () => {
     const c = fresh()
     c.play({ type: "recruit", kind: "engineer" })
-    expect(c.roster).toHaveLength(4)
-    expect(c.roster[3].kind).toBe("engineer")
+    expect(c.roster).toHaveLength(5)
+    expect(c.roster[4].kind).toBe("engineer")
     expect(c.supplies).toBe(10 - RECRUIT_COST)
   })
   test("a squad holds 3 until Squad size research, then 4", () => {
     const c = fresh()
     c.supplies = 50
     c.materials = 10
-    c.play({ type: "recruit", kind: "engineer" })
     expect(() => launch(c, c.ops[0], 4)).toThrow()
     c.play({ type: "research", tech: "squad" })
     c.play({ type: "week" })
@@ -173,10 +172,10 @@ describe("campaign", () => {
     const c = fresh()
     c.ops = []
     for (let i = 0; i < 4; i++) c.play({ type: "week" })
-    expect(c.roster).toHaveLength(3)
+    expect(c.roster).toHaveLength(4)
     c.region(home(c).id === "sa" ? "na" : "sa").free = true
     for (let i = 0; i < 4; i++) c.play({ type: "week" })
-    expect(c.roster).toHaveLength(4)
+    expect(c.roster).toHaveLength(5)
   })
   test("a soldier at 0 HP after a mission leaves the roster", () => {
     const c = fresh()
