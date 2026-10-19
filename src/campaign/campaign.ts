@@ -14,7 +14,7 @@ export type Goal = 3 | 5 | 8
 /** Where a campaign stands: on the world map, in a mission, or over. */
 export type Stage = "world" | "mission" | "won" | "lost"
 
-export type Tech = "weapons2" | "weapons3" | "armor2" | "armor3"
+export type Tech = "weapons2" | "weapons3" | "armor2" | "armor3" | "squad"
 
 export type OpKind = "intel" | "vip" | "relay" | "captain" | "defend" | "liberation"
 
@@ -72,7 +72,7 @@ export interface Note {
 /** One choice of the player; a campaign replays from its seed, its goal and its choices. */
 export type Choice =
   | { type: "contact"; region: RegionId }
-  | { type: "recruit" }
+  | { type: "recruit"; kind: ClassId }
   | { type: "research"; tech: Tech }
   | { type: "rank"; soldier: string; skill: AbilityId }
   | { type: "scout"; op: number }
@@ -93,6 +93,7 @@ export const TECHS: Record<Tech, { supplies: number; materials: number; needs?: 
   weapons3: { supplies: 20, materials: 8, needs: "weapons2" },
   armor2: { supplies: 10, materials: 4 },
   armor3: { supplies: 18, materials: 8, needs: "armor2" },
+  squad: { supplies: 16, materials: 6 },
 }
 
 export const RESEARCH_WEEKS = 2
@@ -100,9 +101,8 @@ export const RECRUIT_COST = 6
 export const CONTACT_COST = 4
 export const SCOUT_COST = 2
 export const ROSTER = 10
-export const SQUAD = 4
 const FEWEST = 3
-const START = 6
+const START = 3
 export const RESISTANCE = 2
 const SITES = 2
 const MOST_SITES = 3
@@ -144,8 +144,8 @@ export class Campaign {
   }
 
   /**
-   * A new campaign: a home region in contact, alien Strength 4–7 elsewhere, 2 alien sites away from home, 6 soldiers
-   * of 6 classes, and the first week's operations.
+   * A new campaign: a home region in contact, alien Strength 4–7 elsewhere, 2 alien sites away from home, 3 soldiers
+   * of 3 classes, and the first week's operations.
    */
   static start(seed: number, goal: Goal): Campaign {
     const c = new Campaign(seed, goal)
@@ -169,7 +169,7 @@ export class Campaign {
 
   play(choice: Choice): void {
     if (choice.type === "contact") this.contact(choice.region)
-    if (choice.type === "recruit") this.recruit()
+    if (choice.type === "recruit") this.recruit(choice.kind)
     if (choice.type === "research") this.study(choice.tech)
     if (choice.type === "rank") this.rank(choice.soldier, choice.skill)
     if (choice.type === "scout") this.scout(choice.op)
@@ -206,6 +206,11 @@ export class Campaign {
   /** The fewest soldiers an operation takes: 3, or the whole roster when it is smaller. */
   fewest(): number {
     return Math.min(FEWEST, this.roster.length)
+  }
+
+  /** The most soldiers an operation takes: 3, or 4 after the Squad size research. */
+  most(): number {
+    return this.techs.includes("squad") ? 4 : 3
   }
 
   freed(): number {
@@ -245,11 +250,11 @@ export class Campaign {
     this.region(id).resistance = 1
   }
 
-  /** Spends Supplies on a new soldier of a class the roster lacks when it can. */
-  recruit(): void {
+  /** Spends Supplies on a new soldier of a class. */
+  recruit(kind: ClassId): void {
     must(this.stage === "world" && this.supplies >= RECRUIT_COST && this.roster.length < ROSTER, "recruit")
     this.supplies -= RECRUIT_COST
-    this.roster.push(this.newcomer())
+    this.roster.push(this.soldier(kind))
   }
 
   /** Starts research when none runs and its cost and the tech it needs are there. */
@@ -281,12 +286,12 @@ export class Campaign {
     op.scouted = true
   }
 
-  /** Plays a posted operation now with 3 or 4 ready soldiers; one operation launches each week. */
+  /** Plays a posted operation now with a squad of ready soldiers; one operation launches each week. */
   launch(id: number, squad: string[]): void {
     const op = this.op(id)
     const ready = this.ready()
     must(this.stage === "world" && !this.launched, "launch")
-    must(squad.length >= this.fewest() && squad.length <= SQUAD && new Set(squad).size === squad.length, "squad")
+    must(squad.length >= this.fewest() && squad.length <= this.most() && new Set(squad).size === squad.length, "squad")
     must(
       squad.every((s) => ready.some((x) => x.id === s)),
       "squad",
@@ -405,8 +410,7 @@ export class Campaign {
     this.supplies += 10 + 2 * contacted + (this.bonus("supplies") ? 6 : 0)
     this.intel += 2 + (this.bonus("intel") ? 3 : 0)
     if (this.bonus("materials")) this.materials += 2
-    for (let i = this.bonus("recruits") ? 2 : 1; i > 0 && this.roster.length < ROSTER; i--)
-      this.roster.push(this.newcomer())
+    if (this.bonus("recruits") && this.roster.length < ROSTER) this.roster.push(this.newcomer())
     if (this.bonus("delay")) this.project = Math.max(0, this.project - 1)
     const held = this.regions.filter((r) => !r.free)
     let points = held.length

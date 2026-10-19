@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from "solid-js"
-import { type Op, SCOUT_COST, SQUAD } from "../../campaign/campaign"
+import { type Op, SCOUT_COST } from "../../campaign/campaign"
 import { t } from "../../i18n/strings"
 import type { Expedition } from "../expedition"
 import { Soldier } from "./soldier"
@@ -15,12 +15,12 @@ export function Operation(props: { expedition: Expedition; op: Op; onDone: () =>
   const ready = () => [...c().ready()].sort((a, b) => b.hp - a.hp)
   const [squad, setSquad] = createSignal<string[]>(
     ready()
-      .slice(0, SQUAD)
+      .slice(0, c().most())
       .map((s) => s.id),
   )
-  const ok = () => squad().length >= c().fewest() && squad().length <= SQUAD && !c().launched
+  const ok = () => squad().length >= c().fewest() && squad().length <= c().most() && !c().launched
   const toggle = (id: string) =>
-    setSquad((d) => (d.includes(id) ? d.filter((x) => x !== id) : d.length < SQUAD ? [...d, id] : d))
+    setSquad((d) => (d.includes(id) ? d.filter((x) => x !== id) : d.length < c().most() ? [...d, id] : d))
   return (
     <div class="orders">
       <p class="small">
@@ -28,7 +28,7 @@ export function Operation(props: { expedition: Expedition; op: Op; onDone: () =>
         {t(`penalty.${op().penalty ?? "none"}`)}
       </p>
       <div class="row">
-        <h3>{t("world.squad", { fewest: c().fewest() })}</h3>
+        <h3>{t("world.squad", { fewest: c().fewest(), most: c().most() })}</h3>
         <button type="button" disabled={squad().length === 0} onClick={() => setSquad([])}>
           {t("world.deselect")}
         </button>

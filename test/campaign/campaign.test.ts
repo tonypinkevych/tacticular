@@ -4,7 +4,7 @@ import { place } from "../../src/campaign/world"
 
 const fresh = (seed = 7, goal: 3 | 5 | 8 = 3) => Campaign.start(seed, goal)
 const home = (c: Campaign) => c.regions.find((r) => r.resistance > 0)!
-const squad = (c: Campaign, n = 4) =>
+const squad = (c: Campaign, n = 3) =>
   c
     .ready()
     .slice(0, n)
@@ -19,11 +19,12 @@ const posted = (c: Campaign, kind: Op["kind"]) => {
   return c.ops.find((o) => o.kind === kind)!
 }
 describe("campaign", () => {
-  test("starts with one region in contact, two alien sites away from it, 6 soldiers of 6 classes and 2 posted ops", () => {
+  test("starts with one region in contact, two alien sites away from it, 3 soldiers of 3 classes and 2 posted ops", () => {
     const c = fresh()
     expect(c.regions.filter((r) => r.resistance > 0)).toHaveLength(1)
     expect(c.regions.filter((r) => r.site && r !== home(c))).toHaveLength(2)
-    expect(new Set(c.roster.map((s) => s.kind)).size).toBe(6)
+    expect(c.roster).toHaveLength(3)
+    expect(new Set(c.roster.map((s) => s.kind)).size).toBe(3)
     expect(c.ops.map((o) => o.region)).toEqual([home(c).id, home(c).id])
   })
   test("each week posts 3 operations once two regions are in contact, each with a difficulty from 1 to 4", () => {
@@ -42,7 +43,7 @@ describe("campaign", () => {
       c.play({ type: "week" })
     }
   })
-  test("a squad of 3 or 4 ready soldiers launches a posted operation at once, and only one each week", () => {
+  test("a squad of 3 ready soldiers launches a posted operation at once, and only one each week", () => {
     const c = fresh()
     const [op, other] = c.ops
     expect(() => c.play({ type: "launch", op: op.id, squad: squad(c, 2) })).toThrow()
@@ -93,7 +94,7 @@ describe("campaign", () => {
     expect(home(c).resistance).toBe(RESISTANCE)
     c.play({ type: "week" })
     const lib = c.ops.find((o) => o.kind === "liberation")!
-    launch(c, lib, 4)
+    launch(c, lib)
     expect(c.conditions().goal).toBe("warchief")
     c.play({ type: "finish", result: win(c, lib) })
     expect(c.stage).toBe("won")
@@ -148,11 +149,34 @@ describe("campaign", () => {
     expect(c.region(near).resistance).toBe(1)
     expect(c.intel).toBe(intel - CONTACT_COST)
   })
-  test("a recruit costs Supplies", () => {
+  test("a recruit costs Supplies and is of the class the player picks", () => {
     const c = fresh()
-    c.play({ type: "recruit" })
-    expect(c.roster).toHaveLength(7)
+    c.play({ type: "recruit", kind: "engineer" })
+    expect(c.roster).toHaveLength(4)
+    expect(c.roster[3].kind).toBe("engineer")
     expect(c.supplies).toBe(10 - RECRUIT_COST)
+  })
+  test("a squad holds 3 until Squad size research, then 4", () => {
+    const c = fresh()
+    c.supplies = 50
+    c.materials = 10
+    c.play({ type: "recruit", kind: "engineer" })
+    expect(() => launch(c, c.ops[0], 4)).toThrow()
+    c.play({ type: "research", tech: "squad" })
+    c.play({ type: "week" })
+    c.play({ type: "week" })
+    expect(c.most()).toBe(4)
+    launch(c, c.ops[0], 4)
+    expect(c.conditions().squad).toHaveLength(4)
+  })
+  test("no free soldier comes in a month; a free South America brings one", () => {
+    const c = fresh()
+    c.ops = []
+    for (let i = 0; i < 4; i++) c.play({ type: "week" })
+    expect(c.roster).toHaveLength(3)
+    c.region(home(c).id === "sa" ? "na" : "sa").free = true
+    for (let i = 0; i < 4; i++) c.play({ type: "week" })
+    expect(c.roster).toHaveLength(4)
   })
   test("a soldier at 0 HP after a mission leaves the roster", () => {
     const c = fresh()

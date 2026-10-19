@@ -17,6 +17,7 @@ import { Pips } from "./pips"
 import { Popup } from "./popup"
 import { Profile } from "./profile"
 import { Recap, say } from "./recap"
+import { Recruit } from "./recruit"
 import { Region } from "./region"
 import { Research } from "./research"
 import { Soldier } from "./soldier"
@@ -245,24 +246,7 @@ export function World(props: { expedition: Expedition }) {
         </Show>
         <Show when={pane()?.kind === "recruit"}>
           <Popup title={t("world.recruitTitle")} onClose={close}>
-            <p class="small">{t("world.recruitInfo")}</p>
-            <div class="row">
-              <span class="spacer" />
-              <button type="button" onClick={close}>
-                {t("ui.close")}
-              </button>
-              <button
-                type="button"
-                class="primary"
-                onClick={() => {
-                  x.choose({ type: "recruit" })
-                  close()
-                }}
-              >
-                <Icon glyph={ICONS["world:supplies"]} color={css(OCHRE)} class="icon" />
-                {RECRUIT_COST} · {t("ui.confirm")}
-              </button>
-            </div>
+            <Recruit expedition={x} onDone={close} />
           </Popup>
         </Show>
         <Show when={pane()?.kind === "log"}>
