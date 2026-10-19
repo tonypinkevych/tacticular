@@ -17,6 +17,11 @@ const squad = (c: Campaign, n = 4) =>
     .ready()
     .slice(0, n)
     .map((s) => s.id)
+const launch = (c: Campaign, op: Op, n = 3) => {
+  c.play({ type: "send", op: op.id, squad: squad(c, n) })
+  c.play({ type: "week" })
+  c.play({ type: "launch", op: op.id })
+}
 const win = (c: Campaign, op: Op) => ({
   won: true,
   hp: Object.fromEntries(op.squad.map((id) => [id, c.roster.find((s) => s.id === id)!.hp])),
@@ -45,14 +50,24 @@ describe("campaign", () => {
     expect(c.roster).toHaveLength(7)
     expect(c.supplies).toBe(10 - RECRUIT_COST)
   })
-  test("a squad of 3 or 4 ready soldiers is sent with 1–3 weeks of prep before the expiry, and is away", () => {
+  test("a squad of 3 or 4 ready soldiers is sent before the operation's last week, and is away", () => {
     const c = fresh()
     const op = c.ops[0]
-    expect(() => c.play({ type: "send", op: op.id, squad: squad(c, 2), prep: 1 })).toThrow()
-    expect(() => c.play({ type: "send", op: op.id, squad: squad(c), prep: op.expires - c.week + 2 })).toThrow()
-    c.play({ type: "send", op: op.id, squad: squad(c), prep: 2 })
-    expect(op.launch).toBe(c.week + 1)
+    expect(() => c.play({ type: "send", op: op.id, squad: squad(c, 2) })).toThrow()
+    c.play({ type: "send", op: op.id, squad: squad(c) })
+    expect(op.sent).toBe(c.week)
     expect(c.ready()).toHaveLength(2)
+    const last = c.ops[1]
+    last.expires = c.week
+    expect(() => c.play({ type: "send", op: last.id, squad: squad(c, 2) })).toThrow()
+  })
+  test("a sent squad is called back and the operation is open again", () => {
+    const c = fresh()
+    const op = c.ops[0]
+    c.play({ type: "send", op: op.id, squad: squad(c) })
+    c.play({ type: "cancel", op: op.id })
+    expect([op.sent, op.squad]).toEqual([null, []])
+    expect(c.ready()).toHaveLength(6)
   })
   test("a week with nothing to launch moves the world on and the Project by 1", () => {
     const c = fresh()
@@ -61,12 +76,15 @@ describe("campaign", () => {
     expect(c.week).toBe(2)
     expect(c.project).toBe(1)
   })
-  test("a sent operation launches at the week's end; a win pays it, gives XP and a week of rest", () => {
+  test("a sent operation is ready after a week and Launch plays it at once; a win pays it, gives XP and rest", () => {
     const c = fresh()
     const op = c.ops.find((o) => o.kind === "intel")!
-    c.play({ type: "send", op: op.id, squad: squad(c, 3), prep: 1 })
+    c.play({ type: "send", op: op.id, squad: squad(c, 3) })
+    expect(() => c.play({ type: "launch", op: op.id })).toThrow()
     const intel = c.intel
     c.play({ type: "week" })
+    expect(c.stage).toBe("world")
+    c.play({ type: "launch", op: op.id })
     expect(c.stage).toBe("mission")
     expect(c.conditions().goal).toBe("intel")
     const sent = op.squad
@@ -76,27 +94,45 @@ describe("campaign", () => {
     expect(c.intel).toBe(intel + 4)
     expect(home(c).resistance).toBe(2)
     const back = c.roster.filter((s) => sent.includes(s.id))
-    expect(back.every((s) => s.xp === GOALS[1].xp && s.rest === 0)).toBe(true)
+    expect(back.every((s) => s.xp === GOALS[1].xp && s.rest === 1)).toBe(true)
     expect(c.roster.filter((s) => !sent.includes(s.id)).every((s) => s.xp === GOALS[1].xp / 4)).toBe(true)
+  })
+  test("End week waits while a ready operation is at its last week, until it is launched or called back", () => {
+    const c = fresh()
+    const op = c.ops[0]
+    c.play({ type: "send", op: op.id, squad: squad(c) })
+    while (c.week < op.expires) c.play({ type: "week" })
+    expect(c.due()).toBe(op)
+    expect(() => c.play({ type: "week" })).toThrow()
+    c.play({ type: "cancel", op: op.id })
+    expect(c.due()).toBeNull()
+    c.play({ type: "week" })
+    expect(c.ops).not.toContain(op)
   })
   test("a soldier at 0 HP after a mission leaves the roster", () => {
     const c = fresh()
     const op = c.ops[0]
-    c.play({ type: "send", op: op.id, squad: squad(c, 3), prep: 1 })
-    c.play({ type: "week" })
+    launch(c, op)
     const dead = op.squad[0]
     c.play({ type: "finish", result: { won: false, hp: { ...win(c, op).hp, [dead]: 0 } } })
     expect(c.roster.some((s) => s.id === dead)).toBe(false)
   })
-  test("infiltration: 1 week of prep with 4 brings more aliens and alarm; 3 weeks with 3 marks the groups", () => {
+  test("each week of waiting raises infiltration one tier up to 5: more aliens and alarm early, marked groups late", () => {
     const short = fresh()
-    short.play({ type: "send", op: short.ops[0].id, squad: squad(short, 4), prep: 1 })
-    short.play({ type: "week" })
+    launch(short, short.ops[0], 4)
     const long = fresh()
-    long.play({ type: "send", op: long.ops[0].id, squad: squad(long, 3), prep: 3 })
-    for (let i = 0; i < 3 && long.stage === "world"; i++) long.play({ type: "week" })
-    expect(short.conditions().groups).toBeGreaterThan(long.conditions().groups!)
+    const op = long.ops[0]
+    op.expires = long.week + 9
+    long.play({ type: "send", op: op.id, squad: squad(long, 4) })
+    const tiers: number[] = []
+    for (let i = 0; i < 5; i++) {
+      long.play({ type: "week" })
+      tiers.push(long.score(op))
+    }
+    long.play({ type: "launch", op: op.id })
+    expect(tiers).toEqual([2, 3, 4, 5, 5])
     expect(short.conditions().alarm).toBe(1)
+    expect(short.conditions().groups).toBeGreaterThan(long.conditions().groups!)
     expect(long.conditions().scouted).toBe(true)
   })
   test("a Liberation opens at full Resistance and low Strength; its win frees the region and wins goal 1", () => {
@@ -105,8 +141,7 @@ describe("campaign", () => {
     c.play({ type: "week" })
     const op = c.ops.find((o) => o.kind === "liberation")!
     expect(op).toBeDefined()
-    c.play({ type: "send", op: op.id, squad: squad(c), prep: 1 })
-    c.play({ type: "week" })
+    launch(c, op, 4)
     expect(c.conditions().goal).toBe("warchief")
     c.play({ type: "finish", result: win(c, op) })
     expect(c.stage).toBe("won")
@@ -138,8 +173,7 @@ describe("campaign", () => {
     c.play({ type: "week" })
     c.play({ type: "week" })
     expect(c.techs).toContain("armor2")
-    c.play({ type: "send", op: c.ops[0].id, squad: squad(c, 3), prep: 1 })
-    c.play({ type: "week" })
+    launch(c, c.ops[0])
     const s = c.conditions().squad![0]
     expect(s.hp).toBe(c.roster.find((x) => x.id === s.id)!.hp + 2)
   })

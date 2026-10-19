@@ -21,7 +21,7 @@ export type OpKind = "intel" | "vip" | "relay" | "captain" | "defend" | "liberat
 /** A timed alien effect on every mission: +1 group, +2 Force Level, or +1 alarm. */
 export type DarkEvent = "reinforced" | "elite" | "vigilant"
 
-/** An operation on the world map: open until it expires, then sent with a squad that launches it after its prep. */
+/** An operation on the world map: open until it expires; a squad sent to it infiltrates until it is launched. */
 export interface Op {
   id: number
   kind: OpKind
@@ -29,10 +29,8 @@ export interface Op {
   /** The last week it can launch. */
   expires: number
   squad: string[]
-  /** The week it launches, once sent. */
-  launch: number | null
-  /** The weeks of prep it was sent with. */
-  prep: number
+  /** The week its squad was sent. */
+  sent: number | null
   scouted: boolean
   /** The Dark Event a win ends. */
   event?: DarkEvent
@@ -58,7 +56,9 @@ export type Choice =
   | { type: "research"; tech: Tech }
   | { type: "rank"; soldier: string; skill: AbilityId }
   | { type: "scout"; op: number }
-  | { type: "send"; op: number; squad: string[]; prep: number }
+  | { type: "send"; op: number; squad: string[] }
+  | { type: "cancel"; op: number }
+  | { type: "launch"; op: number }
   | { type: "week" }
   | { type: "finish"; result: Result }
 
@@ -107,7 +107,6 @@ export class Campaign {
   force = 1
   project = 0
   event: { id: DarkEvent; until: number } | null = null
-  queue: number[] = []
   at: number | null = null
   report: Note[] = []
   made = 0
@@ -145,7 +144,9 @@ export class Campaign {
     if (choice.type === "research") this.study(choice.tech)
     if (choice.type === "rank") this.rank(choice.soldier, choice.skill)
     if (choice.type === "scout") this.scout(choice.op)
-    if (choice.type === "send") this.send(choice.op, choice.squad, choice.prep)
+    if (choice.type === "send") this.send(choice.op, choice.squad)
+    if (choice.type === "cancel") this.cancel(choice.op)
+    if (choice.type === "launch") this.launch(choice.op)
     if (choice.type === "week") this.end()
     if (choice.type === "finish") this.finish(choice.result)
   }
@@ -180,9 +181,24 @@ export class Campaign {
     return Math.min(FEWEST, this.roster.length)
   }
 
-  /** How well a squad infiltrates, 2–5: 1 plus its prep weeks, plus 1 for each soldier under 4 and the South Asia bonus. */
-  infiltration(squad: number, prep: number): number {
-    return Math.min(5, Math.max(2, 1 + prep + SQUAD - squad + (this.bonus("stealth") ? 1 : 0)))
+  /** How well a squad infiltrates, 2–5: 1 plus its weeks in, plus 1 for each soldier under 4 and the South Asia bonus. */
+  infiltration(squad: number, weeks: number): number {
+    return Math.min(5, Math.max(2, 1 + weeks + SQUAD - squad + (this.bonus("stealth") ? 1 : 0)))
+  }
+
+  /** The infiltration a sent operation has reached this week. */
+  score(op: Op): number {
+    return this.infiltration(op.squad.length, this.week - (op.sent ?? this.week))
+  }
+
+  /** True when the operation's squad has been in a week or more, so it can launch. */
+  launchable(op: Op): boolean {
+    return op.sent !== null && this.week > op.sent
+  }
+
+  /** A ready operation at its last week, which must launch or be called back before the week ends. */
+  due(): Op | null {
+    return this.ops.find((o) => this.launchable(o) && this.week >= o.expires) ?? null
   }
 
   freed(): number {
@@ -198,7 +214,7 @@ export class Campaign {
   conditions(): Conditions {
     const op = this.op(this.at ?? -1)
     const r = this.region(op.region)
-    const score = this.infiltration(op.squad.length, op.prep)
+    const score = this.score(op)
     const event = this.event?.id
     const base: Conditions = {
       squad: op.squad.map((id) => this.gear(this.roster.find((s) => s.id === id)!)),
@@ -253,33 +269,46 @@ export class Campaign {
   /** Spends Intel to mark the alien groups of an operation before it is sent. */
   scout(id: number): void {
     const op = this.op(id)
-    must(this.stage === "world" && op.launch === null && !op.scouted && this.intel >= SCOUT_COST, "scout")
+    must(this.stage === "world" && op.sent === null && !op.scouted && this.intel >= SCOUT_COST, "scout")
     this.intel -= SCOUT_COST
     op.scouted = true
   }
 
-  /** Sends 3 or 4 ready soldiers to an operation; it launches after 1–3 weeks of prep, before it expires. */
-  send(id: number, squad: string[], prep: number): void {
+  /** Sends 3 or 4 ready soldiers to an operation before its last week; they infiltrate until it launches. */
+  send(id: number, squad: string[]): void {
     const op = this.op(id)
     const ready = this.ready()
-    must(this.stage === "world" && op.launch === null && prep >= 1 && prep <= 3, "send")
-    must(this.week + prep - 1 <= op.expires, "send")
+    must(this.stage === "world" && op.sent === null && this.week < op.expires, "send")
     must(squad.length >= this.fewest() && squad.length <= SQUAD && new Set(squad).size === squad.length, "squad")
     must(
       squad.every((s) => ready.some((x) => x.id === s)),
       "squad",
     )
     op.squad = [...squad]
-    op.launch = this.week + prep - 1
-    op.prep = prep
+    op.sent = this.week
   }
 
-  /** Ends the week: the operations that launch now are played one by one, then the world moves on. */
+  /** Calls a squad back home; the operation is open again. */
+  cancel(id: number): void {
+    const op = this.op(id)
+    must(this.stage === "world" && op.sent !== null, "cancel")
+    op.squad = []
+    op.sent = null
+  }
+
+  /** Plays a ready operation now. */
+  launch(id: number): void {
+    const op = this.op(id)
+    must(this.stage === "world" && this.launchable(op), "launch")
+    this.at = id
+    this.stage = "mission"
+  }
+
+  /** Ends the week and moves the world on, unless a ready operation is at its last week. */
   end(): void {
-    must(this.stage === "world", "week")
+    must(this.stage === "world" && !this.due(), "week")
     this.report = []
-    this.queue = this.ops.filter((o) => o.launch === this.week).map((o) => o.id)
-    this.next()
+    this.turn()
   }
 
   /**
@@ -307,11 +336,10 @@ export class Campaign {
     if (result.won) this.reward(op, result)
     else if (op.kind === "defend") r.resistance = Math.max(0, r.resistance - 1)
     this.ops = this.ops.filter((o) => o !== op)
-    this.queue.shift()
     this.at = null
     if (this.freed() >= this.goal) this.stage = "won"
     else if (this.roster.length === 0) this.stage = "lost"
-    else this.next()
+    else this.stage = "world"
   }
 
   private reward(op: Op, result: Result): void {
@@ -342,18 +370,6 @@ export class Campaign {
       this.roster.push({ ...op.captive!, hp: Math.min(maxHp(op.captive!), captive), xp: 0, rest: 1 })
   }
 
-  /** Plays the next operation of the week, or moves the world on when none is left. */
-  private next(): void {
-    const id = this.queue[0]
-    if (id !== undefined) {
-      this.at = id
-      this.stage = "mission"
-      return
-    }
-    this.stage = "world"
-    this.turn()
-  }
-
   /** A new week: rest and healing, research, monthly income, the aliens' moves, expiries and new operations. */
   private turn(): void {
     this.week += 1
@@ -370,14 +386,14 @@ export class Campaign {
     this.project += 1
     this.force = Math.min(10, 1 + Math.floor((this.week - 1) / GOALS[this.goal].pace))
     if (this.event && this.week > this.event.until) this.event = null
-    for (const op of this.ops.filter((o) => o.launch === null && o.expires < this.week)) {
+    for (const op of this.ops.filter((o) => o.sent === null && o.expires < this.week)) {
       if (op.kind === "defend") {
         const r = this.region(op.region)
         r.resistance = Math.max(0, r.resistance - 1)
         this.note("week.haven", { region: r.id })
       }
     }
-    this.ops = this.ops.filter((o) => o.launch !== null || o.expires >= this.week)
+    this.ops = this.ops.filter((o) => o.sent !== null || o.expires >= this.week)
     this.spawn()
     if (this.project >= GOALS[this.goal].end) this.stage = "lost"
   }
@@ -438,10 +454,9 @@ export class Campaign {
       id: this.made,
       kind,
       region,
-      expires: this.week + weeks - 1,
+      expires: this.week + weeks,
       squad: [],
-      launch: null,
-      prep: 0,
+      sent: null,
       scouted: false,
       ...(event ? { event } : {}),
       ...(captive ? { captive } : {}),

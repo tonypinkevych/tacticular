@@ -40,8 +40,9 @@ describe("chronicle", () => {
       .campaign!.ready()
       .slice(0, 3)
       .map((s) => s.id)
-    c.choose({ type: "send", op: c.campaign!.ops[0].id, squad, prep: 1 })
+    c.choose({ type: "send", op: c.campaign!.ops[0].id, squad })
     c.choose({ type: "week" })
+    c.choose({ type: "launch", op: c.campaign!.ops[0].id })
     const sent = c.session?.game.units.filter((u) => u.side === "squad" && !u.has("captive")).map((u) => u.id)
     expect(sent).toEqual(squad)
     c.session?.act({ type: "endTurn" })
@@ -55,8 +56,9 @@ describe("chronicle", () => {
       .campaign!.ready()
       .slice(0, 3)
       .map((s) => s.id)
-    c.choose({ type: "send", op: c.campaign!.ops[0].id, squad, prep: 1 })
+    c.choose({ type: "send", op: c.campaign!.ops[0].id, squad })
     c.choose({ type: "week" })
+    c.choose({ type: "launch", op: c.campaign!.ops[0].id })
     const game = c.session!.game
     for (const u of game.units) if (u.side === "squad") u.hp = 0
     game.phase = "lost"

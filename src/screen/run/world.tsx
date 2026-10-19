@@ -28,9 +28,17 @@ export function World(props: { expedition: Expedition }) {
   const [op, setOp] = createSignal<number | null>(null)
   const [soldier, setSoldier] = createSignal<string | null>(null)
   const region = () => c().region(chosen() ?? home(c()))
-  const ops = () => [...c().ops].sort((a, b) => a.expires - b.expires)
+  const ops = () => [...c().ops].sort((a, b) => a.expires - b.expires).map((o) => ({ ...o }))
   const picked = () => c().ops.find((o) => o.id === op()) ?? null
-  const member = () => c().roster.find((s) => s.id === soldier()) ?? null
+  const roster = () => c().roster.map((s) => ({ ...s }))
+  const member = () => roster().find((s) => s.id === soldier()) ?? null
+  const end = () => {
+    const due = c().due()
+    if (due) {
+      setOp(due.id)
+      document.querySelector("#world .orders")?.scrollIntoView({ block: "nearest" })
+    } else x.choose({ type: "week" })
+  }
   const [menu, setMenu] = createSignal(false)
   const [help, setHelp] = createSignal(false)
   return (
@@ -48,7 +56,7 @@ export function World(props: { expedition: Expedition }) {
             {t("world.materials")} <b>{c().materials}</b>
           </span>
           <span class="muted">{t("world.goal", { freed: c().freed(), goal: c().goal })}</span>
-          <button type="button" class="primary" onClick={() => x.choose({ type: "week" })}>
+          <button type="button" class="primary" onClick={end}>
             {t("world.endWeek")}
           </button>
           <button type="button" classList={{ active: menu() }} onClick={() => setMenu(!menu())}>
@@ -115,14 +123,14 @@ export function World(props: { expedition: Expedition }) {
                 )}
               </For>
             </Show>
-            <Show when={picked()?.launch === null && picked()} keyed>
+            <Show when={picked()} keyed>
               {(o) => <Operation expedition={x} op={o} onDone={() => setOp(null)} />}
             </Show>
           </div>
           <div class="column">
             <h3>{t("world.soldiers")}</h3>
             <div class="soldiers narrow">
-              <For each={c().roster}>
+              <For each={roster()}>
                 {(s) => (
                   <Soldier
                     soldier={s}
@@ -203,11 +211,13 @@ function Card(props: { op: Op; campaign: Campaign; on: boolean; onClick: () => v
       <Show when={o().event}>
         <span class="small">{t("op.counter")}</span>
       </Show>
-      <span class="small muted">
-        {o().launch === null
-          ? t("world.expires", { week: o().expires })
-          : `${t("world.launches", { week: o().launch! })} · ${names().join(", ")}`}
-      </span>
+      <span class="small muted">{t("world.expires", { week: o().expires })}</span>
+      <Show when={o().sent !== null}>
+        <span class="small">
+          {props.campaign.launchable(o()) ? t("world.ready") : t("world.notReady", { week: o().sent! })} ·{" "}
+          {names().join(", ")}
+        </span>
+      </Show>
     </button>
   )
 }

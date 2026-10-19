@@ -29,9 +29,9 @@ const launch = (x: Expedition) => {
       .ready()
       .slice(0, 3)
       .map((s) => s.id),
-    prep: 1,
   })
   x.choose({ type: "week" })
+  x.choose({ type: "launch", op: c.ops[0].id })
 }
 
 describe("expedition", () => {
