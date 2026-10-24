@@ -181,6 +181,7 @@ export class Playback {
       case "log.miss": {
         const t = after.units.find((x) => x.id === target)
         const shooter = after.units.find((x) => x.id === id)
+        if (alien(id)) this.note(where(id), `${params.chance}%`, "note", 0.5)
         this.beats.push({ length: 0, start: () => this.cue(WEAPON[shooter?.kind ?? "grunt"]) })
         this.pose(id, alien(id) ? "attack" : this.units.get(id)?.state === "low" ? "lowShoot" : "shoot", 0.4, t?.at)
         const dmg = Number(params.dmg ?? 0)

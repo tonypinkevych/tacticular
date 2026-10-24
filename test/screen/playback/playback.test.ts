@@ -50,4 +50,13 @@ describe("playback", () => {
     expect(seen).toContain("g:death")
     expect(p.units.has("g")).toBe(false)
   })
+  test("an alien shot shows its hit chance over the alien first, and a soldier shot does not", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 2 })])
+    g.phase = "enemy"
+    const alien = run(g, { type: "shoot", unit: "g", target: "r" })
+    const chance = alien.after.log.at(-1)?.params.chance
+    expect(alien.seen.find((x) => x.startsWith("float:"))).toBe(`float:${chance}%`)
+    g.phase = "squad"
+    expect(run(g, { type: "shoot", unit: "r", target: "g" }).seen.some((x) => x.endsWith("%"))).toBe(false)
+  })
 })
