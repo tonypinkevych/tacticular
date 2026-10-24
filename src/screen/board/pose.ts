@@ -162,6 +162,8 @@ export function pose(kind: Kind, state: State, i: number): Pose {
     if (state === "hit") return { ...hit(f4), swell: 0.92 }
     return stand
   }
+  if (kind === "blade" && (state === "shoot" || state === "lowShoot" || state === "attack" || state === "skill"))
+    return slash(stand, f4, state === "skill")
   switch (state) {
     case "idle":
       return { ...stand, squash: [1, 0.985, 0.975, 0.985][f4], look: [0, 0, 1, 1][f4] }
@@ -282,5 +284,27 @@ function skill(kind: Kind, stand: Pose, aim: Pose, kick: (b: Pose, f: number) =>
     fk: f4,
     flash: f4 === 1,
     squash: [1, 1.04, 1.04, 1][f4],
+  }
+}
+
+/** A sword swing from above the head down past the front, with a step in; a lunge also dashes forward. */
+function slash(stand: Pose, f: number, lunge: boolean): Pose {
+  return {
+    ...stand,
+    gun: (
+      [
+        [2, -22],
+        [10, -16],
+        [12, -9],
+        [9, -11],
+      ] as Pt[]
+    )[f],
+    ga: [-125, -30, 35, 15][f],
+    lean: [-8, 14, 16, 6][f],
+    x: lunge ? [0, 4, 7, 7][f] : 0,
+    lift: lunge ? [1, 3, 1, 0][f] : 0,
+    fx: f === 1 ? "swipe" : lunge && f === 0 ? "dash" : null,
+    fk: f,
+    feet: [-2, 0, [0, 4, 4, 2][f], 0],
   }
 }

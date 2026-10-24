@@ -230,12 +230,6 @@ kbd {
   width: 64px;
   height: 64px;
 }
-.offer.on {
-  background: var(--panel);
-  color: var(--ink);
-  border-color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--ink);
-}
 .go {
   padding: 8px 24px;
 }
@@ -750,8 +744,12 @@ button.link {
   font-size: 11px;
 }
 .offer.on {
-  box-shadow: 5px 5px 0 var(--yellow);
-  border-width: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow:
+    inset 0 0 0 1px var(--ink),
+    5px 5px 0 var(--yellow);
 }
 .brief {
   border: 2px solid var(--ink);
