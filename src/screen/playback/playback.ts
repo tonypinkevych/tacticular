@@ -5,6 +5,7 @@ import type { Action } from "../../mission/orders"
 import type { Kind } from "../../units/profiles"
 import type { Side, Unit } from "../../units/unit"
 import { FRAMES, type State } from "../board/pose"
+import type { Cue } from "./sound"
 
 /** A unit as the board shows it now: where it stands between tiles, its sprite state and its facing. */
 export interface Shown {
@@ -47,6 +48,8 @@ export class Playback {
   bursts: Burst[] = []
   private beats: Beat[] = []
   private until = 0
+
+  constructor(private readonly cue: (cue: Cue) => void = () => {}) {}
 
   /** Shows a game at rest: every unit on its tile in its resting pose. */
   sync(game: Game, now: number): void {
@@ -135,6 +138,7 @@ export class Playback {
         s.state = state
         s.since = now
         s.walk = { from: { x: s.x, y: s.y }, path, start: now }
+        this.cue("step")
       },
     })
   }
@@ -152,10 +156,11 @@ export class Playback {
     })
   }
 
-  private note(at: () => Point | undefined, text: string, tone: Float["tone"], length = 0.05): void {
+  private note(at: () => Point | undefined, text: string, tone: Float["tone"], length = 0.05, cue?: Cue): void {
     this.beats.push({
       length,
       start: (now) => {
+        if (cue) this.cue(cue)
         const p = at()
         if (p) this.floats.push({ at: p, text, tone, since: now })
       },
@@ -175,17 +180,23 @@ export class Playback {
       case "log.crit":
       case "log.miss": {
         const t = after.units.find((x) => x.id === target)
+        const shooter = after.units.find((x) => x.id === id)
+        this.beats.push({ length: 0, start: () => this.cue(WEAPON[shooter?.kind ?? "grunt"]) })
         this.pose(id, alien(id) ? "attack" : this.units.get(id)?.state === "low" ? "lowShoot" : "shoot", 0.4, t?.at)
         const dmg = Number(params.dmg ?? 0)
+        const tone = key === "log.miss" ? "miss" : key === "log.crit" ? "crit" : "hit"
         this.note(
           where(target),
           key === "log.miss" ? "MISS" : key === "log.crit" ? `CRIT −${dmg}` : `−${dmg}`,
-          key === "log.miss" ? "miss" : key === "log.crit" ? "crit" : "hit",
+          tone,
+          0.05,
+          tone,
         )
         if (key !== "log.miss") this.pose(target, "hit", 0.3)
         break
       }
       case "log.dies":
+        this.beats.push({ length: 0, start: () => this.cue("death") })
         this.pose(id, "death", 0.6)
         break
       case "log.overwatch":
@@ -201,7 +212,7 @@ export class Playback {
       case "log.warcry":
       case "log.mark":
       case "log.run":
-        this.note(where(id), NAMES[key], "note")
+        this.note(where(id), NAMES[key], "note", 0.05, "skill")
         if (key !== "log.run") this.pose(id, "skill", 0.5)
         if (key === "log.grenade") this.blasts(before, after)
         break
@@ -211,6 +222,7 @@ export class Playback {
         this.beats.push({
           length: 0.4,
           start: (now) => {
+            this.cue("blast")
             for (const at of mark?.tiles ?? []) this.bursts.push({ at, since: now })
           },
         })
@@ -235,6 +247,7 @@ export class Playback {
         this.beats.push({
           length: 0.6,
           start: (now) => {
+            this.cue("drop")
             for (const u of after.units.filter((x) => !before.units.some((y) => y.id === x.id))) {
               this.units.set(u.id, {
                 id: u.id,
@@ -264,10 +277,22 @@ export class Playback {
     this.beats.push({
       length: 0.4,
       start: (now) => {
+        this.cue("blast")
         for (const at of changed) this.bursts.push({ at, since: now })
       },
     })
   }
+}
+
+const WEAPON: Record<Kind, Cue> = {
+  vanguard: "shotgun",
+  ranger: "rifle",
+  warden: "minigun",
+  cleric: "pistol",
+  grunt: "plasma",
+  commander: "plasma",
+  brute: "melee",
+  bomber: "blast",
 }
 
 const NAMES: Record<string, string> = {

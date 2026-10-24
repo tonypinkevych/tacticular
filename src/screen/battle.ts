@@ -7,6 +7,7 @@ import type { Game } from "../mission/game"
 import { type Action, Illegal } from "../mission/orders"
 import type { Unit } from "../units/unit"
 import { Playback } from "./playback/playback"
+import { Sound } from "./playback/sound"
 
 /** The tiles the board marks for the selected soldier. */
 export interface Zones {
@@ -31,7 +32,8 @@ export class Battle {
   readonly hovered: Accessor<Point | null>
   readonly banner: Accessor<boolean>
   readonly notice: Accessor<string | null>
-  readonly playback = new Playback()
+  readonly playback: Playback
+  readonly sound = new Sound()
   private readonly setGame: Setter<Game>
   private readonly select: Setter<string | null>
   private readonly arm: Setter<boolean>
@@ -51,6 +53,7 @@ export class Battle {
     ;[this.hovered, this.hover] = createSignal<Point | null>(null)
     ;[this.banner, this.setBanner] = createSignal(false)
     ;[this.notice, this.notify] = createSignal<string | null>(null)
+    this.playback = new Playback((cue) => this.sound.play(cue))
   }
 
   /** Shows the game at rest and selects the first soldier. */
@@ -147,6 +150,7 @@ export class Battle {
     if (!this.ready()) return
     this.thinking = true
     this.setBanner(true)
+    this.sound.play("turn")
     const start = performance.now()
     this.act({ type: "endTurn" })
     while (this.game().phase === "enemy") {

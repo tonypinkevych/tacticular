@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js"
+import { createSignal, For, Show } from "solid-js"
 import { EVERY } from "../../aliens/reinforcements"
 import { t } from "../../i18n/strings"
 import type { Battle } from "../battle"
@@ -8,6 +8,7 @@ import { Card } from "./card"
 /** The battle screen: the board in the middle, the squad left, the target and aliens right, actions below. */
 export function Hud(props: { battle: Battle; onNext: () => void }) {
   const b = props.battle
+  const [muted, setMuted] = createSignal(b.sound.muted)
   const g = () => b.game()
   const goal = () => {
     const x = g().goal
@@ -38,6 +39,9 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <span class="warn">{drop()}</span>
         <span class="grow" />
         <span>{t(`ui.phase.${g().phase}`)}</span>
+        <button type="button" class="mute" onClick={() => setMuted(b.sound.toggle())}>
+          {t(muted() ? "ui.soundOff" : "ui.soundOn")}
+        </button>
       </header>
       <aside class="left">
         <h2>{t("ui.squad")}</h2>
