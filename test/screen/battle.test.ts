@@ -17,27 +17,46 @@ describe("battle", () => {
   test("the first soldier is selected", () => {
     expect(start().selected()).toBe("r")
   })
-  test("a first click on a tile in reach plans the move and does not move", () => {
+  test("a click on a tile in reach moves the selected soldier", () => {
     const b = start()
-    b.click({ x: 3, y: 5 })
-    expect([b.game().unit("r").at, b.planned()]).toEqual([
-      { x: 3, y: 6 },
-      { x: 3, y: 5 },
-    ])
-  })
-  test("a second click on the planned tile moves the selected soldier", () => {
-    const b = start()
-    b.click({ x: 3, y: 5 })
     b.click({ x: 3, y: 5 })
     expect(b.game().unit("r").at).toEqual({ x: 3, y: 5 })
   })
-  test("two clicks on an alien in range shoot it", () => {
+  test("a click on an alien aims at it, and a second click shoots it", () => {
     const b = start()
     b.click({ x: 3, y: 1 })
+    expect([b.mode(), b.planned(), b.game().unit("r").ap]).toEqual(["shoot", { x: 3, y: 1 }, 2])
     b.click({ x: 3, y: 1 })
     expect(b.game().unit("r").ap).toBe(0)
   })
-  test("the route to the planned tile marks fire and the overwatch that fires on it", () => {
+  test("in Shoot a click on a target that is not aimed fires at once", () => {
+    const b = new Battle(
+      setup(open(), [
+        squad("r", "ranger", { x: 3, y: 6 }),
+        squad("w", "warden", { x: 5, y: 6 }),
+        enemy("g", "grunt", { x: 3, y: 1 }),
+        enemy("h", "grunt", { x: 6, y: 1 }),
+      ]),
+    )
+    b.begin(0)
+    b.choose("shoot")
+    b.click({ x: 6, y: 1 })
+    expect(b.game().unit("r").ap).toBe(0)
+  })
+  test("Shoot picked again fires at the aimed target", () => {
+    const b = start()
+    b.choose("shoot")
+    b.choose("shoot")
+    expect(b.game().unit("r").ap).toBe(0)
+  })
+  test("the skill picked again uses it on the aimed target", () => {
+    const b = start()
+    b.choose("skill")
+    expect(b.planned()).toEqual({ x: 3, y: 1 })
+    b.choose("skill")
+    expect(b.game().unit("r").ap).toBe(0)
+  })
+  test("the route to the tile under the cursor marks fire and the overwatch that fires on it", () => {
     const g = setup(
       ["........", "........", "........", "........", "........", "..lfl...", "........", "........"],
       [squad("v", "vanguard", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 0 })],
@@ -45,7 +64,7 @@ describe("battle", () => {
     g.unit("g").overwatch = true
     const b = new Battle(g)
     b.begin(0)
-    b.click({ x: 3, y: 4 })
+    b.point({ x: 3, y: 4 })
     expect(b.route()).toEqual({
       path: [
         { x: 3, y: 5 },

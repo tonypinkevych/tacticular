@@ -44,7 +44,7 @@ export class Battle {
   readonly selected: Accessor<string | null>
   readonly mode: Accessor<Mode>
   readonly hovered: Accessor<Point | null>
-  /** The tile of the action a first click planned; a second click on it carries the action out. */
+  /** The tile Shoot, the skill or Overwatch aims at; Confirm or a click on it carries the action out. */
   readonly planned: Accessor<Point | null>
   readonly banner: Accessor<boolean>
   readonly notice: Accessor<string | null>
@@ -113,21 +113,21 @@ export class Battle {
   }
 
   /**
-   * Picks an action of the bar. Shoot aims at the first target, and Overwatch waits for a confirm or a second
-   * pick. Picking the chosen action again goes back to moving.
+   * Picks an action of the bar. Shoot and the skill aim at the first target, and Overwatch at the soldier. Picking
+   * the chosen action again carries out what is aimed, or goes back to moving when nothing is.
    */
   choose(mode: Mode): void {
     const u = this.unit()
     if (!u || !this.ready()) return
-    if (mode === "overwatch" && this.mode() === "overwatch") {
-      this.confirm()
+    if (this.mode() === mode) {
+      if (this.planned()) this.confirm()
+      else this.cancel()
       return
     }
-    const next = this.mode() === mode ? "move" : mode
     this.cancel()
-    this.setMode(next)
-    if (next === "shoot") this.plan(this.zones().targets[0] ?? null)
-    if (next === "overwatch") this.plan(u.at)
+    this.setMode(mode)
+    if (mode === "shoot" || mode === "skill") this.plan(this.zones().targets[0] ?? null)
+    if (mode === "overwatch") this.plan(u.at)
   }
 
   /** Back to moving, with nothing planned. */
@@ -137,13 +137,13 @@ export class Battle {
     this.plan(null)
   }
 
-  /** Carries out what is planned, as a second click on it would. */
+  /** Carries out what is aimed. */
   confirm(): void {
     const u = this.unit(),
       p = this.planned()
     if (!u || !p || !this.ready()) return
-    if (this.mode() === "overwatch") this.act({ type: "overwatch", unit: u.id })
-    else this.click(p)
+    const action = this.mode() === "overwatch" ? ({ type: "overwatch", unit: u.id } as const) : this.action(u, p)
+    if (action) this.act(action)
   }
 
   /** In Shoot, moves the aim to the next target; else selects the next soldier with AP. */
@@ -160,8 +160,8 @@ export class Battle {
   }
 
   /**
-   * A click on a tile selects a soldier at once. Else the first click plans a move, a shot or the chosen skill
-   * there, and a second click on the same tile carries it out. A click on an alien chooses Shoot.
+   * A click on a soldier selects it, and a click on a tile moves there. A click on an alien or a barrel while
+   * moving aims at it; in Shoot or the skill, a click on a target carries the action out.
    */
   click(p: Point): void {
     if (!this.ready()) return
@@ -173,30 +173,32 @@ export class Battle {
       return
     }
     if (!u) return
-    const foe = !!there && there.side !== u.side
-    if (this.mode() === "overwatch" || (this.mode() === "shoot" && !foe && g.board.at(p) !== "barrel")) this.cancel()
-    if (this.mode() === "move" && foe) this.setMode("shoot")
-    const action =
-      this.mode() === "skill"
-        ? this.aim(u, p, there)
-        : there && foe
-          ? ({ type: "shoot", unit: u.id, target: there.id } as const)
-          : g.board.at(p) === "barrel"
-            ? ({ type: "shoot", unit: u.id, at: p } as const)
-            : ({ type: "move", unit: u.id, to: p } as const)
+    const mark = (!!there && there.side !== u.side) || g.board.at(p) === "barrel"
+    if (this.mode() === "overwatch" || (this.mode() === "shoot" && !mark)) this.cancel()
+    const action = this.action(u, p)
     if (!action) return
-    const was = this.planned()
-    if (was && same(was, p)) {
+    if (this.mode() !== "move" || !mark) {
       this.act(action)
       return
     }
     try {
       g.apply(action)
+      this.setMode("shoot")
       this.plan(p)
     } catch (e) {
       if (!(e instanceof Illegal)) throw e
       this.refuse(e.message)
     }
+  }
+
+  /** The action the chosen mode takes on a tile: the skill, a shot at an alien or a barrel, or a move. */
+  private action(u: Unit, p: Point): Action | null {
+    const g = this.game(),
+      there = g.unitAt(p)
+    if (this.mode() === "skill") return this.aim(u, p, there)
+    if (there && there.side !== u.side) return { type: "shoot", unit: u.id, target: there.id }
+    if (g.board.at(p) === "barrel") return { type: "shoot", unit: u.id, at: p }
+    return { type: "move", unit: u.id, to: p }
   }
 
   private aim(u: Unit, p: Point, there: Unit | undefined): Action | null {

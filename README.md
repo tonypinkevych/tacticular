@@ -44,12 +44,12 @@ pnpm build      # type-check and build to dist/
 
 ## Controls
 
-- Click a soldier to select it. Click a tile, an alien or a barrel to plan a move or a shot, and click it again to
-  do it. The planned path marks fire and overwatch on the way.
+- Click a soldier to select it, and click a tile to move there. The path under the cursor marks fire and overwatch
+  on the way. Click an alien or a barrel to aim at it, and click it again to fire.
 - Point at an alien to see where it can walk and what it can hit. The turn ends on its own when no soldier has AP.
-- `1` Shoot, `2` the skill and `3` Overwatch choose an action, as in XCOM. Shoot aims at the first target and
-  `Tab` moves the aim; Overwatch shows what it watches. A second click, `3` again for Overwatch, or `Enter`
-  confirms. `Backspace` or the End turn button ends the turn. `Tab` selects the next soldier when no target is
+- `1` Shoot, `2` the skill and `3` Overwatch choose an action, as in XCOM. Shoot and the skill aim at the first
+  target and `Tab` moves the aim; Overwatch shows what it watches. A click on a target fires at once. The same key
+  again, or `Enter`, carries out what is aimed. `Backspace` or the End turn button ends the turn. `Tab` selects the next soldier when no target is
   aimed, and `Esc` or a right click cancels.
 - Point at an alien to see the hit chance, the cover, the damage and the crit chance.
 
