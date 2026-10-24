@@ -255,7 +255,11 @@ describe("battle", () => {
     expect(z.reach.length > 0 && z.reach.every((p) => b.game().tactics.reaches(b.game().unit("w"), p))).toBe(true)
   })
   test("the ultimate is refused until charged, then a self ultimate fires on the same key", () => {
-    const g = setup(open(), [squad("w", "warden", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 3 })])
+    const g = setup(open(), [
+      squad("w", "warden", { x: 3, y: 6 }),
+      squad("r", "ranger", { x: 0, y: 7 }),
+      enemy("g", "grunt", { x: 3, y: 3 }),
+    ])
     const b = new Battle(g)
     b.begin(0)
     b.choose("ultimate")
