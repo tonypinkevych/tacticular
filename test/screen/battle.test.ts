@@ -164,4 +164,11 @@ describe("battle", () => {
     b.point({ x: 0, y: 7 })
     expect([b.mode(), b.zones().area.length]).toEqual(["shoot", 5])
   })
+  test("a lost mission says why: the aliens took the beacon, or the squad died", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
+    g.phase = "lost"
+    expect(new Battle(g).loss()).toBe("squad")
+    g.goal = { kind: "defend", at: { x: 3, y: 3 }, rounds: 5, strikes: 2 }
+    expect(new Battle(g).loss()).toBe("beacon")
+  })
 })

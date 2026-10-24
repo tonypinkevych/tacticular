@@ -354,6 +354,13 @@ export class Battle {
     return { target, odds }
   }
 
+  /** Why the mission was lost: the aliens held the beacon, or the squad died. */
+  loss(): "beacon" | "squad" | null {
+    const g = this.game()
+    if (g.phase !== "lost") return null
+    return g.goal.kind === "defend" && g.goal.strikes >= 2 ? "beacon" : "squad"
+  }
+
   /** Carries out an action; the squad turn ends on its own once no soldier has AP. */
   private act(action: Action): void {
     const before = this.game()

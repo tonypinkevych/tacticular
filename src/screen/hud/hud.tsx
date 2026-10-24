@@ -59,6 +59,7 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <Show when={g().phase === "won" || g().phase === "lost"}>
           <div class="end">
             <h1>{t(`ui.phase.${g().phase}`)}</h1>
+            <Show when={b.loss()}>{(r) => <p>{t(`ui.lost.${r()}`)}</p>}</Show>
             <button type="button" onClick={() => props.onNext()}>
               {t("ui.continue")}
             </button>
