@@ -119,4 +119,10 @@ describe("mind", () => {
     for (const f of after.foes(c))
       for (const q of [f.at, ...after.reach(f, 1).tiles()]) expect(after.combat.canShoot(f, c, q)).toBe(false)
   })
+  test("a Sniper with a shot stays and aims instead of moving", () => {
+    const g = aliens(setup(open(), [squad("r", "ranger", { x: 0, y: 7 }), enemy("s", "sniper", { x: 7, y: 0 })]))
+    let next = g
+    for (let i = 0; i < 3 && next.phase === "enemy"; i++) next = next.apply(new Mind(next).next())
+    expect(next.unit("s").moved && next.marks.some((m) => m.unit === "s")).toBe(false)
+  })
 })

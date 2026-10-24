@@ -175,6 +175,7 @@ const en = {
   "illegal.cooldown": "This ability is on cooldown.",
   "illegal.place": "Invalid tile.",
   "illegal.range": "Out of range.",
+  "illegal.moved": "A Sniper cannot shoot after it moved.",
   "log.run": "{unit} runs and guns",
   "log.warcry": "{unit} roars a war cry",
   "log.covering": "{unit} gives covering fire on {target}",
@@ -216,7 +217,8 @@ const ru: Record<Key, string> = {
   "kind.pod": "Кокон",
   "foe.about.guard":
     "не получает урона от выстрела, от которого его закрывает укрытие. Зайдите с фланга, подсветите или взорвите.",
-  "foe.about.sniper": "стреляет через всю карту, его наблюдение без штрафа. Подавите или оттолкните его.",
+  "foe.about.sniper":
+    "стреляет через всю карту, но только если не двигался; его наблюдение без штрафа. Подавите или оттолкните его.",
   "foe.about.pod": "не воюет, но пока он цел, высадка идёт каждые 2 раунда. Уничтожьте его быстро.",
   "ui.run.draft": "Выберите 3 бойцов",
   "ui.run.move": "ход {tiles}",
@@ -360,6 +362,7 @@ const ru: Record<Key, string> = {
   "illegal.cooldown": "Способность перезаряжается.",
   "illegal.place": "Неверная клетка.",
   "illegal.range": "Слишком далеко.",
+  "illegal.moved": "Снайпер не стреляет после движения.",
   "log.run": "{unit} бежит и стреляет",
   "log.warcry": "{unit} издаёт боевой клич",
   "log.covering": "{unit} ведёт огонь прикрытия по {target}",

@@ -25,7 +25,7 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
   and spreads to the next forest. A push into water drowns.
 - A mission starts with 5 aliens. 2 more drop once a mission, on tiles marked a round before.
 - Each mission past the first layer of the chart holds a special alien. A Guard takes no damage from a shot its
-  cover faces. A Sniper shoots across the board, and its overwatch has no penalty. A Pod does not fight, but while
+  cover faces. A Sniper shoots across the board, but only in a turn it has not moved, and its overwatch has no penalty. A Pod does not fight, but while
   it stands a drop comes every 2 rounds and drops never run out.
 - Missions: kill all aliens, take every soldier out by the top row, or hold the beacon for 5 rounds.
 - Maps come in 4 biomes: a village with crossing roads and houses, a forest cut by a river with 2 fords, ruins

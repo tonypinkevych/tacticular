@@ -89,6 +89,7 @@ export class Orders {
 
   private shoot(u: Unit, action: { target?: string; at?: Point }): void {
     const combat = this.game.combat
+    check(!(u.profile.passive === "keen" && u.moved), "moved")
     if (action.at) {
       check(this.game.board.at(action.at) === "barrel", "target")
       check(distance(u.at, action.at) <= u.profile.range && clear(this.game.board, u.at, action.at), "range")

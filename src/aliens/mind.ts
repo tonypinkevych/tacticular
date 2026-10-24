@@ -193,11 +193,12 @@ export class Mind {
     return best
   }
 
-  /** The tiles a unit can act from in its next turn: its own, and those one move away unless it is Staggered. */
+  /** The tiles a unit can act from in its next turn: its own, and those one move away unless it is Staggered or a Sniper. */
   private steps(f: Unit): Point[] {
     const known = this.from.get(f.id)
     if (known) return known
-    const tiles = [f.at, ...(f.status === "staggered" ? [] : this.game.reach(f, 1).tiles())]
+    const stays = f.status === "staggered" || f.profile.passive === "keen"
+    const tiles = [f.at, ...(stays ? [] : this.game.reach(f, 1).tiles())]
     this.from.set(f.id, tiles)
     return tiles
   }
@@ -262,8 +263,9 @@ export class Mind {
       combat = game.combat,
       out: Plan[] = []
     const foes = game.foes(u)
+    const still = u.profile.passive !== "keen" || (!u.moved && same(at, u.at))
     for (const f of foes)
-      if (combat.canShoot(u, f, at))
+      if (still && combat.canShoot(u, f, at))
         out.push({
           action: { type: "shoot", unit: u.id, target: f.id },
           value: this.worth(combat.odds(u, f, { from: at }), f),

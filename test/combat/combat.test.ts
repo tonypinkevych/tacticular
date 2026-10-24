@@ -1,4 +1,5 @@
 import type { Game } from "../../src/mission/game"
+import { Illegal } from "../../src/mission/orders"
 import type { ClassId } from "../../src/units/profiles"
 import { type Training, Unit } from "../../src/units/unit"
 import { enemy, open, reseed, setup, squad } from "../fixture"
@@ -168,6 +169,13 @@ describe("shots", () => {
         true,
         3,
       ])
+    })
+    test("a Sniper that moved cannot shoot in that turn", () => {
+      const g = setup(open(), [squad("r", "ranger", { x: 0, y: 7 }), enemy("s", "sniper", { x: 7, y: 0 })]).apply({
+        type: "endTurn",
+      })
+      const moved = g.apply({ type: "move", unit: "s", to: { x: 6, y: 0 } })
+      expect(() => moved.apply({ type: "shoot", unit: "s", target: "r" })).toThrow(Illegal)
     })
     test("a Sniper on overwatch fires without the aim penalty", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 3, y: 7 }), enemy("s", "sniper", { x: 3, y: 0 })])
