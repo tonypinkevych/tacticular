@@ -44,8 +44,10 @@ pnpm build      # type-check and build to dist/
 - Click a soldier to select it. Click a tile, an alien or a barrel to plan a move or a shot, and click it again to
   do it. The planned path marks fire and overwatch on the way.
 - Point at an alien to see where it can walk and what it can hit. The turn ends on its own when no soldier has AP.
-- `3` arms the skill, `4` sets Overwatch, `Enter` or the End turn button ends the turn, `Tab` selects the next soldier with AP, `Esc` or a
-  right click cancels.
+- `1` Shoot, `2` the skill and `3` Overwatch choose an action, as in XCOM. Shoot aims at the first target and
+  `Tab` moves the aim; Overwatch shows what it watches. A second click, `3` again for Overwatch, or `Enter`
+  confirms. `Backspace` or the End turn button ends the turn. `Tab` selects the next soldier when no target is
+  aimed, and `Esc` or a right click cancels.
 - Point at an alien to see the hit chance, the cover, the damage and the crit chance.
 
 ## Save and action log

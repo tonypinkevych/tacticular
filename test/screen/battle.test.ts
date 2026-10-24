@@ -79,10 +79,10 @@ describe("battle", () => {
     const z = start().zones()
     expect([z.move.length, z.dash.length, z.targets]).toEqual([8, 10, [{ x: 3, y: 1 }]])
   })
-  test("an armed Grenade shows the tiles it reaches and the plus under the cursor", () => {
+  test("the chosen Grenade shows the tiles it reaches and the plus under the cursor", () => {
     const b = start()
     b.pick("w")
-    b.toggleSkill()
+    b.choose("skill")
     b.point({ x: 5, y: 3 })
     const z = b.zones()
     expect(z.reach.every((p) => Math.max(Math.abs(p.x - 5), Math.abs(p.y - 6)) <= 4)).toBe(true)
@@ -92,5 +92,33 @@ describe("battle", () => {
     const b = start()
     b.point({ x: 3, y: 1 })
     expect(b.odds()?.odds.chance).toBe(95)
+  })
+  test("Shoot aims at the first target, and Confirm fires", () => {
+    const b = start()
+    b.choose("shoot")
+    expect(b.planned()).toEqual({ x: 3, y: 1 })
+    expect(b.game().unit("r").ap).toBe(2)
+    b.confirm()
+    expect(b.game().unit("r").ap).toBe(0)
+  })
+  test("Tab in Shoot moves the aim to the next target", () => {
+    const g = setup(open(), [
+      squad("r", "ranger", { x: 3, y: 6 }),
+      enemy("g", "grunt", { x: 3, y: 1 }),
+      enemy("h", "grunt", { x: 6, y: 1 }),
+    ])
+    const b = new Battle(g)
+    b.begin(0)
+    b.choose("shoot")
+    const first = b.planned()
+    b.tab()
+    expect(b.planned()).not.toEqual(first)
+  })
+  test("Overwatch waits for a confirm", () => {
+    const b = start()
+    b.choose("overwatch")
+    expect(b.game().unit("r").overwatch).toBe(false)
+    b.choose("overwatch")
+    expect(b.game().unit("r").overwatch).toBe(true)
   })
 })

@@ -147,7 +147,7 @@ export function Board(props: { battle: Battle }) {
       }}
       onContextMenu={(e) => {
         e.preventDefault()
-        battle.disarm()
+        battle.cancel()
       }}
     />
   )

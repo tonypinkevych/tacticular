@@ -29,17 +29,20 @@ export interface Peril {
   kind: "fire" | "watch"
 }
 
+/** What a click does now: move, shoot, use the skill, or set Overwatch. */
+export type Mode = "move" | "shoot" | "skill" | "overwatch"
+
 /** Seconds the alien turn banner stays at least. */
 const BANNER = 1.5
 
 /**
- * One mission on screen: the game, the soldier the player selected, an armed skill, and the alien turn
+ * One mission on screen: the game, the soldier the player selected, the chosen action, and the alien turn
  * played by the mind with its playback. The game changes only through actions.
  */
 export class Battle {
   readonly game: Accessor<Game>
   readonly selected: Accessor<string | null>
-  readonly armed: Accessor<boolean>
+  readonly mode: Accessor<Mode>
   readonly hovered: Accessor<Point | null>
   /** The tile of the action a first click planned; a second click on it carries the action out. */
   readonly planned: Accessor<Point | null>
@@ -49,7 +52,7 @@ export class Battle {
   readonly sound = new Sound()
   private readonly setGame: Setter<Game>
   private readonly select: Setter<string | null>
-  private readonly arm: Setter<boolean>
+  private readonly setMode: Setter<Mode>
   private readonly hover: Setter<Point | null>
   private readonly plan: Setter<Point | null>
   private readonly setBanner: Setter<boolean>
@@ -63,7 +66,7 @@ export class Battle {
   ) {
     ;[this.game, this.setGame] = createSignal(start, { equals: false })
     ;[this.selected, this.select] = createSignal<string | null>(null)
-    ;[this.armed, this.arm] = createSignal(false)
+    ;[this.mode, this.setMode] = createSignal<Mode>("move")
     ;[this.hovered, this.hover] = createSignal<Point | null>(null)
     ;[this.planned, this.plan] = createSignal<Point | null>(null)
     ;[this.banner, this.setBanner] = createSignal(false)
@@ -98,7 +101,7 @@ export class Battle {
     const u = this.game().units.find((x) => x.id === id)
     if (u?.side !== "squad" || !u.alive()) return
     this.select(id)
-    this.disarm()
+    this.cancel()
   }
 
   /** The next soldier with AP left, forward or back. */
@@ -109,45 +112,78 @@ export class Battle {
     this.pick(squad[(i + (back ? squad.length - 1 : 1) + squad.length) % squad.length].id)
   }
 
-  toggleSkill(): void {
+  /**
+   * Picks an action of the bar. Shoot aims at the first target, and Overwatch waits for a confirm or a second
+   * pick. Picking the chosen action again goes back to moving.
+   */
+  choose(mode: Mode): void {
     const u = this.unit()
     if (!u || !this.ready()) return
-    this.runTo = null
-    this.arm(!this.armed())
+    if (mode === "overwatch" && this.mode() === "overwatch") {
+      this.confirm()
+      return
+    }
+    const next = this.mode() === mode ? "move" : mode
+    this.cancel()
+    this.setMode(next)
+    if (next === "shoot") this.plan(this.zones().targets[0] ?? null)
+    if (next === "overwatch") this.plan(u.at)
   }
 
-  disarm(): void {
+  /** Back to moving, with nothing planned. */
+  cancel(): void {
     this.runTo = null
-    this.arm(false)
+    this.setMode("move")
     this.plan(null)
   }
 
-  overwatch(): void {
-    const u = this.unit()
-    if (u && this.ready()) this.act({ type: "overwatch", unit: u.id })
+  /** Carries out what is planned, as a second click on it would. */
+  confirm(): void {
+    const u = this.unit(),
+      p = this.planned()
+    if (!u || !p || !this.ready()) return
+    if (this.mode() === "overwatch") this.act({ type: "overwatch", unit: u.id })
+    else this.click(p)
+  }
+
+  /** In Shoot, moves the aim to the next target; else selects the next soldier with AP. */
+  tab(back = false): void {
+    if (this.mode() !== "shoot") {
+      this.cycle(back)
+      return
+    }
+    const targets = this.zones().targets,
+      was = this.planned()
+    if (!targets.length) return
+    const i = targets.findIndex((t) => was !== null && same(t, was))
+    this.plan(targets[(i + (back ? targets.length - 1 : 1) + targets.length) % targets.length])
   }
 
   /**
-   * A click on a tile selects a soldier at once. Else the first click plans a move, a shot or the armed skill
-   * there, and a second click on the same tile carries it out.
+   * A click on a tile selects a soldier at once. Else the first click plans a move, a shot or the chosen skill
+   * there, and a second click on the same tile carries it out. A click on an alien chooses Shoot.
    */
   click(p: Point): void {
     if (!this.ready()) return
     const g = this.game(),
       u = this.unit(),
       there = g.unitAt(p)
-    if (there?.side === "squad" && !this.armed()) {
+    if (there?.side === "squad" && this.mode() !== "skill") {
       this.pick(there.id)
       return
     }
     if (!u) return
-    const action = this.armed()
-      ? this.aim(u, p, there)
-      : there && there.side !== u.side
-        ? ({ type: "shoot", unit: u.id, target: there.id } as const)
-        : g.board.at(p) === "barrel"
-          ? ({ type: "shoot", unit: u.id, at: p } as const)
-          : ({ type: "move", unit: u.id, to: p } as const)
+    const foe = !!there && there.side !== u.side
+    if (this.mode() === "overwatch" || (this.mode() === "shoot" && !foe && g.board.at(p) !== "barrel")) this.cancel()
+    if (this.mode() === "move" && foe) this.setMode("shoot")
+    const action =
+      this.mode() === "skill"
+        ? this.aim(u, p, there)
+        : there && foe
+          ? ({ type: "shoot", unit: u.id, target: there.id } as const)
+          : g.board.at(p) === "barrel"
+            ? ({ type: "shoot", unit: u.id, at: p } as const)
+            : ({ type: "move", unit: u.id, to: p } as const)
     if (!action) return
     const was = this.planned()
     if (was && same(was, p)) {
@@ -186,7 +222,7 @@ export class Battle {
     const g = this.game(),
       u = this.unit(),
       to = this.planned() ?? this.hovered()
-    if (!u || !to || this.armed() || g.unitAt(to) || g.phase !== "squad") return null
+    if (!u || !to || this.mode() !== "move" || g.unitAt(to) || g.phase !== "squad") return null
     const one = g.reach(u, 1),
       reach = one.has(to) ? one : u.ap > 1 ? g.reach(u, 2) : one
     if (!reach.has(to)) return null
@@ -226,24 +262,26 @@ export class Battle {
     this.next()
   }
 
-  /** The tiles to mark for the selected soldier and the armed skill. */
+  /** The tiles to mark for the selected soldier and the chosen action. */
   zones(): Zones {
     const g = this.game(),
       u = this.unit(),
       none: Zones = { move: [], dash: [], reach: [], targets: [], area: [], foeMove: [], foeShot: [] }
     const hovered = this.hovered() ? g.unitAt(this.hovered() as Point) : undefined
-    if (hovered?.side === "enemy" && !this.armed()) return { ...none, ...this.threat(hovered) }
+    if (hovered?.side === "enemy" && this.mode() === "move") return { ...none, ...this.threat(hovered) }
     if (!u || g.phase !== "squad" || u.ap === 0) return none
-    const foes = g.foes(u)
-    if (!this.armed()) {
-      const one = g.reach(u, 1).tiles(),
-        two = u.ap > 1 ? g.reach(u, 2).tiles() : []
+    const foes = g.foes(u),
+      targets = foes.filter((f) => g.combat.canShoot(u, f)).map((f) => f.at)
+    if (this.mode() === "shoot") return { ...none, targets }
+    if (this.mode() === "overwatch")
       return {
         ...none,
-        move: one,
-        dash: two.filter((p) => !one.some((q) => same(p, q))),
-        targets: foes.filter((f) => g.combat.canShoot(u, f)).map((f) => f.at),
+        reach: all(g).filter((p) => distance(p, u.at) <= u.profile.range && clear(g.board, u.at, p)),
       }
+    if (this.mode() === "move") {
+      const one = g.reach(u, 1).tiles(),
+        two = u.ap > 1 ? g.reach(u, 2).tiles() : []
+      return { ...none, move: one, dash: two.filter((p) => !one.some((q) => same(p, q))), targets }
     }
     const hover = this.hovered()
     switch (u.profile.skill) {
@@ -292,17 +330,17 @@ export class Battle {
     }
   }
 
-  /** The odds of the selected soldier against the hovered alien. */
+  /** The odds of the selected soldier against the aimed alien in Shoot, else the hovered one. */
   odds(): { target: Unit; odds: Odds } | null {
     const g = this.game(),
       u = this.unit(),
-      p = this.hovered()
+      p = (this.mode() === "shoot" && this.planned()) || this.hovered()
     const target = p ? g.unitAt(p) : undefined
     if (!u || !target || target.side === u.side) return null
-    const from = this.armed() && this.runTo ? this.runTo : u.at
+    const from = this.mode() === "skill" && this.runTo ? this.runTo : u.at
     if (!g.combat.canShoot(u, target, from) && !(u.profile.melee && adjacent(from, target.at))) return null
     const odds = g.combat.odds(u, target, { from })
-    if (this.armed() && u.profile.skill === "headshot") return { target, odds: { ...odds, crit: 100 } }
+    if (this.mode() === "skill" && u.profile.skill === "headshot") return { target, odds: { ...odds, crit: 100 } }
     return { target, odds }
   }
 
@@ -313,7 +351,7 @@ export class Battle {
       const after = before.apply(action)
       this.record(action, after)
       this.playback.play(before, action, after)
-      this.disarm()
+      this.cancel()
       this.setGame(after)
       if (after.phase === "squad" && !this.unit()?.ap) this.next()
       if (after.phase === "squad" && !after.units.some((x) => x.side === "squad" && x.alive() && x.ap > 0))

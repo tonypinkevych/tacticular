@@ -295,7 +295,7 @@ kbd {
 .chart {
   position: relative;
 }
-.chart svg {
+.chart > svg {
   position: absolute;
   inset: 0;
 }
@@ -385,4 +385,40 @@ button.end-turn .sand {
   margin-right: 5px;
   vertical-align: -1px;
   fill: currentColor;
+}
+button.end-turn:disabled {
+  background: var(--panel);
+  color: var(--muted);
+  border-color: var(--line-hi);
+  box-shadow: none;
+  cursor: default;
+}
+button.end-turn.wait svg {
+  animation: turn 1.2s steps(4) infinite;
+}
+@keyframes turn {
+  to {
+    transform: rotate(180deg);
+  }
+}
+.confirm:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.activity {
+  position: absolute;
+  top: 38%;
+  left: 0;
+  right: 0;
+  padding: 18px 0;
+  border-top: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  background: rgba(208, 85, 62, 0.92);
+  color: var(--paper);
+  font-size: 34px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
 }

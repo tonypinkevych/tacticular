@@ -26,6 +26,7 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
     return u ? t(`skill.${u.profile.skill}`) : "—"
   }
   const log = () => g().log.slice(-8).reverse()
+  const busy = () => b.banner() || g().phase === "enemy"
   const name = (id: unknown) => {
     const u = g().units.find((x) => x.id === id)
     return u ? t(`kind.${u.kind}`) : String(id ?? "")
@@ -52,7 +53,7 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
       <main class="stage">
         <Board battle={b} />
         <Show when={b.banner()}>
-          <div class="banner">{t("ui.phase.enemy")}</div>
+          <div class="activity">{t("ui.alienActivity")}</div>
         </Show>
         <Show when={b.notice()}>{(n) => <div class="notice">{t(`illegal.${n()}`)}</div>}</Show>
         <Show when={g().phase === "won" || g().phase === "lost"}>
@@ -103,20 +104,34 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         </ol>
       </aside>
       <footer class="bar">
-        <button type="button" classList={{ on: b.armed() }} onClick={() => b.toggleSkill()}>
-          <kbd>3</kbd> {skill()}
+        <button type="button" classList={{ on: b.mode() === "shoot" }} onClick={() => b.choose("shoot")}>
+          <kbd>1</kbd> {t("ui.shoot")}
         </button>
-        <button type="button" onClick={() => b.overwatch()}>
-          <kbd>4</kbd> {t("ui.overwatch")}
+        <button type="button" classList={{ on: b.mode() === "skill" }} onClick={() => b.choose("skill")}>
+          <kbd>2</kbd> {skill()}
+        </button>
+        <button type="button" classList={{ on: b.mode() === "overwatch" }} onClick={() => b.choose("overwatch")}>
+          <kbd>3</kbd> {t("ui.overwatch")}
+        </button>
+        <button type="button" class="confirm" disabled={!b.planned()} onClick={() => b.confirm()}>
+          <kbd>⏎</kbd> {t("ui.confirm")}
         </button>
         <span class="hint">{t("ui.hint")}</span>
-        <button type="button" class="end-turn" onClick={() => void b.endTurn()}>
+        <button
+          type="button"
+          class="end-turn"
+          classList={{ wait: busy() }}
+          disabled={busy()}
+          onClick={() => void b.endTurn()}
+        >
           <svg viewBox="0 0 24 32" aria-hidden="true">
             <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" />
             <path class="sand" d="M8 7h8l-4 5zM7 28c1-4 9-4 10 0z" />
           </svg>
-          <span>{t("ui.endTurn")}</span>
-          <kbd>⏎</kbd>
+          <span>{busy() ? t("ui.phase.enemy") : t("ui.endTurn")}</span>
+          <Show when={!busy()}>
+            <kbd>⌫</kbd>
+          </Show>
         </button>
       </footer>
     </div>
