@@ -88,12 +88,12 @@ export const PROFILES: Record<Kind, Profile> = {
     tactic: "exposed",
     combo: "marked",
   },
-  grunt: { hp: 3, aim: 85, move: 1, damage: 2, range: 4, skill: "covering", cooldown: 3, uses: null },
+  grunt: { hp: 4, aim: 85, move: 1, damage: 3, range: 4, skill: "covering", cooldown: 3, uses: null },
   brute: {
     hp: 5,
     aim: 100,
     move: 3,
-    damage: 2,
+    damage: 3,
     range: 1,
     melee: true,
     rough: true,
@@ -102,5 +102,5 @@ export const PROFILES: Record<Kind, Profile> = {
     uses: null,
   },
   bomber: { hp: 2, aim: 0, move: 2, damage: 2, range: 0, skill: "blast", cooldown: 1, uses: null },
-  commander: { hp: 6, aim: 70, move: 1, damage: 2, range: 5, skill: "warcry", cooldown: 3, uses: null },
+  commander: { hp: 6, aim: 70, move: 1, damage: 3, range: 5, skill: "warcry", cooldown: 3, uses: null },
 }

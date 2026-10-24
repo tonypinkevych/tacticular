@@ -86,16 +86,32 @@ export class Mind {
     return null
   }
 
-  /** What hunkering down saves a unit of the damage the foes that can shoot it are expected to deal. */
+  /** The damage the attacks aimed at a unit are expected to deal where it stands now. */
+  private aimed(u: Unit): number {
+    const game = this.game
+    let sum = 0
+    for (const m of game.marks) {
+      if (m.target !== u.id) continue
+      const f = game.unit(m.unit)
+      if (!f.alive() || (m.kind === "claw" ? !adjacent(f.at, u.at) : !game.combat.canShoot(f, u))) continue
+      const o = game.combat.odds(f, u, { aimed: true, penalty: m.kind === "volley" ? 15 : 0 })
+      sum += this.worth(o, u) * (m.kind === "volley" ? 2 : 1)
+    }
+    return sum
+  }
+
+  /** What hunkering down saves a unit of the damage aimed at it and of the damage foes can deal next. */
   private shield(u: Unit): number {
     const game = this.game
     const threat = () =>
-      game.foes(u).reduce((s, f) => s + (game.combat.canShoot(f, u) ? this.worth(game.combat.odds(f, u), u) : 0), 0)
+      this.aimed(u) +
+      game.foes(u).reduce((s, f) => s + (game.combat.canShoot(f, u) ? this.worth(game.combat.odds(f, u), u) : 0), 0) *
+        0.5
     const open = threat()
     u.hunkered = true
     const hunkered = threat()
     u.hunkered = false
-    return (open - hunkered) * 0.5
+    return open - hunkered
   }
 
   /** What a Suppressed unit loses when it moves: the shot it draws from its suppressor. */
@@ -152,12 +168,12 @@ export class Mind {
         0,
       )
       const marked = this.game.marks.some(
-        (m) => m.tiles.some((p) => same(p, at)) && this.game.unit(m.unit).side !== u.side,
+        (m) => !m.target && m.tiles.some((p) => same(p, at)) && this.game.unit(m.unit).side !== u.side,
       )
       const goal = this.game.goal
       const beacon = goal.kind === "defend" && adjacent(at, goal.at, true) ? (u.side === "enemy" ? 1.2 : 0.8) : 0
       const fire = this.game.board.at(at) === "fire" ? 1 : 0
-      return shelter * 0.8 - threat * 0.5 - (marked ? 3 : 0) - fire + beacon + this.team(u, at)
+      return shelter * 0.8 - threat * 0.5 - this.aimed(u) - (marked ? 3 : 0) - fire + beacon + this.team(u, at)
     })
   }
 
@@ -179,13 +195,15 @@ export class Mind {
     return value - BUNCH * others.filter((a) => adjacent(a.at, at)).length
   }
 
-  /** A pull toward the nearest foe by walking steps, past the unit's range when it has a shot from the tile, or a soldier's pull toward the evac; for aliens it grows each round after the sixth. */
+  /** A pull toward the nearest foe by walking steps, past the unit's range when it has a shot from the tile, or a soldier's pull toward the evac; it grows each round after the sixth, for soldiers only toward the evac. */
   private closer(u: Unit, at: Point): number {
-    const goal = this.game.goal
-    if (goal.kind === "evac" && u.side === "squad") return -Math.min(...goal.tiles.map((p) => distance(p, at))) * 0.8
+    const goal = this.game.goal,
+      late = 0.15 * Math.max(0, this.game.round - 6)
+    if (goal.kind === "evac" && u.side === "squad")
+      return -Math.min(...goal.tiles.map((p) => distance(p, at))) * (0.8 + late)
     if (!this.game.foes(u).length) return 0
     const gap = this.walk(u.side)[at.y * this.game.board.width + at.x]
-    const pull = u.side === "enemy" ? 0.45 + 0.15 * Math.max(0, this.game.round - 6) : 0.45
+    const pull = u.side === "enemy" ? 0.45 + late : 0.45
     const sees = this.game.foes(u).some((f) => this.game.combat.canShoot(u, f, at))
     return -(sees ? Math.max(0, gap - u.profile.range) : gap) * pull
   }

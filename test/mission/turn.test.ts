@@ -43,7 +43,52 @@ describe("turns", () => {
   test("the squad loses when no soldier stands", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
     g.unit("v").hp = 2
-    expect(g.apply({ type: "endTurn" }).apply({ type: "shoot", unit: "b", target: "v" }).phase).toBe("lost")
+    const aimed = g.apply({ type: "endTurn" }).apply({ type: "shoot", unit: "b", target: "v" })
+    expect(aimed.apply({ type: "endTurn" }).apply({ type: "endTurn" }).phase).toBe("lost")
+  })
+})
+
+describe("aimed attacks", () => {
+  const aim = (rows8: string[] = open(), at = { x: 3, y: 6 }) =>
+    setup(rows8, [squad("r", "ranger", at), enemy("g", "grunt", { x: 3, y: 3 })])
+      .apply({ type: "endTurn" })
+      .apply({ type: "shoot", unit: "g", target: "r" })
+  test("an alien shot is aimed, not fired, and shows its target", () => {
+    const g = aim()
+    expect([g.unit("r").hp, g.unit("g").ap]).toEqual([5, 0])
+    expect(g.marks).toEqual([{ kind: "shot", unit: "g", target: "r", tiles: [{ x: 3, y: 6 }] }])
+  })
+  test("an aimed shot fires at the start of the next alien turn", () => {
+    const g = aim().apply({ type: "endTurn" }).apply({ type: "endTurn" })
+    expect(g.marks).toEqual([])
+    expect(g.log.some((e) => ["log.hit", "log.crit", "log.miss"].includes(e.key) && e.params.unit === "g")).toBe(true)
+  })
+  test("an aimed shot misses a target that left its sight", () => {
+    const g = aim(rows(["........", "........", "........", "........", "........", "........", "...hhh.."]), {
+      x: 2,
+      y: 6,
+    })
+    const hidden = g.apply({ type: "endTurn" }).apply({ type: "move", unit: "r", to: { x: 4, y: 7 } })
+    const next = hidden.apply({ type: "endTurn" })
+    expect(next.log.some((e) => e.key === "log.dodge" && e.params.target === "r")).toBe(true)
+    expect(next.unit("r").hp).toBe(5)
+  })
+  test("claws land only on a target still next to the alien", () => {
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
+      .apply({ type: "endTurn" })
+      .apply({ type: "shoot", unit: "b", target: "v" })
+      .apply({ type: "endTurn" })
+      .apply({ type: "move", unit: "v", to: { x: 3, y: 6 } })
+      .apply({ type: "endTurn" })
+    expect(g.unit("v").hp).toBe(7)
+  })
+  test("a Shove cancels the shot the alien aimed", () => {
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("g", "grunt", { x: 3, y: 3 })])
+      .apply({ type: "endTurn" })
+      .apply({ type: "shoot", unit: "g", target: "v" })
+      .apply({ type: "endTurn" })
+      .apply({ type: "tactic", unit: "v", target: "g" })
+    expect(g.marks).toEqual([])
   })
 })
 

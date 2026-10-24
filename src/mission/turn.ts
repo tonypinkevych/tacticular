@@ -92,6 +92,18 @@ export class Turn {
   private land(m: Mark): void {
     const game = this.game,
       u = game.unit(m.unit)
+    if (m.kind === "shot" || m.kind === "volley" || m.kind === "claw") {
+      const t = game.units.find((x) => x.id === m.target)
+      if (!t?.alive()) return
+      if (m.kind === "claw" ? !adjacent(u.at, t.at) : !game.combat.canShoot(u, t)) {
+        game.log.push({ key: "log.dodge", params: { unit: u.id, target: t.id } })
+        return
+      }
+      const fire = { penalty: m.kind === "volley" ? 15 : 0, aimed: true }
+      game.combat.fire(u, t, fire)
+      if (m.kind === "volley" && t.alive()) game.combat.fire(u, t, fire)
+      return
+    }
     if (m.kind === "blast") {
       game.log.push({ key: "log.blast", params: { unit: u.id } })
       game.combat.blast(m.tiles[0], u.profile.damage)

@@ -20,6 +20,8 @@ export interface Fire {
   from?: Point
   penalty?: number
   sureCrit?: boolean
+  /** A shot aimed a turn ahead, with 20 more aim. */
+  aimed?: boolean
 }
 
 /** Shots, damage, blasts and pushes in a game. */
@@ -40,6 +42,7 @@ export class Combat {
     const c = (target.status === "exposed" ? 0 : cover(this.game.board, target.at, from)) * (target.hunkered ? 2 : 1)
     let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
     if (target.status === "marked") aim += 10
+    if (fire.aimed) aim += 20
     if (shooter.status === "suppressed") aim -= 20
     if (p.passive === "pointBlank" && adjacent(from, target.at)) aim += 20
     if (p.passive === "steady" && !shooter.moved) aim += 20

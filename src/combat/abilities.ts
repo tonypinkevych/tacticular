@@ -56,8 +56,7 @@ export class Abilities {
         const t = this.target(u, a)
         check(combat.canShoot(u, t), "range")
         game.log.push({ key: "log.covering", params: { unit: u.id, target: t.id } })
-        combat.fire(u, t, { penalty: 15 })
-        if (t.alive()) combat.fire(u, t, { penalty: 15 })
+        game.orders.aim(u, t, "volley")
         break
       }
       case "charge": {

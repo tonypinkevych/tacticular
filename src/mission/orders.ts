@@ -81,6 +81,12 @@ export class Orders {
     }
   }
 
+  /** An alien's attack on a soldier, shown now and carried out at the start of its next turn. */
+  aim(u: Unit, t: Unit, kind: "shot" | "volley" | "claw"): void {
+    this.game.marks.push({ kind, unit: u.id, target: t.id, tiles: [{ ...t.at }] })
+    this.game.log.push({ key: "log.aim", params: { unit: u.id, target: t.id } })
+  }
+
   private shoot(u: Unit, action: { target?: string; at?: Point }): void {
     const combat = this.game.combat
     if (action.at) {
@@ -91,7 +97,8 @@ export class Orders {
       const t = this.game.unit(action.target ?? "")
       check(t.alive() && t.side !== u.side, "target")
       check(combat.canShoot(u, t), "range")
-      combat.fire(u, t)
+      if (u.side === "enemy") this.aim(u, t, u.profile.melee ? "claw" : "shot")
+      else combat.fire(u, t)
     }
     u.ap = 0
   }

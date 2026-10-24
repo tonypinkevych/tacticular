@@ -90,4 +90,13 @@ describe("mind", () => {
     g.unit("c").ap = 1
     expect(new Mind(g).next()).toEqual({ type: "hunker", unit: "c" })
   })
+  test("a soldier an alien aims at steps out of its sight", () => {
+    const g = setup(rows(["........", "........", "........", "........", "........", "........", "...hhh.."]), [
+      squad("c", "cleric", { x: 2, y: 6 }),
+      enemy("g", "commander", { x: 3, y: 3 }),
+    ])
+    g.marks.push({ kind: "shot", unit: "g", target: "c", tiles: [{ x: 2, y: 6 }] })
+    const after = g.apply(new Mind(g).next())
+    expect(after.combat.canShoot(after.unit("g"), after.unit("c"))).toBe(false)
+  })
 })

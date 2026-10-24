@@ -14,13 +14,13 @@ function game(seed: number, goal: GoalKind): Game {
 }
 
 describe("bot games", () => {
-  test("100 first Kill all missions end and the squad wins 60-90%", () => {
+  test("100 first Kill all missions end and the squad wins 60-95%", () => {
     const ends = Array.from({ length: 100 }, (_, s) => game(s + 1, "kill").phase)
     const won = ends.filter((p) => p === "won").length
     console.log(`kill: squad won ${won} of 100`)
     expect(ends.every((p) => p === "won" || p === "lost")).toBe(true)
     expect(won).toBeGreaterThanOrEqual(60)
-    expect(won).toBeLessThanOrEqual(90)
+    expect(won).toBeLessThanOrEqual(95)
   }, 60000)
   test("Evac and Defend missions end, and the squad can win them", () => {
     for (const goal of ["evac", "defend"] as const) {

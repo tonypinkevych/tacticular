@@ -217,6 +217,12 @@ export class Playback {
         this.note(where(id), t(`tactic.${key.slice(4)}`).toUpperCase(), "note", 0.05, "skill")
         this.pose(id, key === "log.suppressed" ? "shoot" : "skill", 0.4, after.units.find((x) => x.id === target)?.at)
         break
+      case "log.aim":
+        this.pose(id, "attack", 0.3, after.units.find((x) => x.id === target)?.at)
+        break
+      case "log.dodge":
+        this.note(where(target), t("ui.float.dodge"), "miss", 0.3)
+        break
       case "log.combo":
         this.note(where(target), t("ui.combo").toUpperCase(), "crit", 0.3, "crit")
         break

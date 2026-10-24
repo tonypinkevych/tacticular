@@ -193,4 +193,16 @@ describe("battle", () => {
     b.choose("hunker")
     expect(b.game().unit("r").hunkered).toBe(true)
   })
+  test("an aimed shot shows its hit chance now, and none once its target is out of sight", () => {
+    const g = setup(
+      ["........", "........", "........", "........", "........", "........", "...hhh..", "........"],
+      [squad("r", "ranger", { x: 2, y: 6 }), squad("w", "warden", { x: 0, y: 7 }), enemy("g", "grunt", { x: 3, y: 3 })],
+    )
+    g.marks.push({ kind: "shot", unit: "g", target: "r", tiles: [{ x: 2, y: 6 }] })
+    const b = new Battle(g)
+    b.begin(0)
+    expect(b.aimed(g.marks[0])).toBe(95)
+    b.click({ x: 4, y: 7 })
+    expect(b.aimed(b.game().marks[0])).toBe(null)
+  })
 })

@@ -1,7 +1,7 @@
 import { aliens, type Conditions, mission } from "../../src/mission/mission"
 
 describe("mission", () => {
-  test("the squad starts on the bottom row and 3 aliens on the top two", () => {
+  test("the squad starts on the bottom row and 5 aliens on the top two", () => {
     const g = mission(3, {
       goal: "kill",
       squad: [
@@ -12,7 +12,7 @@ describe("mission", () => {
     })
     expect(g.units.filter((u) => u.side === "squad").map((u) => u.at.y)).toEqual([7, 7, 7])
     const aliens = g.units.filter((u) => u.side === "enemy")
-    expect(aliens).toHaveLength(3)
+    expect(aliens).toHaveLength(5)
     expect(aliens.every((u) => u.at.y <= 1)).toBe(true)
   })
   test("a soldier keeps the HP it carries in", () => {
@@ -25,8 +25,8 @@ describe("mission", () => {
   })
   test("threat adds aliens, as many as the count of the conditions says", () => {
     const c: Conditions = { goal: "kill", squad: [{ id: "a", kind: "vanguard" }], threat: 3, boss: true }
-    expect(mission(3, c).units.filter((u) => u.side === "enemy")).toHaveLength(5)
-    expect(aliens(c)).toBe(5)
+    expect(mission(3, c).units.filter((u) => u.side === "enemy")).toHaveLength(7)
+    expect(aliens(c)).toBe(7)
   })
   test("Evac marks the top row; Defend marks a beacon near the squad", () => {
     const evac = mission(4, { goal: "evac", squad: [{ id: "a", kind: "vanguard" }] })

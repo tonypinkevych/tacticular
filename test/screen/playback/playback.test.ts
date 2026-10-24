@@ -53,11 +53,11 @@ describe("playback", () => {
   })
   test("an alien shot shows its hit chance over the alien first, and a soldier shot does not", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 2 })])
-    g.phase = "enemy"
-    const alien = run(g, { type: "shoot", unit: "g", target: "r" })
-    const chance = alien.after.log.at(-1)?.params.chance
+    g.marks.push({ kind: "shot", unit: "g", target: "r", tiles: [{ x: 3, y: 6 }] })
+    const alien = run(g, { type: "endTurn" })
+    const chance = alien.after.log.find((e) => e.params.unit === "g")?.params.chance
     expect(alien.seen.find((x) => x.startsWith("float:"))).toBe(`float:${chance}%`)
-    g.phase = "squad"
+    g.marks = []
     expect(run(g, { type: "shoot", unit: "r", target: "g" }).seen.some((x) => x.endsWith("%"))).toBe(false)
   })
   test("the texts over the board are in the player's language", () => {

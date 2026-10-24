@@ -15,7 +15,6 @@ function unlucky(game: Game, hit: number): Game {
   for (let s = 1; s < 20000; s++) if (reseed(game, s).dice.random() * 100 >= hit) return reseed(game, s)
   throw new Error("no seed")
 }
-const enemyTurn = (g: Game) => g.apply({ type: "endTurn" })
 
 describe("hit chance", () => {
   const sniper = (cover: boolean, moved = true) => {
@@ -96,29 +95,27 @@ describe("shots", () => {
     ])
   test("a hit takes the weapon damage", () => {
     const g = lucky(duel(), 80, 100).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(1)
+    expect(g.unit("g").hp).toBe(2)
   })
   test("a miss takes nothing", () => {
     const g = unlucky(duel(), 80).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(3)
+    expect(g.unit("g").hp).toBe(4)
   })
   test("a crit adds 1 damage", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
-    expect(lucky(g, 95, 50).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp).toBe(0)
+    expect(lucky(g, 95, 50).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp).toBe(1)
   })
   test("the Brute's claws always hit for its damage and push the target back", () => {
-    const g = enemyTurn(
-      setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })]),
-    ).apply({ type: "shoot", unit: "b", target: "v" })
-    expect(g.unit("v")).toMatchObject({ hp: 5, at: { x: 3, y: 5 } })
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
+    g.combat.fire(g.unit("b"), g.unit("v"))
+    expect(g.unit("v")).toMatchObject({ hp: 4, at: { x: 3, y: 5 } })
   })
   test("a push into water kills", () => {
-    const g = enemyTurn(
-      setup(rows(["........", "........", "........", "........", "........", "...~...."]), [
-        squad("v", "vanguard", { x: 3, y: 4 }),
-        enemy("b", "brute", { x: 3, y: 3 }),
-      ]),
-    ).apply({ type: "shoot", unit: "b", target: "v" })
+    const g = setup(rows(["........", "........", "........", "........", "........", "...~...."]), [
+      squad("v", "vanguard", { x: 3, y: 4 }),
+      enemy("b", "brute", { x: 3, y: 3 }),
+    ])
+    g.combat.fire(g.unit("b"), g.unit("v"))
     expect(g.unit("v").hp).toBe(0)
   })
   test("a shot at a barrel blows it: 2 around, fire on its tile, and the next barrel blows too", () => {
@@ -128,7 +125,7 @@ describe("shots", () => {
       enemy("b", "brute", { x: 5, y: 3 }),
     ]).apply({ type: "shoot", unit: "r", at: { x: 3, y: 3 } })
     expect([g.unit("a").hp, g.unit("b").hp, g.board.at({ x: 3, y: 3 }), g.board.at({ x: 4, y: 3 })]).toEqual([
-      1,
+      2,
       3,
       "fire",
       "fire",

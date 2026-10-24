@@ -33,7 +33,7 @@ describe("squad skills", () => {
   })
   test("Headshot crits on a hit", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
-    expect(hitting(g, 95).apply({ type: "skill", unit: "r", target: "g" }).unit("g").hp).toBe(0)
+    expect(hitting(g, 95).apply({ type: "skill", unit: "r", target: "g" }).unit("g").hp).toBe(1)
   })
   test("a Grenade hits a plus for 2 and breaks the cover in it, once a mission", () => {
     const g = setup(rows(["........", "........", "..l....."]), [
@@ -42,7 +42,7 @@ describe("squad skills", () => {
       enemy("b", "grunt", { x: 4, y: 2 }),
     ])
     const after = g.apply({ type: "skill", unit: "w", at: { x: 3, y: 2 } })
-    expect([after.unit("a").hp, after.unit("b").hp, after.board.at({ x: 2, y: 2 })]).toEqual([1, 1, "torn"])
+    expect([after.unit("a").hp, after.unit("b").hp, after.board.at({ x: 2, y: 2 })]).toEqual([2, 2, "torn"])
     expect(() => end(after, 2).apply({ type: "skill", unit: "w", at: { x: 3, y: 2 } })).toThrow(Illegal)
   })
   test("a Medkit heals an adjacent ally for 2, up to its HP", () => {
@@ -74,12 +74,16 @@ describe("squad skills", () => {
 })
 
 describe("alien skills", () => {
-  test("Covering fire shoots twice", () => {
-    const g = end(setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 2 })])).apply({
-      type: "skill",
-      unit: "g",
-      target: "r",
-    })
+  test("Covering fire aims 2 shots that fire in the next alien turn", () => {
+    const aimed = end(setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 2 })])).apply(
+      {
+        type: "skill",
+        unit: "g",
+        target: "r",
+      },
+    )
+    expect(aimed.marks.map((m) => m.kind)).toEqual(["volley"])
+    const g = end(aimed, 2)
     expect(g.log.filter((e) => e.key === "log.hit" || e.key === "log.miss" || e.key === "log.crit")).toHaveLength(2)
   })
   test("a Charge marks a line, then runs it next turn and claws the first unit on it", () => {
@@ -99,7 +103,7 @@ describe("alien skills", () => {
       },
     ])
     const run = end(marked, 2)
-    expect([run.unit("b").at, run.unit("v").hp, run.unit("v").at]).toEqual([{ x: 3, y: 3 }, 5, { x: 3, y: 5 }])
+    expect([run.unit("b").at, run.unit("v").hp, run.unit("v").at]).toEqual([{ x: 3, y: 3 }, 4, { x: 3, y: 5 }])
   })
   test("a Bomber marks a plus, then blows it next turn for 2", () => {
     const g = end(

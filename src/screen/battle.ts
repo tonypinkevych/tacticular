@@ -4,7 +4,7 @@ import type { Odds } from "../combat/combat"
 import { cover } from "../map/cover"
 import { adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
 import { clear } from "../map/sight"
-import type { Game } from "../mission/game"
+import type { Game, Mark } from "../mission/game"
 import { type Action, Illegal } from "../mission/orders"
 import type { Unit } from "../units/unit"
 import { Playback } from "./playback/playback"
@@ -356,6 +356,17 @@ export class Battle {
       foeMove: g.reach(foe, 2).tiles(),
       foeShot: all(g).filter((t) => from.some((q) => hits(q, t))),
     }
+  }
+
+  /** The hit chance of an attack an alien aimed, as the board stands now; null when the target is out of its reach. */
+  aimed(m: Mark): number | null {
+    const g = this.game(),
+      u = g.unit(m.unit),
+      t = g.units.find((x) => x.id === m.target)
+    if (!t?.alive() || !u.alive()) return null
+    if (m.kind === "claw") return adjacent(u.at, t.at) ? 100 : null
+    if (!g.combat.canShoot(u, t)) return null
+    return g.combat.odds(u, t, { aimed: true, penalty: m.kind === "volley" ? 15 : 0 }).chance
   }
 
   /** The odds of the selected soldier against the aimed alien in Shoot, else the hovered one. */

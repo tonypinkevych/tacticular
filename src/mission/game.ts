@@ -23,11 +23,15 @@ export type Goal =
   | { kind: "evac"; tiles: Point[] }
   | { kind: "defend"; at: Point; rounds: number; strikes: number }
 
-/** An alien attack shown a turn before it lands: a Bomber's blast or a Brute's charge. */
+/**
+ * An alien attack shown a turn before it lands: a Bomber's blast, a Brute's charge, or a shot, a volley or claws
+ * aimed at a soldier, which follow the soldier and land only while it is still in reach.
+ */
 export interface Mark {
-  kind: "blast" | "charge"
+  kind: "blast" | "charge" | "shot" | "volley" | "claw"
   unit: string
   tiles: Point[]
+  target?: string
 }
 
 /** The saved fields of a game. */

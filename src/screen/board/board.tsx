@@ -60,9 +60,22 @@ export function Board(props: { battle: Battle }) {
       const goal = g.goal
       if (goal.kind === "evac") for (const [i, p] of goal.tiles.entries()) overlay.evac(p, frame, i % 2 === 0)
       if (goal.kind === "defend") overlay.beacon(goal.at, frame)
-      for (const m of g.marks)
+      for (const m of g.marks) {
+        const shooter = g.unit(m.unit),
+          target = g.units.find((x) => x.id === m.target)
+        if (target) {
+          const odds = battle.aimed(m)
+          overlay.aim(
+            shooter.at,
+            target.at,
+            odds === null ? "—" : `${m.kind === "volley" ? "2×" : ""}${odds}%`,
+            odds !== null,
+          )
+          continue
+        }
         for (const [i, p] of m.tiles.entries())
           overlay.danger(p, frame, i === (m.kind === "blast" ? 0 : m.tiles.length - 1))
+      }
       for (const p of g.landing) overlay.drop(p, frame)
       const ready = battle.ready(),
         zones = battle.zones(),
