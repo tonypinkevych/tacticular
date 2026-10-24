@@ -40,6 +40,13 @@ describe("tactics", () => {
     ]).apply({ type: "tactic", unit: "v", target: "g" })
     expect(g.unit("g").alive()).toBe(false)
   })
+  test("Shove into fire burns the alien", () => {
+    const g = setup(rows(["........", "........", "........", "...f...."]), [
+      squad("v", "vanguard", { x: 3, y: 5 }),
+      enemy("g", "grunt", { x: 3, y: 4 }),
+    ]).apply({ type: "tactic", unit: "v", target: "g" })
+    expect(g.unit("g").hp).toBe(3)
+  })
   test("a Staggered alien loses its marked attack and has 1 AP in its next turn", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("b", "bomber", { x: 3, y: 5 })])
     g.marks.push({ kind: "blast", unit: "b", tiles: [{ x: 1, y: 6 }] })

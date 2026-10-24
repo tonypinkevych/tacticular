@@ -154,6 +154,21 @@ describe("shots", () => {
       g.unit("q").status = "exposed"
       expect(g.combat.odds(g.unit("r"), g.unit("q")).damage).toBe(2)
     })
+    test("a blast hurts a Guard behind cover", () => {
+      const g = setup(rows(["........", "........", "...l...."]), [
+        squad("r", "ranger", { x: 3, y: 6 }),
+        enemy("q", "guard", { x: 3, y: 1 }),
+      ])
+      g.combat.blast({ x: 3, y: 1 }, 2)
+      expect(g.unit("q").hp).toBe(3)
+    })
+    test("a Sniper reaches across the board for 3 damage", () => {
+      const g = setup(open(), [squad("r", "ranger", { x: 0, y: 7 }), enemy("s", "sniper", { x: 7, y: 0 })])
+      expect([g.combat.canShoot(g.unit("s"), g.unit("r")), g.combat.odds(g.unit("s"), g.unit("r")).damage]).toEqual([
+        true,
+        3,
+      ])
+    })
     test("a Sniper on overwatch fires without the aim penalty", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 3, y: 7 }), enemy("s", "sniper", { x: 3, y: 0 })])
       g.unit("s").overwatch = true

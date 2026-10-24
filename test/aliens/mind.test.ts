@@ -99,4 +99,9 @@ describe("mind", () => {
     const after = g.apply(new Mind(g).next())
     expect(after.combat.canShoot(after.unit("g"), after.unit("c"))).toBe(false)
   })
+  test("a Pod neither moves nor attacks", () => {
+    const g = aliens(setup(open(), [squad("r", "ranger", { x: 3, y: 2 }), enemy("p", "pod", { x: 3, y: 1 })]))
+    expect(new Mind(g).next()).toEqual({ type: "endTurn" })
+    expect(() => g.apply({ type: "move", unit: "p", to: { x: 3, y: 0 } })).toThrow()
+  })
 })
