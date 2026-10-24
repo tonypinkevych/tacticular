@@ -72,33 +72,78 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <Board battle={b} />
       </main>
 
-      <section class="float objective">
-        <header>
-          <Icon d="M5 21V4h11l-2 4 2 4H5" />
-          <b>{t(`ui.task.${g().goal.kind}`)}</b>
-          <span class="grow" />
-          <span class="muted">{t("ui.round", { round: g().round })}</span>
-          <button
-            type="button"
-            class="icon"
-            aria-label={t(muted() ? "ui.soundOff" : "ui.soundOn")}
-            onClick={() => setMuted(b.sound.toggle())}
-          >
-            <Icon d={muted() ? "M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6" : "M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 010 6"} />
+      <div class="left">
+        <section class="float objective">
+          <header>
+            <Icon d="M5 21V4h11l-2 4 2 4H5" />
+            <b>{t(`ui.task.${g().goal.kind}`)}</b>
+            <span class="grow" />
+            <span class="muted">{t("ui.round", { round: g().round })}</span>
+            <button
+              type="button"
+              class="icon"
+              aria-label={t(muted() ? "ui.soundOff" : "ui.soundOn")}
+              onClick={() => setMuted(b.sound.toggle())}
+            >
+              <Icon
+                d={muted() ? "M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6" : "M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 010 6"}
+              />
+            </button>
+          </header>
+          <span>{goal()}</span>
+          <button type="button" class="link" onClick={() => setLog((v) => !v)}>
+            {t("ui.log")} {log() ? "▴" : "▾"}
           </button>
-        </header>
-        <span>{goal()}</span>
-        <button type="button" class="link" onClick={() => setLog((v) => !v)}>
-          {t("ui.log")} {log() ? "▴" : "▾"}
-        </button>
-        <Show when={log()}>
-          <ol class="log">
-            <For each={g().log.slice(-8).reverse()}>
-              {(e) => <li>{t(e.key, { ...e.params, unit: name(e.params.unit), target: name(e.params.target) })}</li>}
-            </For>
-          </ol>
-        </Show>
-      </section>
+          <Show when={log()}>
+            <ol class="log">
+              <For each={g().log.slice(-8).reverse()}>
+                {(e) => <li>{t(e.key, { ...e.params, unit: name(e.params.unit), target: name(e.params.target) })}</li>}
+              </For>
+            </ol>
+          </Show>
+        </section>
+
+        <section class="float soldier">
+          <header>
+            <span>{t("ui.squad")}</span>
+            <b>{squad().length}</b>
+          </header>
+          <For each={squad()}>
+            {(u) => (
+              <button
+                type="button"
+                class="sheet"
+                classList={{ on: b.selected() === u.id, spent: u.ap === 0 }}
+                onClick={() => b.pick(u.id)}
+              >
+                <Portrait kind={u.kind} />
+                <div class="title">
+                  <b>{t(`kind.${u.kind}`)}</b>
+                  <span class="ap">
+                    <For each={[0, 1]}>{(i) => <i classList={{ off: i >= u.ap }} />}</For>
+                  </span>
+                </div>
+                <Pips unit={u} />
+                <div class="tags">
+                  <Show when={u.hunkered}>
+                    <span class="status hunkered">{t("ui.hunker")}</span>
+                  </Show>
+                  <Show when={u.overwatch}>
+                    <span class="status watching">{t("ui.overwatch")}</span>
+                  </Show>
+                  <Show when={u.extra.partner}>
+                    <span class="status partner">{t("ui.partner")}</span>
+                  </Show>
+                  <Show when={aimedAt(u)}>{(n) => <span class="threat">{t("ui.aimedAt", { count: n() })}</span>}</Show>
+                  <Show when={b.selected() === u.id && u.profile.combo}>
+                    {(c) => <span class="muted">{t("ui.gains", { status: t(`status.${c()}`) })}</span>}
+                  </Show>
+                </div>
+              </button>
+            )}
+          </For>
+        </section>
+      </div>
 
       <div class="ribbon" classList={{ alien: busy() }}>
         <b>{busy() ? t("ui.alienActivity") : t(`ui.phase.${g().phase}`)}</b>
@@ -130,53 +175,6 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
             </button>
           )}
         </For>
-      </section>
-
-      <section class="float soldier">
-        <div class="squad">
-          <For each={squad()}>
-            {(u) => (
-              <button
-                type="button"
-                class="mini"
-                classList={{ on: b.selected() === u.id, spent: u.ap === 0 }}
-                aria-label={t(`kind.${u.kind}`)}
-                onClick={() => b.pick(u.id)}
-              >
-                <Portrait kind={u.kind} />
-              </button>
-            )}
-          </For>
-        </div>
-        <Show when={b.unit()}>
-          {(u) => (
-            <div class="sheet">
-              <Portrait kind={u().kind} />
-              <div class="title">
-                <b>{t(`kind.${u().kind}`)}</b>
-                <span class="ap">
-                  <For each={[0, 1]}>{(i) => <i classList={{ off: i >= u().ap }} />}</For>
-                </span>
-              </div>
-              <Pips unit={u()} />
-              <div class="tags">
-                <Show when={u().hunkered}>
-                  <span class="status hunkered">{t("ui.hunker")}</span>
-                </Show>
-                <Show when={u().overwatch}>
-                  <span class="status watching">{t("ui.overwatch")}</span>
-                </Show>
-                <Show when={u().extra.partner}>
-                  <span class="status partner">{t("ui.partner")}</span>
-                </Show>
-                <Show when={u().profile.combo}>
-                  {(c) => <span class="muted">{t("ui.gains", { status: t(`status.${c()}`) })}</span>}
-                </Show>
-              </div>
-              <Show when={aimedAt(u())}>{(n) => <span class="threat">{t("ui.aimedAt", { count: n() })}</span>}</Show>
-            </div>
-          )}
-        </Show>
       </section>
 
       <section class="abilities">

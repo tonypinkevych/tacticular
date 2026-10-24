@@ -303,16 +303,16 @@ kbd {
 }
 button.end-turn {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
+  top: 16px;
+  right: 16px;
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
+  gap: 8px;
+  padding: 5px 12px;
   border: 2px solid var(--ink);
   background: var(--yellow);
-  font-size: 18px;
+  font-size: 13px;
   font-weight: bold;
   box-shadow: 3px 3px 0 var(--ink);
 }
@@ -321,8 +321,8 @@ button.end-turn:hover {
   color: var(--paper);
 }
 button.end-turn svg {
-  width: 28px;
-  height: 36px;
+  width: 14px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -414,10 +414,23 @@ button.link {
   color: var(--muted);
   text-decoration: underline;
 }
-.objective {
+.left {
+  position: absolute;
+  z-index: 2;
   top: 16px;
   left: 16px;
-  width: 280px;
+  bottom: 16px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+.left > .float {
+  position: static;
+  pointer-events: auto;
+}
+.objective {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -453,10 +466,10 @@ button.link {
   font-weight: bold;
 }
 .incoming {
-  top: 16px;
   right: 16px;
+  bottom: 16px;
   width: 280px;
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 92px);
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -501,78 +514,66 @@ button.link {
   color: #8e2f1f;
 }
 .soldier {
-  left: 16px;
-  bottom: 16px;
-  width: 340px;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
+  min-height: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-.squad {
-  display: flex;
   gap: 6px;
 }
-.mini {
-  width: 50px;
-  height: 50px;
-  padding: 0;
-  border: 1.5px solid var(--line-hi);
-  background: var(--paper);
-}
-.mini .portrait {
-  width: 46px;
-  height: 46px;
-}
-.mini.on {
-  border: 2.5px solid var(--ink);
-  background: var(--yellow);
-}
-.mini.spent {
-  opacity: 0.5;
+.soldier header {
+  justify-content: space-between;
+  padding: 4px 8px;
+  margin: -4px -6px 2px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
 }
 .sheet {
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
-  gap: 6px 12px;
-  padding: 12px;
-  border: 2.5px solid var(--ink);
-  background: rgba(236, 235, 229, 0.96);
-  box-shadow: 5px 5px 0 var(--yellow);
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 3px 10px;
+  padding: 6px 8px;
+  border: 2px solid var(--line);
+  background: var(--paper);
+  text-align: left;
+  text-transform: none;
+}
+.sheet.on {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 4px 4px 0 var(--yellow);
+}
+.sheet.spent {
+  opacity: 0.55;
 }
 .sheet .portrait {
-  grid-row: span 4;
-  width: 80px;
-  height: 80px;
-  border: 2px solid var(--ink);
-  background: #f4f3ee;
+  grid-row: span 3;
+  width: 44px;
+  height: 44px;
 }
 .sheet .title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 15px;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 .sheet .ap i {
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   transform: rotate(45deg);
 }
 .sheet .pips i {
   flex: 1;
-  height: 9px;
+  height: 7px;
 }
 .sheet .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
-  font-size: 11px;
+  font-size: 10px;
 }
 .sheet .status,
 .sheet .threat {
