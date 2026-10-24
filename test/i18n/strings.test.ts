@@ -34,10 +34,8 @@ describe("strings", () => {
       for (const m of text.matchAll(/key: "(log\.\w+)"/g)) used.add(m[1])
       for (const m of text.matchAll(/check\(.*, "([^"]+)"\)$/gm)) used.add(`illegal.${m[1]}`)
       for (const m of text.matchAll(/new Illegal\("([^"]+)"\)/g)) used.add(`illegal.${m[1]}`)
-      for (const m of text.matchAll(/note\("(week\.\w+)"/g)) used.add(m[1])
     }
-    for (const id of ["fear", "dread", "dominate"]) used.add(`log.${id}`)
     for (const k of used) expect(DICTIONARIES.en, k).toHaveProperty([k])
-    expect(used.size).toBeGreaterThan(40)
+    expect(used.size).toBeGreaterThan(10)
   })
 })

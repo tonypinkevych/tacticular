@@ -12,12 +12,8 @@ export const same = (a: Point, b: Point): boolean => a.x === b.x && a.y === b.y
 
 export const plus = (a: Point, b: Point): Point => ({ x: a.x + b.x, y: a.y + b.y })
 
-/** Grid distance where diagonal steps cost 1, then 2, then 1, and so on. */
-export function distance(a: Point, b: Point): number {
-  const dx = Math.abs(a.x - b.x)
-  const dy = Math.abs(a.y - b.y)
-  return Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2)
-}
+/** Grid distance where a diagonal step costs 1, as a king moves in chess. */
+export const distance = (a: Point, b: Point): number => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
 
 export const adjacent = (a: Point, b: Point): boolean => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) === 1
 

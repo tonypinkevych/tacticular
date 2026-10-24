@@ -1,183 +1,72 @@
-import { power, span } from "../combat/abilities"
-import { WEAPONS } from "../combat/weapons"
-import { distance, pointOf } from "../map/point"
-import type { Side, Unit } from "../units/unit"
-import type { Game } from "./game"
+import { ORTHOGONAL, plus } from "../map/point"
+import { blocksMove } from "../map/tile"
+import type { Side } from "../units/unit"
+import type { Game, Mark } from "./game"
 
-/** The phases and rounds of a game. */
+/** The change of sides: what ends with a turn, what ends with a round, and what starts a turn. */
 export class Turn {
   constructor(private readonly game: Game) {}
 
-  /** Ends the active side's phase; the enemy phase ends the round. */
   end(): void {
     const game = this.game
     if (game.phase === "squad") {
-      this.mend()
-      this.start("enemy")
-      return
+      game.phase = "enemy"
+      this.begin("enemy")
+    } else {
+      for (const u of game.units) u.rallied = false
+      this.close()
+      game.round += 1
+      game.phase = "squad"
+      game.log.push({ key: "log.round", params: { round: game.round } })
+      this.begin("squad")
     }
-    this.hide()
-    this.close()
-    if (game.phase === "enemy") this.start("squad")
+    game.settle()
   }
 
-  start(side: Side): void {
-    const game = this.game
-    game.phase = side
-    if (side === "enemy") this.drift()
-    for (const u of game.units) {
-      if (!u.alive()) continue
-      if (u.allegiance() !== side) {
-        u.ap = 0
-        continue
-      }
-      u.ap = u.has("captive") || u.has("stasis") ? 0 : 2
-      u.moved = false
-      u.waited = u.stance === "overwatch" || u.stance === "hunker"
-      u.stance = "none"
-      if (u.kind === "turret") {
-        u.ap = 0
-        u.stance = "overwatch"
-        u.ammo = WEAPONS[u.weapon].ammo ?? 0
-      }
-      advance(u)
-    }
-    if (side === "squad") this.shade()
-    game.stealth.observe()
-  }
-
-  /** Field medic: each downed soldier in reach of a standing Medic gets up. */
-  private mend(): void {
-    const game = this.game
-    for (const m of game.units) {
-      if (!m.alive() || m.rank("medic") === 0 || m.allegiance() !== "squad") continue
-      for (const x of game.units) {
-        if (x.down === 0 || x.side !== m.side || distance(m.pos, x.pos) > span(m, "medic")) continue
-        x.hp = power(m, "medic")
-        x.down = 0
-        game.log.push({ key: "log.revive", params: { unit: m.id, target: x.id, amount: x.hp } })
-      }
-    }
-  }
-
-  /** Shadow: a Scout that no alien sees is concealed again. */
-  private shade(): void {
-    const game = this.game
-    for (const u of game.units) {
-      if (!u.alive() || u.concealed || u.rank("shadow") === 0) continue
-      if (game.units.some((e) => e.alive() && e.foe(u) && game.sight.sees(e, u.pos))) continue
-      u.concealed = true
-      game.log.push({ key: "log.shadow", params: { unit: u.id } })
-    }
-  }
-
-  /**
-   * Defend: aliens that outnumber soldiers on the beacon and its 8 tiles at 2 round ends in a row take it and win;
-   * holding it to the last round wins.
-   */
-  private hold(): void {
-    const game = this.game
-    const goal = game.goal
-    if (goal.kind !== "defend") return
-    const near = game.units.filter((u) => u.alive() && distance(u.pos, goal.at) <= 1)
-    const aliens = near.filter((u) => u.allegiance() === "enemy").length
-    const soldiers = near.filter((u) => u.allegiance() === "squad").length
-    goal.held = aliens > soldiers ? goal.held + 1 : 0
-    if (goal.held >= 2) {
-      game.log.push({ key: "log.beacon", params: {} })
-      game.phase = "lost"
-    } else if (game.round >= goal.rounds) game.phase = "won"
-  }
-
-  /** Relay: a charge blows up at the end of the round after it was planted; the squad must then leave or win. */
-  private detonate(): void {
-    const game = this.game
-    const goal = game.goal
-    if (goal.kind !== "relay" || goal.planted === null || goal.blown || goal.planted >= game.round) return
-    goal.blown = true
-    game.log.push({ key: "log.relay", params: {} })
-    game.combat.explode(goal.at)
-    game.orders.settle()
-  }
-
-  /**
-   * After round 3, an unaware group at a route point gets its next point nearer to where it looks for the squad; every
-   * member takes the lead's route and point.
-   */
-  private drift(): void {
-    const game = this.game
-    if (game.round <= 3) return
-    for (const g of game.groups) {
-      const members = game.units.filter((u) => u.alive() && u.group === g.id && u.side === "enemy")
-      const lead = members[0]
-      const landing = game.stealth.hunch(g)
-      if (!landing || !lead || lead.patrol.length === 0 || members.some((u) => u.alert !== "unaware")) continue
-      if (distance(lead.pos, lead.patrol[lead.patrolIndex % lead.patrol.length]) > 1) continue
-      const closer = [...game.reach(lead, lead.mobility * 4).cost.keys()]
-        .map(pointOf)
-        .filter((p) => distance(p, landing) < distance(lead.pos, landing) - 2)
-      if (closer.length === 0) continue
-      lead.patrol[(lead.patrolIndex + 1) % lead.patrol.length] = { ...game.dice.pick(closer) }
-      for (const u of members) {
-        u.patrol = lead.patrol.map((p) => ({ ...p }))
-        u.patrolIndex = lead.patrolIndex
-      }
-    }
-  }
-
-  /** Stalkers that no soldier sees take cover in the shadows again. */
-  private hide(): void {
-    for (const u of this.game.units) {
-      if (!u.alive() || u.kind !== "assassin" || u.side !== "enemy") continue
-      u.concealed = false
-      u.concealed = !this.game.stealth.visible(u)
-    }
-  }
-
+  /** The end of a round: units in fire burn, and fire spreads to the next forest. */
   private close(): void {
     const game = this.game
-    game.stealth.horn()
-    game.stealth.calm()
-    for (const u of game.units) {
-      if (u.down === 0) continue
-      u.down -= 1
-      if (u.down === 0) game.log.push({ key: "log.dies", params: { unit: u.id } })
-    }
-    for (const u of game.units) {
-      if (!u.alive()) continue
-      if (u.statuses.some((s) => s.id === "burning")) {
-        game.log.push({ key: "log.burning", params: { unit: u.id, dmg: 2 } })
-        game.combat.hurt(u, 2)
-      }
-      if (u.alive() && u.has("poisoned")) {
-        game.log.push({ key: "log.poisoned", params: { unit: u.id, dmg: 1 } })
-        game.combat.hurt(u, 1)
-      }
-      u.statuses = u.statuses.map((s) => ({ ...s, rounds: s.rounds - 1 })).filter((s) => s.rounds > 0)
-      for (const id of Object.keys(u.cooldowns) as (keyof typeof u.cooldowns)[]) {
-        const left = (u.cooldowns[id] ?? 0) - 1
-        u.cooldowns[id] = left > 0 ? left : undefined
-      }
-    }
-    game.fire.spread()
-    for (const u of game.units) {
-      if (u.kind !== "turret" || !u.alive() || u.has("deployed")) continue
-      u.hp = 0
-      game.log.push({ key: "log.dies", params: { unit: u.id } })
-    }
-    game.zones = game.zones.map((z) => ({ ...z, rounds: z.rounds - 1 })).filter((z) => z.rounds > 0)
-    game.reinforcements.land()
-    this.hold()
-    this.detonate()
-    game.round += 1
-    game.log.push({ key: "log.round", params: { round: game.round } })
+    for (const u of game.units) if (u.alive() && game.board.at(u.at) === "fire") game.combat.burn(u)
+    const fires = game.board.tiles.flatMap((t, i) =>
+      t === "fire" ? [{ x: i % game.board.width, y: Math.floor(i / game.board.width) }] : [],
+    )
+    for (const f of fires)
+      for (const d of ORTHOGONAL) if (game.board.at(plus(f, d)) === "forest") game.board.set(plus(f, d), "fire")
   }
-}
 
-/** Moves a patrol on to its next point when the unit already stands at the current one. */
-function advance(u: Unit): void {
-  for (let i = 0; i < u.patrol.length; i++) {
-    if (distance(u.pos, u.patrol[u.patrolIndex % u.patrol.length]) > 1) return
-    u.patrolIndex = (u.patrolIndex + 1) % u.patrol.length
+  /** A side's turn starts: 2 AP, cooldowns count down, overwatch ends, and its marked attacks land. */
+  private begin(side: Side): void {
+    const game = this.game
+    for (const u of game.units.filter((x) => x.side === side && x.alive())) {
+      u.ap = 2
+      u.moved = false
+      u.overwatch = false
+      u.cooldown = Math.max(0, u.cooldown - 1)
+    }
+    const marks = game.marks.filter((m) => game.unit(m.unit).side === side)
+    game.marks = game.marks.filter((m) => !marks.includes(m))
+    for (const m of marks) if (game.unit(m.unit).alive()) this.land(m)
+  }
+
+  private land(m: Mark): void {
+    const game = this.game,
+      u = game.unit(m.unit)
+    if (m.kind === "blast") {
+      game.log.push({ key: "log.blast", params: { unit: u.id } })
+      game.combat.blast(m.tiles[0], u.profile.damage)
+      return
+    }
+    game.log.push({ key: "log.rush", params: { unit: u.id } })
+    for (const p of m.tiles) {
+      const hit = game.unitAt(p)
+      if (hit) {
+        game.combat.fire(u, hit)
+        return
+      }
+      if (blocksMove(game.board.at(p))) return
+      u.at = { ...p }
+      if (game.board.at(p) === "fire") game.combat.burn(u)
+      if (!u.alive()) return
+    }
   }
 }

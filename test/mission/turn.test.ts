@@ -1,71 +1,48 @@
-import { distance } from "../../src/map/point"
-import type { Game } from "../../src/mission/game"
-import { enemy, find, open, setup, squad } from "../fixture"
+import { enemy, open, setup, squad } from "../fixture"
 
-describe("patrol drift", () => {
-  const route = [
-    { x: 15, y: 1 },
-    { x: 18, y: 1 },
-  ]
-  const roam = (round: number): Game => {
-    const g = setup(open(20, 3), [squad("s", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 15, y: 1 }, "unaware")])
-    g.groups = [{ id: "g1", revealed: false, target: null, landing: { x: 0, y: 1 } }]
-    find(g, "e").patrol = route.map((p) => ({ ...p }))
-    g.round = round
-    return g.apply({ type: "endTurn" })
-  }
+const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
 
-  test("after round 3 an unaware group at a route point heads for a point nearer to where the squad landed", () => {
-    const e = find(roam(4), "e")
-    expect(distance(e.patrol[e.patrolIndex], { x: 0, y: 1 })).toBeLessThan(15)
+describe("turns", () => {
+  test("the aliens get 2 AP when the squad ends its turn", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 3 }), enemy("g", "grunt", { x: 7, y: 0 })]).apply({
+      type: "endTurn",
+    })
+    expect([g.phase, g.unit("g").ap]).toEqual(["enemy", 2])
   })
-  test("a group drifts as one: every member takes the lead's route and point", () => {
-    const g = setup(open(20, 3), [
-      squad("s", "warden", { x: 0, y: 1 }),
-      enemy("e", "orc", { x: 15, y: 1 }, "unaware"),
-      enemy("f", "orc", { x: 16, y: 1 }, "unaware"),
+  test("a new round gives the squad 2 AP and counts down its cooldowns", () => {
+    const start = setup(open(), [squad("r", "ranger", { x: 3, y: 3 }), enemy("g", "grunt", { x: 7, y: 0 })])
+    start.unit("r").cooldown = 3
+    const g = start.apply({ type: "overwatch", unit: "r" }).apply({ type: "endTurn" }).apply({ type: "endTurn" })
+    expect([g.round, g.phase, g.unit("r").ap, g.unit("r").cooldown]).toEqual([2, "squad", 2, 2])
+  })
+  test("a unit in fire burns for 1 at the end of the round", () => {
+    const g = setup(rows(["........", "........", "........", "...f...."]), [
+      squad("v", "vanguard", { x: 3, y: 3 }),
+      enemy("g", "grunt", { x: 7, y: 0 }),
     ])
-    g.groups = [{ id: "g1", revealed: false, target: null, landing: { x: 0, y: 1 } }]
-    find(g, "e").patrol = route.map((p) => ({ ...p }))
-    find(g, "f").patrol = [
-      { x: 16, y: 0 },
-      { x: 19, y: 2 },
-    ]
-    find(g, "f").patrolIndex = 1
-    g.round = 4
-    const after = g.apply({ type: "endTurn" })
-    expect(find(after, "f").patrol).toEqual(find(after, "e").patrol)
-    expect(find(after, "f").patrolIndex).toBe(find(after, "e").patrolIndex)
+    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).unit("v").hp).toBe(5)
   })
-  test("up to round 3 the route stays", () => {
-    expect(find(roam(3), "e").patrol).toEqual(route)
+  test("fire spreads to the next forest at the end of the round", () => {
+    const g = setup(rows(["........", "........", "........", "...fT..."]), [
+      squad("v", "vanguard", { x: 0, y: 7 }),
+      enemy("g", "grunt", { x: 7, y: 0 }),
+    ])
+    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).board.at({ x: 4, y: 3 })).toBe("fire")
   })
-})
-
-describe("waiting", () => {
-  test("a unit that ended its turn on overwatch starts the next one as waited", () => {
-    const g = setup(open(20, 3), [squad("s", "warden", { x: 0, y: 1 }), enemy("e", "orc", { x: 15, y: 1 })])
-    g.phase = "enemy"
-    find(g, "e").ap = 2
-    const watched = g.apply({ type: "overwatch", unit: "e" })
-    const next = watched.apply({ type: "endTurn" }).apply({ type: "endTurn" })
-    expect(find(next, "e").waited).toBe(true)
+  test("the squad wins when no alien stands", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 3 }), enemy("g", "grunt", { x: 3, y: 0 })])
+    g.unit("g").hp = 1
+    let next = g
+    for (let i = 0; i < 20 && next.phase !== "won"; i++)
+      next =
+        next.phase === "squad" && next.unit("r").ap > 0
+          ? next.apply({ type: "shoot", unit: "r", target: "g" })
+          : next.apply({ type: "endTurn" })
+    expect(next.phase).toBe("won")
   })
-})
-
-describe("relay", () => {
-  test("a planted charge blows up at the end of the next round: 3 damage around it; the squad must then leave", () => {
-    const g = setup(open(12, 3), [squad("s", "warden", { x: 2, y: 1 }), enemy("e", "orc", { x: 6, y: 1 }, "unaware")])
-    g.goal = { kind: "relay", at: { x: 5, y: 1 }, planted: 1, tiles: [{ x: 0, y: 1 }], blown: false }
-    g.phase = "enemy"
-    g.turn.end()
-    expect(g.phase).toBe("squad")
-    g.phase = "enemy"
-    g.turn.end()
-    expect(g.goal).toMatchObject({ blown: true })
-    expect(g.phase).toBe("squad")
-    expect(find(g, "e").hp).toBe(find(g, "e").maxHp - 3)
-    expect(find(g, "s").hp).toBe(find(g, "s").maxHp)
-    expect(g.apply({ type: "move", unit: "s", to: { x: 0, y: 1 } }).phase).toBe("won")
+  test("the squad loses when no soldier stands", () => {
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
+    g.unit("v").hp = 3
+    expect(g.apply({ type: "endTurn" }).apply({ type: "shoot", unit: "b", target: "v" }).phase).toBe("lost")
   })
 })

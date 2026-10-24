@@ -2,36 +2,17 @@ import { Board } from "../src/map/board"
 import type { Point } from "../src/map/point"
 import { Game } from "../src/mission/game"
 import type { Kind } from "../src/units/profiles"
-import { type Side, Unit } from "../src/units/unit"
+import { Unit } from "../src/units/unit"
 
-export const open = (w = 12, h = 12): string[] => Array.from({ length: h }, () => ".".repeat(w))
+export const open = (): string[] => Array.from({ length: 8 }, () => "........")
 
 export function setup(rows: string[], units: Unit[] = [], seed = 1): Game {
-  const groups = [...new Set(units.map((u) => u.group).filter((g): g is string => !!g))].map((id) => ({
-    id,
-    revealed: false,
-    target: null,
-  }))
-  return Game.start({ seed, board: Board.parse(rows), units, groups })
+  return Game.start({ seed, board: Board.parse(rows), units })
 }
 
-export function squad(id: string, kind: Kind, pos: Point): Unit {
-  return Unit.of(id, kind, "squad", pos, id)
-}
+export const squad = (id: string, kind: Kind, at: Point): Unit => Unit.of(id, kind, "squad", at)
 
-export function enemy(
-  id: string,
-  kind: Kind,
-  pos: Point,
-  alert: Unit["alert"] = "engaged",
-  group = "g1",
-  side: Side = "enemy",
-): Unit {
-  const u = Unit.of(id, kind, side, pos, id, group)
-  u.alert = alert
-  u.concealed = false
-  return u
-}
+export const enemy = (id: string, kind: Kind, at: Point): Unit => Unit.of(id, kind, "enemy", at)
 
 /** The same game with another state of its random stream. */
 export function reseed(game: Game, rng: number): Game {
@@ -40,6 +21,11 @@ export function reseed(game: Game, rng: number): Game {
   return next
 }
 
-export function find(game: Game, id: string): Unit {
-  return game.units.find((u) => u.id === id)!
+/** A seed whose first roll in a game is below or above a percent. */
+export function seedFor(game: Game, below: number, hit = true): number {
+  for (let s = 1; s < 10000; s++) {
+    const roll = reseed(game, s).dice.random() * 100
+    if (hit ? roll < below : roll >= below) return s
+  }
+  throw new Error("no seed")
 }

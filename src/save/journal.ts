@@ -1,13 +1,9 @@
 import { type Event, finalizeEvent, generateSecretKey, getPublicKey, verifyEvent } from "nostr-tools/pure"
 import { bytesToHex, hexToBytes } from "nostr-tools/utils"
-import type { Conditions } from "../mission/mission"
 import type { Action } from "../mission/orders"
 
 /** Nostr event kind of the game log: one start event, then one event per player action. */
 export const KIND = 7350
-
-/** Nostr event kind of the campaign log: one start event, then one event per choice in the campaign. */
-export const CAMPAIGN = 7352
 
 const TAG = ["t", "tacticular"]
 
@@ -57,7 +53,7 @@ export class Journal {
 }
 
 /** Reads a log back: checks every signature, the author, the root link and the order. */
-export function history<T = Action, C = Conditions>(
+export function history<T = Action, C = object>(
   events: Event[],
   kind = KIND,
 ): { seed: number; conditions: C; actions: T[] } {

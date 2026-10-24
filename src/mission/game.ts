@@ -1,26 +1,12 @@
-import { Reinforcements } from "../aliens/reinforcements"
-import { type Group, type Noise, Stealth } from "../aliens/stealth"
 import { Abilities } from "../combat/abilities"
 import { Combat } from "../combat/combat"
 import { Dice } from "../combat/dice"
 import type { Board } from "../map/board"
-import { Cover } from "../map/cover"
-import { Fire } from "../map/fire"
 import { type Point, same } from "../map/point"
 import { Reach } from "../map/reach"
-import { Sight } from "../map/sight"
-import type { Tile } from "../map/tile"
-import type { Side, Unit } from "../units/unit"
+import type { Unit } from "../units/unit"
 import { type Action, Orders } from "./orders"
 import { Turn } from "./turn"
-
-export interface Zone {
-  kind: "fire" | "mine"
-  tiles: Point[]
-  rounds: number
-  /** A mine's damage. */
-  power?: number
-}
 
 export interface Entry {
   key: string
@@ -29,15 +15,12 @@ export interface Entry {
 
 export type Phase = "squad" | "enemy" | "won" | "lost"
 
-/** What wins the mission besides killing every alien. */
-export type Goal =
-  | { kind: "kill" }
-  | { kind: "warchief"; tiles: Point[]; slain: boolean }
-  | { kind: "evac"; tiles: Point[] }
-  | { kind: "defend"; at: Point; rounds: number; held: number }
-  | { kind: "intel"; at: Point; taken: boolean; tiles: Point[] }
-  | { kind: "vip"; captive: string; tiles: Point[] }
-  | { kind: "relay"; at: Point; planted: number | null; tiles: Point[]; blown: boolean }
+/** An alien attack shown a turn before it lands: a Bomber's blast or a Brute's charge. */
+export interface Mark {
+  kind: "blast" | "charge"
+  unit: string
+  tiles: Point[]
+}
 
 /** The saved fields of a game. */
 export interface GameData {
@@ -47,19 +30,8 @@ export interface GameData {
   phase: Phase
   board: Board
   units: Unit[]
-  zones: Zone[]
-  groups: Group[]
-  explored: boolean[]
-  noises: Noise[]
-  reactions: string[]
+  marks: Mark[]
   log: Entry[]
-  goal: Goal
-  /** Where alien reinforcements land; a map with no pad gets none. */
-  pad: Point | null
-  /** The rounds sooner each alien drop comes. */
-  alarm: number
-  /** The alien Force Level of a campaign mission. */
-  force?: number
 }
 
 /** What a new game starts from. */
@@ -67,7 +39,6 @@ export interface Setup {
   seed: number
   board: Board
   units: Unit[]
-  groups?: Group[]
 }
 
 /**
@@ -81,52 +52,21 @@ export class Game implements GameData {
   phase!: Phase
   board!: Board
   units!: Unit[]
-  zones!: Zone[]
-  groups!: Group[]
-  explored!: boolean[]
-  noises!: Noise[]
-  reactions!: string[]
+  marks!: Mark[]
   log!: Entry[]
-  goal!: Goal
-  pad!: Point | null
-  alarm!: number
-  force?: number
   readonly dice = new Dice(this)
-  readonly sight = new Sight(this)
-  readonly cover = new Cover(this)
-  readonly stealth = new Stealth(this)
-  readonly fire = new Fire(this)
   readonly combat = new Combat(this)
-  readonly reinforcements = new Reinforcements(this)
+  readonly abilities = new Abilities(this)
   readonly turn = new Turn(this)
   readonly orders = new Orders(this)
-  readonly abilities = new Abilities(this)
 
   constructor(data: GameData) {
     Object.assign(this, data)
   }
 
-  /** A new game in the squad phase, with the squad's first view of the board explored. */
-  static start({ seed, board, units, groups = [] }: Setup): Game {
-    const game = new Game({
-      seed,
-      rng: seed,
-      round: 1,
-      phase: "squad",
-      board,
-      units,
-      zones: [],
-      groups,
-      explored: new Array(board.width * board.height).fill(false),
-      noises: [],
-      reactions: [],
-      log: [],
-      goal: { kind: "kill" },
-      pad: null,
-      alarm: 0,
-    })
-    game.stealth.observe()
-    return game
+  /** A new game in the squad's first turn. */
+  static start({ seed, board, units }: Setup): Game {
+    return new Game({ seed, rng: seed, round: 1, phase: "squad", board, units, marks: [], log: [] })
   }
 
   /** Applies one action and returns the next game; this game is not changed. */
@@ -142,22 +82,10 @@ export class Game implements GameData {
       rng: this.rng,
       round: this.round,
       phase: this.phase,
-      zones: this.zones,
-      groups: this.groups,
-      explored: this.explored,
-      noises: this.noises,
-      reactions: this.reactions,
+      marks: this.marks,
       log: this.log,
-      goal: this.goal,
-      pad: this.pad,
-      alarm: this.alarm,
-      force: this.force,
     })
     return new Game({ ...plain, board: this.board.clone(), units: this.units.map((u) => u.clone()) })
-  }
-
-  tile(p: Point): Tile {
-    return this.board.at(p)
   }
 
   unit(id: string): Unit {
@@ -166,18 +94,28 @@ export class Game implements GameData {
     return u
   }
 
-  /** The unit on a tile: a living one, or a downed soldier. */
+  /** The living unit on a tile. */
   unitAt(p: Point): Unit | undefined {
-    return this.units.find((u) => (u.hp > 0 || u.down > 0) && same(u.pos, p))
+    return this.units.find((u) => u.alive() && same(u.at, p))
   }
 
-  /** Living units that fight against a unit now. */
-  foesOf(u: Unit): Unit[] {
-    return this.units.filter((x) => x.alive() && x.allegiance() !== u.allegiance())
+  foes(u: Unit): Unit[] {
+    return this.units.filter((x) => x.alive() && x.side !== u.side)
   }
 
-  /** Tiles a unit can walk to within a budget, with the way to each. */
-  reach(unit: Unit, budget: number, side: Side = unit.side): Reach {
-    return Reach.of(this, unit, budget, side)
+  allies(u: Unit): Unit[] {
+    return this.units.filter((x) => x.alive() && x.side === u.side)
+  }
+
+  /** Tiles a unit can walk to with one move or two. */
+  reach(unit: Unit, moves: number): Reach {
+    return Reach.of(this, unit, moves)
+  }
+
+  /** Ends the mission when one side has no unit standing. */
+  settle(): void {
+    if (this.phase === "won" || this.phase === "lost") return
+    if (!this.units.some((u) => u.side === "enemy" && u.alive())) this.phase = "won"
+    else if (!this.units.some((u) => u.side === "squad" && u.alive())) this.phase = "lost"
   }
 }

@@ -1,27 +1,13 @@
-import { enemy } from "../fixture"
+import { Unit } from "../../src/units/unit"
 
-describe("wounds", () => {
-  test("a unit at half its HP or less is wounded", () => {
-    const e = enemy("e", "warchief", { x: 0, y: 0 })
-    e.hp = Math.floor(e.maxHp / 2) + 1
-    expect(e.wounded()).toBe(false)
-    e.hp = Math.floor(e.maxHp / 2)
-    expect(e.wounded()).toBe(true)
+describe("unit", () => {
+  test("starts with full HP, 2 AP and its skill uses", () => {
+    const u = Unit.of("w", "warden", "squad", { x: 0, y: 0 })
+    expect([u.hp, u.ap, u.uses, u.cooldown]).toEqual([6, 2, 1, 0])
   })
-  test("a wounded unit moves one move a turn, not a dash", () => {
-    const e = enemy("e", "warchief", { x: 0, y: 0 })
-    e.ap = 2
-    expect(e.stride()).toBe(e.mobility * 2)
-    e.hp = Math.floor(e.maxHp / 2)
-    expect(e.stride()).toBe(e.mobility)
-  })
-})
-
-describe("ranks", () => {
-  test("a new unit has rank 1 in each skill of its kit and none outside it", () => {
-    const u = enemy("v", "vanguard", { x: 0, y: 0 }, "engaged", "g1", "squad")
-    expect(u.rank("close")).toBe(1)
-    expect(u.rank("rampage")).toBe(1)
-    expect(u.rank("rocket")).toBe(0)
+  test("a war cry adds one tile to its move", () => {
+    const u = Unit.of("g", "grunt", "enemy", { x: 0, y: 0 })
+    u.rallied = true
+    expect(u.steps()).toBe(2)
   })
 })

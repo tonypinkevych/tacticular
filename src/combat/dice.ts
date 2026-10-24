@@ -1,10 +1,3 @@
-/** A roll of the form 2d6+1. */
-export interface Roll {
-  count: number
-  sides: number
-  bonus: number
-}
-
 /** The seeded random stream a game or a map draws from (mulberry32); it keeps its state in `rng`. */
 export class Dice {
   constructor(private readonly state: { rng: number }) {}
@@ -39,29 +32,4 @@ export class Dice {
     }
     return out
   }
-
-  roll(dice: Roll, times = 1): number {
-    let sum = dice.bonus
-    for (let i = 0; i < dice.count * times; i++) sum += this.die(dice.sides)
-    return sum
-  }
-
-  d20(): number {
-    return this.die(20)
-  }
-}
-
-/** What each step of edge adds to a roll; edge is advantages minus disadvantages, at most 2 either way. */
-export const EDGE = 3
-
-/** Chance that d20 + bonus + edge meets the target: natural 1 misses, natural 20 hits. */
-export function chance(bonus: number, target: number, edge: number): number {
-  const need = Math.min(20, Math.max(2, target - bonus - EDGE * edge))
-  return (21 - need) / 20
-}
-
-/** Chance that a d20 save fails, where a save has no natural-roll rules. */
-export function failChance(bonus: number, target: number, edge: number): number {
-  const need = Math.min(21, Math.max(1, target - bonus - EDGE * edge))
-  return 1 - (21 - need) / 20
 }

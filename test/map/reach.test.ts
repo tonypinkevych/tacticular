@@ -1,56 +1,47 @@
-import { distance, key } from "../../src/map/point"
+import { same } from "../../src/map/point"
 import { enemy, open, setup, squad } from "../fixture"
 
-describe("grid", () => {
-  test("diagonals cost 1, then 2, then 1", () => {
-    expect(distance({ x: 0, y: 0 }, { x: 1, y: 1 })).toBe(1)
-    expect(distance({ x: 0, y: 0 }, { x: 2, y: 2 })).toBe(3)
-    expect(distance({ x: 0, y: 0 }, { x: 6, y: 6 })).toBe(9)
-    expect(distance({ x: 0, y: 0 }, { x: 5, y: 2 })).toBe(6)
+const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
+
+describe("reach", () => {
+  test("a class with move 1 reaches the 8 tiles around it", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 3 })])
+    expect(g.reach(g.unit("r"), 1).tiles()).toHaveLength(8)
   })
-  test("reach uses the same diagonal rule", () => {
-    const v = squad("v", "vanguard", { x: 0, y: 0 })
-    const r = setup(open(), [v]).reach(v, 3)
-    expect(r.cost.get(key({ x: 2, y: 2 }))).toBe(3)
-    expect(r.cost.has(key({ x: 3, y: 3 }))).toBe(false)
+  test("a class with move 2 reaches 2 tiles in any direction", () => {
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 3 })])
+    expect(g.reach(g.unit("v"), 1).tiles()).toHaveLength(24)
   })
-  test("walls block, and enemies block, but allies can be passed", () => {
-    const rows = ["...", "##.", "..."]
-    const v = squad("v", "vanguard", { x: 0, y: 0 })
-    const r = setup(rows, [v]).reach(v, 10)
-    expect(r.path({ x: 0, y: 2 }).length).toBe(6)
-    const e = enemy("e", "orc", { x: 1, y: 0 })
-    const blocked = setup(["...", "###", "..."], [v, e]).reach(v, 10)
-    expect(blocked.cost.has(key({ x: 2, y: 0 }))).toBe(false)
-    const a = squad("a", "ranger", { x: 1, y: 0 })
-    const passed = setup(["...", "###", "..."], [v, a]).reach(v, 10)
-    expect(passed.cost.get(key({ x: 2, y: 0 }))).toBe(2)
-    expect(passed.cost.has(key({ x: 1, y: 0 }))).toBe(false)
+  test("a dash is two moves", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 3 })])
+    expect(g.reach(g.unit("r"), 2).tiles()).toHaveLength(24)
   })
-  test("no corner cutting past blocked tiles", () => {
-    const v = squad("v", "vanguard", { x: 0, y: 0 })
-    const r = setup([".#", ".."], [v]).reach(v, 10)
-    expect(r.cost.get(key({ x: 1, y: 1 }))).toBe(2)
+  test("rough ground ends the move", () => {
+    const g = setup(rows(["........", "........", "...r...."]), [squad("v", "vanguard", { x: 3, y: 3 })])
+    const tiles = g.reach(g.unit("v"), 1).tiles()
+    expect(tiles.some((p) => same(p, { x: 3, y: 2 }))).toBe(true)
+    expect(g.reach(g.unit("v"), 1).path({ x: 3, y: 1 })).not.toContainEqual({ x: 3, y: 2 })
   })
-  test("a unit vaults over low cover for 2 and cannot stop on it", () => {
-    const v = squad("v", "ranger", { x: 0, y: 0 })
-    const r = setup([".:.."], [v]).reach(v, 10)
-    expect(r.cost.get(key({ x: 2, y: 0 }))).toBe(2)
-    expect(r.cost.has(key({ x: 1, y: 0 }))).toBe(false)
-    expect(r.path({ x: 3, y: 0 })).toEqual([
-      { x: 2, y: 0 },
+  test("a Brute walks through rough ground", () => {
+    const g = setup(rows(["...r....", "...r....", "...r...."]), [enemy("b", "brute", { x: 3, y: 3 })])
+    expect(g.reach(g.unit("b"), 1).path({ x: 3, y: 0 })).toEqual([
+      { x: 3, y: 2 },
+      { x: 3, y: 1 },
       { x: 3, y: 0 },
     ])
   })
-  test("no vault onto a foe, a wall or across two low tiles", () => {
-    const v = squad("v", "vanguard", { x: 0, y: 0 })
-    const e = enemy("e", "orc", { x: 2, y: 0 })
-    expect(
-      setup([".:."], [v, e])
-        .reach(v, 10)
-        .cost.has(key({ x: 2, y: 0 })),
-    ).toBe(false)
-    expect(setup([".:#"], [v]).reach(v, 10).cost.size).toBe(1)
-    expect(setup([".::."], [v]).reach(v, 10).cost.size).toBe(1)
+  test("cover, water and units block the way", () => {
+    const g = setup(rows(["........", "........", "..l~h..."]), [
+      squad("r", "ranger", { x: 3, y: 3 }),
+      squad("c", "cleric", { x: 4, y: 3 }),
+    ])
+    const tiles = g.reach(g.unit("r"), 1).tiles()
+    for (const p of [
+      { x: 2, y: 2 },
+      { x: 3, y: 2 },
+      { x: 4, y: 2 },
+      { x: 4, y: 3 },
+    ])
+      expect(tiles).not.toContainEqual(p)
   })
 })

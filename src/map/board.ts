@@ -1,38 +1,30 @@
 import type { Point } from "./point"
-import type { Tile } from "./tile"
-
-/** The kind of land a mission takes place in; it shapes the map and its look. */
-export type Biome = "forest" | "village" | "town"
+import { broken, type Tile } from "./tile"
 
 const LEGEND: Record<string, Tile> = {
-  ".": "floor",
-  ":": "low",
-  H: "high",
-  "#": "wall",
-  "+": "door",
+  ".": "grass",
+  "=": "road",
+  T: "forest",
+  r: "rubble",
   "~": "water",
-  "=": "bridge",
-  ",": "floor",
-  "^": "ridge",
-  R: "roof",
-  L: "ladder",
-  g: "grass",
-  T: "tree",
-  o: "rock",
-  m: "mud",
+  f: "fire",
+  l: "bags",
+  t: "torn",
+  h: "rock",
+  c: "cracked",
+  "#": "house",
   b: "barrel",
 }
 
-/** The tiles of a map, row by row; outside the map is wall. */
+/** The tiles of a map, row by row; outside the map is a building. */
 export class Board {
   constructor(
     readonly width: number,
     readonly height: number,
-    public tiles: Tile[] = new Array(width * height).fill("floor"),
-    readonly biome?: Biome,
+    public tiles: Tile[] = new Array(width * height).fill("grass"),
   ) {}
 
-  /** Reads a board from text rows; any unknown symbol is floor. */
+  /** Reads a board from text rows; any unknown symbol is grass. */
   static parse(rows: string[]): Board {
     return new Board(
       rows[0].length,
@@ -40,7 +32,7 @@ export class Board {
       rows
         .join("")
         .split("")
-        .map((c) => LEGEND[c] ?? "floor"),
+        .map((c) => LEGEND[c] ?? "grass"),
     )
   }
 
@@ -49,7 +41,7 @@ export class Board {
   }
 
   at(p: Point): Tile {
-    return this.inside(p) ? this.tiles[p.y * this.width + p.x] : "wall"
+    return this.inside(p) ? this.tiles[p.y * this.width + p.x] : "house"
   }
 
   /** Changes a tile; a point outside the map changes nothing. */
@@ -57,32 +49,12 @@ export class Board {
     if (this.inside(p)) this.tiles[p.y * this.width + p.x] = tile
   }
 
-  /** Damages cover on a tile: high cover and trees become low, low cover is gone; walls, doors and rocks stay. */
+  /** Leaves on a tile what a blast leaves of it. */
   break(p: Point): void {
-    const tile = this.at(p)
-    if (tile === "low") this.set(p, "floor")
-    if (tile === "high" || tile === "tree") this.set(p, "low")
-  }
-
-  /** The map turned a quarter clockwise. */
-  turn(): Board {
-    const out = new Board(this.height, this.width, undefined, this.biome)
-    for (let y = 0; y < this.height; y++)
-      for (let x = 0; x < this.width; x++) out.set(this.turned({ x, y }), this.at({ x, y }))
-    return out
-  }
-
-  /** Where a point of this map lands when the map turns a quarter clockwise. */
-  turned(p: Point): Point {
-    return { x: this.height - 1 - p.y, y: p.x }
-  }
-
-  /** The same map in a given biome. */
-  in(biome: Biome): Board {
-    return new Board(this.width, this.height, this.tiles, biome)
+    this.set(p, broken(this.at(p)))
   }
 
   clone(): Board {
-    return new Board(this.width, this.height, [...this.tiles], this.biome)
+    return new Board(this.width, this.height, [...this.tiles])
   }
 }
