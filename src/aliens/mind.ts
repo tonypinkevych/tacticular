@@ -27,7 +27,7 @@ const FOCUS = 0.15
 /** What the next link of the chain a combo puts on is worth. */
 const LINK = 0.5
 /** What each status is worth by its own effect. */
-const OWN: Record<Status, number> = { suppressed: 0.6, staggered: 0.3, exposed: 0.3, marked: 0.2 }
+const OWN: Record<Status, number> = { suppressed: 0.6, staggered: 0.3, exposed: 0.3, marked: 0.2, taunted: 0.3 }
 
 /**
  * The player of a side: for each unit with AP it weighs where to stand and what to do there, through the
@@ -134,7 +134,8 @@ export class Mind {
     if (!status) return []
     const out: Plan[] = []
     for (const f of game.foes(u)) {
-      if (status === "staggered" ? !adjacent(u.at, f.at) : distance(u.at, f.at) > u.profile.range) continue
+      const range = status === "taunted" ? 4 : u.profile.range
+      if (status === "staggered" ? !adjacent(u.at, f.at) : distance(u.at, f.at) > range) continue
       if (status !== "staggered" && !clear(game.board, u.at, f.at)) continue
       if (f.status === status) continue
       let value = OWN[status]
@@ -143,6 +144,13 @@ export class Mind {
         if (game.board.at(to) === "water" && game.board.inside(to)) value += KILL + 1
         if (game.marks.some((m) => m.unit === f.id)) value += 1.5
       }
+      if (status === "taunted")
+        for (const m of game.marks.filter((x) => x.unit === f.id && x.target && x.target !== u.id)) {
+          const t = game.unit(m.target as string)
+          if (!t.alive() || !game.combat.canShoot(f, t)) continue
+          const at = (x: Unit) => this.worth(game.combat.odds(f, x, { aimed: true }), x)
+          value += Math.max(0, at(t) - (game.combat.canShoot(f, u) ? at(u) : 0))
+        }
       const combo = game
         .allies(u)
         .filter((a) => a !== u && a.ap > 0 && a.profile.combo === status)
@@ -262,7 +270,7 @@ export class Mind {
     const game = this.game,
       combat = game.combat,
       out: Plan[] = []
-    const foes = game.foes(u)
+    const foes = game.foes(u).filter((f) => game.orders.free(u, f))
     const still = u.profile.passive !== "keen" || (!u.moved && same(at, u.at))
     for (const f of foes)
       if (still && combat.canShoot(u, f, at))
@@ -280,6 +288,13 @@ export class Mind {
             const o = combat.odds(u, f, { from: at })
             skill(this.worth({ ...o, damage: o.damage + 1, crit: 0 }, f) - 0.4, { target: f.id })
           }
+        break
+      case "lunge":
+        if (u.ap === 2 && same(at, u.at))
+          for (const t of game.reach(u, 2).tiles())
+            for (const f of foes)
+              if (adjacent(t, f.at))
+                skill(this.worth(combat.odds(u, f, { from: t }), f) + this.ground(u, t) - 0.5, { to: t, target: f.id })
         break
       case "runGun":
         if (u.ap === 2 && same(at, u.at))

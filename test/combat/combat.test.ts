@@ -227,4 +227,39 @@ describe("branches and traits", () => {
     g.unit("g").status = "suppressed"
     expect(g.combat.odds(g.unit("v"), g.unit("g")).chance).toBe(Math.min(95, before + 10))
   })
+  describe("the Blade", () => {
+    test("a Blade strike next to an alien always hits for 3 and does not push", () => {
+      const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("q", "commander", { x: 3, y: 3 })])
+      expect(g.combat.odds(g.unit("b"), g.unit("q"))).toMatchObject({ chance: 100, damage: 3 })
+      const hit = g.apply({ type: "shoot", unit: "b", target: "q" })
+      expect(hit.unit("q")).toMatchObject({ hp: 3, at: { x: 3, y: 3 } })
+    })
+    test("Parry: claws at the Blade hit half the time", () => {
+      const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("x", "brute", { x: 3, y: 3 })])
+      expect(g.combat.odds(g.unit("x"), g.unit("b")).chance).toBe(50)
+    })
+    test("a Blade hit on an Exposed alien deals 2 more and staggers it", () => {
+      const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("q", "commander", { x: 3, y: 3 })])
+      g.unit("q").status = "exposed"
+      expect(g.combat.odds(g.unit("b"), g.unit("q")).damage).toBe(5)
+      expect(g.apply({ type: "shoot", unit: "b", target: "q" }).unit("q")).toMatchObject({ hp: 1, status: "staggered" })
+    })
+    test("Riposte: claws that miss the Blade cost the alien 2", () => {
+      const g = setup(open(), [
+        trained("b", "blade", { x: 3, y: 4 }, { branch: "riposte" }),
+        enemy("x", "brute", { x: 3, y: 3 }),
+      ])
+      const missed = unlucky(g, 50)
+      missed.combat.fire(missed.unit("x"), missed.unit("b"))
+      expect(missed.unit("x").hp).toBe(3)
+    })
+    test("Reaper: a kill with a strike gives 1 AP back", () => {
+      const g = setup(open(), [
+        trained("b", "blade", { x: 3, y: 4 }, { branch: "reaper" }),
+        enemy("q", "grunt", { x: 3, y: 3 }),
+      ])
+      g.unit("q").hp = 2
+      expect(g.apply({ type: "shoot", unit: "b", target: "q" }).unit("b").ap).toBe(1)
+    })
+  })
 })

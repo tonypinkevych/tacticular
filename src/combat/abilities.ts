@@ -29,6 +29,17 @@ export class Abilities {
         if (u.alive() && t.alive()) combat.fire(u, t)
         break
       }
+      case "lunge": {
+        check(u.ap === 2, "no AP")
+        const reach = game.reach(u, 2),
+          t = this.target(u, a)
+        check(!!a.to && reach.has(a.to) && adjacent(a.to, t.at), "unreachable")
+        game.log.push({ key: "log.lunge", params: { unit: u.id, target: t.id } })
+        game.orders.walk(u, reach.path(a.to))
+        u.moved = true
+        if (u.alive() && t.alive()) combat.fire(u, t, { from: a.to })
+        break
+      }
       case "headshot": {
         const t = this.target(u, a)
         check(combat.canShoot(u, t), "range")
@@ -55,6 +66,7 @@ export class Abilities {
       }
       case "covering": {
         const t = this.target(u, a)
+        check(game.orders.free(u, t), "taunted")
         check(combat.canShoot(u, t), "range")
         game.log.push({ key: "log.covering", params: { unit: u.id, target: t.id } })
         game.orders.aim(u, t, "volley")

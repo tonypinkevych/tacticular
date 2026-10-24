@@ -98,9 +98,19 @@ export class Orders {
       const t = this.game.unit(action.target ?? "")
       check(t.alive() && t.side !== u.side, "target")
       check(combat.canShoot(u, t), "range")
+      check(this.free(u, t), "taunted")
       if (u.side === "enemy") this.aim(u, t, u.profile.melee ? "claw" : "shot")
       else combat.fire(u, t)
     }
     u.ap = 0
+    const t = action.target ? this.game.unit(action.target) : null
+    if (t && !t.alive() && u.extra.branch === "reaper") u.ap = 1
+  }
+
+  /** Whether a unit may attack a target: a Taunted unit attacks only the unit that taunted it, while it stands. */
+  free(u: Unit, t: Unit): boolean {
+    if (u.status !== "taunted") return true
+    const by = this.game.units.find((x) => x.id === u.by)
+    return !by?.alive() || by === t
   }
 }

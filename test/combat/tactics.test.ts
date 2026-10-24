@@ -160,4 +160,28 @@ describe("combos", () => {
       expect(hitting(g, 95).apply({ type: "shoot", unit: "c", target: "g" }).unit("r").hp).toBe(3)
     })
   })
+  describe("the Blade", () => {
+    test("Taunt reaches 4 tiles and turns the alien's aimed shot to the Blade", () => {
+      const g = setup(open(), [
+        squad("b", "blade", { x: 3, y: 6 }),
+        squad("r", "ranger", { x: 0, y: 7 }),
+        enemy("g", "grunt", { x: 3, y: 2 }),
+      ])
+      g.marks.push({ kind: "shot", unit: "g", target: "r", tiles: [{ x: 0, y: 7 }] })
+      const next = g.apply({ type: "tactic", unit: "b", target: "g" })
+      expect(next.unit("g").status).toBe("taunted")
+      expect(next.marks[0]).toMatchObject({ target: "b", tiles: [{ x: 3, y: 6 }] })
+    })
+    test("a Taunted alien may aim only at the Blade", () => {
+      const g = setup(open(), [
+        squad("b", "blade", { x: 3, y: 6 }),
+        squad("r", "ranger", { x: 4, y: 4 }),
+        enemy("g", "grunt", { x: 3, y: 2 }),
+      ])
+        .apply({ type: "tactic", unit: "b", target: "g" })
+        .apply({ type: "endTurn" })
+      expect(() => g.apply({ type: "shoot", unit: "g", target: "r" })).toThrow(Illegal)
+      expect(() => g.apply({ type: "shoot", unit: "g", target: "b" })).not.toThrow()
+    })
+  })
 })

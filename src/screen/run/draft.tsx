@@ -4,7 +4,7 @@ import type { Soldier } from "../../run/run"
 import { PROFILES } from "../../units/profiles"
 import { Portrait } from "../hud/portrait"
 
-/** The squad pick at the start of a run: 3 of the 4 classes. */
+/** The squad pick at the start of a run: 3 of the 5 classes. */
 export function Draft(props: { candidates: Soldier[]; onPick: (ids: string[]) => void }) {
   const [picked, setPicked] = createSignal<string[]>([])
   const toggle = (id: string) =>

@@ -119,6 +119,9 @@ h2 {
 .status.marked {
   background: var(--teal);
 }
+.status.taunted {
+  background: #7a3fa0;
+}
 .status.hunkered {
   background: var(--ink);
 }

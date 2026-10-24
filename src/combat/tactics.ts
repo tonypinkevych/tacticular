@@ -5,6 +5,9 @@ import type { Game } from "../mission/game"
 import { check } from "../mission/orders"
 import type { Status, Unit } from "../units/unit"
 
+/** Tiles a Taunt reaches. */
+const TAUNT = 4
+
 /** The statuses soldiers put on aliens, and the combos their hits make of them. */
 export class Tactics {
   constructor(private readonly game: Game) {}
@@ -14,8 +17,9 @@ export class Tactics {
     const status = u.profile.tactic
     check(!!status, "ability")
     check(target.alive() && target.side !== u.side, "target")
+    const range = status === "taunted" ? TAUNT : u.profile.range
     if (status === "staggered") check(adjacent(u.at, target.at), "range")
-    else check(distance(u.at, target.at) <= u.profile.range && clear(this.game.board, u.at, target.at), "range")
+    else check(distance(u.at, target.at) <= range && clear(this.game.board, u.at, target.at), "range")
     this.game.log.push({ key: `log.${status}`, params: { unit: u.id, target: target.id } })
     if (status === "staggered") {
       this.game.combat.push(target, u.at)
@@ -26,11 +30,17 @@ export class Tactics {
     u.ap -= 1
   }
 
-  /** A status on a unit in place of the one it had; a Staggered unit loses its marked attack. */
+  /** A status on a unit in place of the one it had; a Staggered unit loses its marked attack, a Taunted one aims it at the taunter. */
   put(target: Unit, status: Status, by: Unit): void {
     target.status = status
     target.by = by.id
     if (status === "staggered") this.game.marks = this.game.marks.filter((m) => m.unit !== target.id)
+    if (status === "taunted")
+      for (const m of this.game.marks)
+        if (m.unit === target.id && m.target) {
+          m.target = by.id
+          m.tiles = [{ ...by.at }]
+        }
   }
 
   /** What a combo hit does after its damage: the status is used up and the next link of the chain is put on. */
@@ -46,7 +56,7 @@ export class Tactics {
         if (adjacent(a.at, shooter.at, true)) a.hp = Math.min(a.profile.hp, a.hp + heal)
     if (!target.alive()) return
     if (status === "suppressed") this.put(target, "staggered", shooter)
-    if (status === "exposed") this.put(target, "marked", shooter)
+    if (status === "exposed") this.put(target, shooter.kind === "blade" ? "staggered" : "marked", shooter)
     if (status === "staggered") {
       this.wreck(target)
       this.put(target, "exposed", shooter)

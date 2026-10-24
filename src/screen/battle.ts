@@ -214,6 +214,7 @@ export class Battle {
   private aim(u: Unit, p: Point, there: Unit | undefined): Action | null {
     switch (u.profile.skill) {
       case "runGun":
+      case "lunge":
         if (!this.runTo) {
           if (this.game().reach(u, 2).has(p)) {
             this.runTo = p
@@ -321,6 +322,7 @@ export class Battle {
     const hover = this.hovered()
     switch (u.profile.skill) {
       case "runGun":
+      case "lunge":
         if (!this.runTo) return { ...none, reach: g.reach(u, 2).tiles() }
         return {
           ...none,

@@ -320,6 +320,7 @@ const WEAPON: Record<Kind, Cue> = {
   ranger: "rifle",
   warden: "minigun",
   cleric: "pistol",
+  blade: "melee",
   grunt: "plasma",
   commander: "plasma",
   brute: "melee",

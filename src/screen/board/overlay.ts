@@ -5,7 +5,13 @@ import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
 import { circle, type Pt, star } from "./outline"
 import type { Projection } from "./projection"
 
-const STATUS: Record<Status, string> = { suppressed: ORANGE, staggered: "#8a6d10", exposed: RED, marked: TEAL }
+const STATUS: Record<Status, string> = {
+  suppressed: ORANGE,
+  staggered: "#8a6d10",
+  exposed: RED,
+  marked: TEAL,
+  taunted: "#7a3fa0",
+}
 
 /** The marks the board draws over its tiles: zones, targets, alien intents, drops, the evac and the beacon. */
 export class Overlay {

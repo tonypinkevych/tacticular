@@ -38,7 +38,13 @@ export class Combat {
   odds(shooter: Unit, target: Unit, fire: Fire = {}): Odds {
     const p = shooter.profile,
       from = fire.from ?? shooter.at
-    if (p.melee) return { chance: 100, crit: 0, damage: p.damage, cover: 0 }
+    if (p.melee)
+      return this.combo(shooter, target, {
+        chance: target.profile.passive === "parry" ? 50 : 100,
+        crit: 0,
+        damage: p.damage,
+        cover: 0,
+      })
     const base = cover(this.game.board, target.at, from)
     const c = target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 20) * 2 : base
     let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
@@ -56,7 +62,13 @@ export class Combat {
       damage: target.profile.passive === "shell" && c > 0 ? 0 : p.damage,
       cover: c,
     }
-    if (!target.status || p.combo !== target.status) return odds
+    return this.combo(shooter, target, odds)
+  }
+
+  /** The odds with the combo the shooter makes of the target's status: more damage or a sure crit. */
+  private combo(shooter: Unit, target: Unit, odds: Odds): Odds {
+    if (!target.status || shooter.profile.combo !== target.status) return odds
+    if (shooter.kind === "blade") return { ...odds, damage: odds.damage + 2, combo: true }
     if (target.status === "exposed") return { ...odds, crit: 100, combo: true }
     if (target.status === "marked") return { ...odds, combo: true }
     return { ...odds, damage: odds.damage + (shooter.extra.branch === "brawler" ? 2 : 1), combo: true }
@@ -71,6 +83,10 @@ export class Combat {
     const params = { unit: shooter.id, target: target.id, chance: o.chance }
     if (!hit) {
       this.game.log.push({ key: "log.miss", params })
+      if (target.extra.branch === "riposte" && shooter.profile.melee && adjacent(shooter.at, target.at)) {
+        this.game.log.push({ key: "log.riposte", params: { unit: target.id, target: shooter.id } })
+        this.hurt(shooter, 2)
+      }
       return
     }
     const dmg = o.damage === 0 ? 0 : o.damage + (crit ? 1 : 0)
@@ -83,7 +99,7 @@ export class Combat {
     const from = fire.from ?? shooter.at
     if (
       target.alive() &&
-      (shooter.profile.melee || (shooter.profile.passive === "pointBlank" && adjacent(from, target.at)))
+      (shooter.profile.knock || (shooter.profile.passive === "pointBlank" && adjacent(from, target.at)))
     )
       this.push(target, from)
     if (o.combo) this.game.tactics.follow(shooter, target)

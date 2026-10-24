@@ -6,7 +6,7 @@ import { type GoalKind, mission } from "../../src/mission/mission"
 import type { Action } from "../../src/mission/orders"
 import type { ClassId } from "../../src/units/profiles"
 
-const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric"]
+const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric", "blade"]
 
 /** The squad of a greedy player: shoot the likeliest hit from here, else walk one move straight at the aliens. */
 function greedy(g: Game): Action {
@@ -28,7 +28,7 @@ function greedy(g: Game): Action {
 
 /** A mission played to its end, the squad by a policy and the aliens by the mind. */
 function play(seed: number, goal: GoalKind, squad: (g: Game) => Action): Game {
-  const kinds = CLASSES.filter((_, i) => i !== seed % 4)
+  const kinds = CLASSES.filter((_, i) => i !== seed % 5 && i !== (seed + 2) % 5)
   let g = mission(seed, { goal, squad: kinds.map((kind, i) => ({ id: `s${i}`, kind })) })
   for (let i = 0; i < 3000 && (g.phase === "squad" || g.phase === "enemy"); i++)
     g = g.apply(g.phase === "squad" ? squad(g) : new Mind(g).next())
@@ -53,7 +53,7 @@ describe("alien tactics", () => {
     let shots = 0,
       flanks = 0
     for (let seed = 1; seed <= 100; seed++) {
-      const kinds = CLASSES.filter((_, i) => i !== seed % 4)
+      const kinds = CLASSES.filter((_, i) => i !== seed % 5 && i !== (seed + 2) % 5)
       let g = mission(seed, { goal: "kill", squad: kinds.map((kind, i) => ({ id: `s${i}`, kind })) })
       for (let i = 0; i < 3000 && (g.phase === "squad" || g.phase === "enemy"); i++) {
         const a = new Mind(g).next()

@@ -3,11 +3,14 @@ import type { Game } from "../../src/mission/game"
 import { type GoalKind, mission } from "../../src/mission/mission"
 import type { ClassId } from "../../src/units/profiles"
 
-const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric"]
+const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric", "blade"]
 
 /** Both sides played by the mind on a generated mission until it ends. */
 function game(seed: number, goal: GoalKind): Game {
-  const squad = CLASSES.filter((_, i) => i !== seed % 4).map((kind, i) => ({ id: `s${i}`, kind }))
+  const squad = CLASSES.filter((_, i) => i !== seed % 5 && i !== (seed + 2) % 5).map((kind, i) => ({
+    id: `s${i}`,
+    kind,
+  }))
   let g = mission(seed, { goal, squad })
   for (let i = 0; i < 3000 && (g.phase === "squad" || g.phase === "enemy"); i++) g = g.apply(new Mind(g).next())
   return g

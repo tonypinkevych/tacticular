@@ -147,4 +147,14 @@ describe("alien skills", () => {
     g.unit("g").status = "marked"
     expect(() => g.apply({ type: "skill", unit: "r", target: "g" })).not.toThrow()
   })
+  test("Lunge dashes, then strikes an alien next to its tile, and waits 3 turns", () => {
+    const g = setup(open(), [squad("b", "blade", { x: 3, y: 7 }), enemy("q", "commander", { x: 3, y: 2 })]).apply({
+      type: "skill",
+      unit: "b",
+      to: { x: 3, y: 3 },
+      target: "q",
+    })
+    expect(g.unit("b")).toMatchObject({ at: { x: 3, y: 3 }, ap: 0, cooldown: 3 })
+    expect(g.unit("q").hp).toBe(3)
+  })
 })

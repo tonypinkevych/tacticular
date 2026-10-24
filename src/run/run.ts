@@ -38,7 +38,7 @@ export type Choice =
   | { type: "finish"; result: Result }
   | { type: "take"; pick: number }
 
-const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric"]
+const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric", "blade"]
 const SQUAD = 3
 const ROSTER = 6
 

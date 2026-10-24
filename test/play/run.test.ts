@@ -7,7 +7,10 @@ const ORDER = ["evac", "kill", "defend", "elite", "fortress"]
 /** A whole run with the mind on both sides, picking missions and rewards as a careful player would. */
 function play(seed: number): Run {
   const run = Run.start(seed)
-  run.play({ type: "draft", picks: run.candidates.filter((_, i) => i !== seed % 4).map((c) => c.id) })
+  run.play({
+    type: "draft",
+    picks: run.candidates.filter((_, i) => i !== seed % 5 && i !== (seed + 2) % 5).map((c) => c.id),
+  })
   for (let step = 0; step < 40 && run.stage !== "won" && run.stage !== "lost"; step++) {
     if (run.stage === "chart")
       run.play({

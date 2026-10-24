@@ -63,6 +63,7 @@ const HOLD: Record<Kind, { gun: Pt; ga: number; aim: Pt }> = {
   ranger: { gun: [5, -12], ga: -38, aim: [7, -15] },
   warden: { gun: [5, -9], ga: 6, aim: [6, -10] },
   cleric: { gun: [8, -11], ga: 25, aim: [10, -15] },
+  blade: { gun: [6, -12], ga: -60, aim: [9, -14] },
   grunt: { gun: [7, -12], ga: -20, aim: [9, -14] },
   commander: { gun: [9, -13], ga: 6, aim: [11, -15] },
   brute: { gun: [0, 0], ga: 0, aim: [0, 0] },

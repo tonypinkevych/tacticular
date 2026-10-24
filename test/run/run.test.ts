@@ -12,7 +12,7 @@ const go = (r: Run) => r.play({ type: "go", node: r.options()[0].id, deploy: r.r
 describe("run", () => {
   test("a run offers one soldier of each class and drafts 3", () => {
     const r = Run.start(5)
-    expect(r.candidates.map((c) => c.kind).sort()).toEqual(["cleric", "ranger", "vanguard", "warden"])
+    expect(r.candidates.map((c) => c.kind).sort()).toEqual(["blade", "cleric", "ranger", "vanguard", "warden"])
     expect(drafted().roster).toHaveLength(3)
   })
   test("a node on the chart tells the goal and the aliens its mission would start with", () => {

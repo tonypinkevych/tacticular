@@ -1,6 +1,6 @@
 import type { Status } from "./unit"
 
-export type ClassId = "vanguard" | "ranger" | "warden" | "cleric"
+export type ClassId = "vanguard" | "ranger" | "warden" | "cleric" | "blade"
 
 export type AlienId = "grunt" | "brute" | "bomber" | "commander" | FoeId
 
@@ -9,19 +9,39 @@ export type FoeId = "guard" | "sniper" | "pod"
 
 export type Kind = ClassId | AlienId
 
-export type SkillId = "runGun" | "headshot" | "grenade" | "medkit" | "covering" | "charge" | "blast" | "warcry"
+export type SkillId =
+  | "runGun"
+  | "headshot"
+  | "grenade"
+  | "medkit"
+  | "lunge"
+  | "covering"
+  | "charge"
+  | "blast"
+  | "warcry"
 
 /** The upgrade branches a soldier can take, 2 for each class. */
-export type Branch = "bulldozer" | "brawler" | "spotter" | "deadeye" | "pinning" | "wrecker" | "chaplain" | "searing"
+export type Branch =
+  | "bulldozer"
+  | "brawler"
+  | "spotter"
+  | "deadeye"
+  | "pinning"
+  | "wrecker"
+  | "chaplain"
+  | "searing"
+  | "riposte"
+  | "reaper"
 
 export const BRANCHES: Record<ClassId, [Branch, Branch]> = {
   vanguard: ["bulldozer", "brawler"],
   ranger: ["spotter", "deadeye"],
   warden: ["pinning", "wrecker"],
   cleric: ["chaplain", "searing"],
+  blade: ["riposte", "reaper"],
 }
 
-export type Passive = "pointBlank" | "steady" | "shred" | "aid" | "shell" | "keen" | "nest"
+export type Passive = "pointBlank" | "steady" | "shred" | "aid" | "parry" | "shell" | "keen" | "nest"
 
 export interface Profile {
   hp: number
@@ -32,6 +52,8 @@ export interface Profile {
   /** Shot range in tiles; 0 means no shot, 1 with `melee` means claws. */
   range: number
   melee?: boolean
+  /** A melee hit pushes the target back. */
+  knock?: boolean
   /** Walks through rough ground. */
   rough?: boolean
   skill?: SkillId
@@ -101,6 +123,20 @@ export const PROFILES: Record<Kind, Profile> = {
     tactic: "exposed",
     combo: "marked",
   },
+  blade: {
+    hp: 8,
+    aim: 100,
+    move: 3,
+    damage: 3,
+    range: 1,
+    melee: true,
+    skill: "lunge",
+    cooldown: 3,
+    uses: null,
+    passive: "parry",
+    tactic: "taunted",
+    combo: "exposed",
+  },
   grunt: { hp: 4, aim: 85, move: 1, damage: 3, range: 4, skill: "covering", cooldown: 3, uses: null },
   brute: {
     hp: 5,
@@ -109,6 +145,7 @@ export const PROFILES: Record<Kind, Profile> = {
     damage: 3,
     range: 1,
     melee: true,
+    knock: true,
     rough: true,
     skill: "charge",
     cooldown: 2,

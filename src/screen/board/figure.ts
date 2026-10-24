@@ -63,6 +63,25 @@ export class Figure {
         tip: [42, -0.8],
         extra: (G) => ink.shape(box(3, -7, 11, 4, 1.5).map(G), { fill: PAPER, key: 14, w: 1.2, sharp: true }),
       },
+      sword: {
+        pts: [
+          [-3, -2],
+          [4, -2.5],
+          [4, -6],
+          [6, -6],
+          [6, -2.5],
+          [36, -1.5],
+          [40, 0],
+          [36, 1.5],
+          [6, 2.5],
+          [6, 6],
+          [4, 6],
+          [4, 2.5],
+          [-3, 2],
+        ],
+        fore: null,
+        tip: [40, 0],
+      },
       pistol: {
         pts: [
           [-2, -2.5],
@@ -270,6 +289,42 @@ export class Figure {
         2,
         RED,
       )
+    this.effect(p, M, G)
+  }
+
+  /** A hooded swordsman with a headband and a long blade. */
+  private blade(p: Pose): void {
+    const { M, G } = this.frames(p),
+      ink = this.ink,
+      s = Math.sin(p.t * 5) * 1.5
+    this.base(p, M)
+    this.bean(M, HEAVY)
+    ink.shape(circle(1, -29, 12, 11.5, 20).map(M), {
+      fill: PAPER,
+      key: 8,
+      hatch: 2.6,
+      hatchPts: circle(-6, -25, 9, 9, 12).map(M),
+    })
+    ink.shape(box(-12, -35, 25, 4.5, 1).map(M), { fill: RED, key: 9, w: 1.3 })
+    ink.shape(
+      this.P(M, [
+        [-12, -33],
+        [-20, -30 + s],
+        [-18, -26 + s],
+        [-11, -31],
+      ]),
+      { fill: RED, key: 10, w: 1.2 },
+    )
+    ink.line(
+      this.P(M, [
+        [3, -27],
+        [10, -27],
+      ]),
+      11,
+      2.2,
+    )
+    this.gun(G, p, "sword", PAPER)
+    this.hand(G([0, 0]), 16)
     this.effect(p, M, G)
   }
 

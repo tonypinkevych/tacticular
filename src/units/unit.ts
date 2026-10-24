@@ -5,7 +5,7 @@ import { type Kind, PROFILES, type Profile } from "./profiles"
 export type Side = "squad" | "enemy"
 
 /** A state a soldier's tactic puts on an alien until the next squad turn. */
-export type Status = "suppressed" | "staggered" | "exposed" | "marked"
+export type Status = "suppressed" | "staggered" | "exposed" | "marked" | "taunted"
 
 /** What a soldier gained in a run: HP, aim, skill upgrades (a use more, or a turn less to wait), a branch and the Partner trait. */
 export interface Training {
