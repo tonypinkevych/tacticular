@@ -29,8 +29,8 @@ export interface Peril {
   kind: "fire" | "watch"
 }
 
-/** What a click does now: move, shoot, use the skill, or set Overwatch. */
-export type Mode = "move" | "shoot" | "skill" | "overwatch"
+/** What a click does now: move, shoot, use the skill or the tactic, or set Overwatch. */
+export type Mode = "move" | "shoot" | "skill" | "tactic" | "overwatch"
 
 /** Seconds the alien turn banner stays at least. */
 const BANNER = 1.5
@@ -118,7 +118,7 @@ export class Battle {
    */
   choose(mode: Mode): void {
     const u = this.unit()
-    if (!u || !this.ready()) return
+    if (!u || !this.ready() || (mode === "tactic" && !u.profile.tactic)) return
     if (this.mode() === mode) {
       if (this.planned()) this.confirm()
       else this.cancel()
@@ -126,7 +126,7 @@ export class Battle {
     }
     this.cancel()
     this.setMode(mode)
-    if (mode === "shoot" || mode === "skill") this.plan(this.zones().targets[0] ?? null)
+    if (mode === "shoot" || mode === "skill" || mode === "tactic") this.plan(this.zones().targets[0] ?? null)
     if (mode === "overwatch") this.plan(u.at)
   }
 
@@ -146,9 +146,9 @@ export class Battle {
     if (action) this.act(action)
   }
 
-  /** In Shoot, moves the aim to the next target; else selects the next soldier with AP. */
+  /** In Shoot, the skill or the tactic, moves the aim to the next target; else selects the next soldier with AP. */
   tab(back = false): void {
-    if (this.mode() !== "shoot") {
+    if (this.mode() === "move" || this.mode() === "overwatch") {
       this.cycle(back)
       return
     }
@@ -161,7 +161,7 @@ export class Battle {
 
   /**
    * A click on a soldier selects it, and a click on a tile moves there. A click on an alien or a barrel while
-   * moving aims at it; in Shoot or the skill, a click on a target carries the action out.
+   * moving aims at it; in Shoot, the skill or the tactic, a click on a target carries the action out.
    */
   click(p: Point): void {
     if (!this.ready()) return
@@ -191,11 +191,13 @@ export class Battle {
     }
   }
 
-  /** The action the chosen mode takes on a tile: the skill, a shot at an alien or a barrel, or a move. */
+  /** The action the chosen mode takes on a tile: the skill, the tactic, a shot at an alien or a barrel, or a move. */
   private action(u: Unit, p: Point): Action | null {
     const g = this.game(),
       there = g.unitAt(p)
     if (this.mode() === "skill") return this.aim(u, p, there)
+    if (this.mode() === "tactic")
+      return there && there.side !== u.side ? { type: "tactic", unit: u.id, target: there.id } : null
     if (there && there.side !== u.side) return { type: "shoot", unit: u.id, target: there.id }
     if (g.board.at(p) === "barrel") return { type: "shoot", unit: u.id, at: p }
     return { type: "move", unit: u.id, to: p }
@@ -283,6 +285,21 @@ export class Battle {
     const foes = g.foes(u),
       targets = foes.filter((f) => g.combat.canShoot(u, f)).map((f) => f.at)
     if (this.mode() === "shoot") return { ...none, targets }
+    if (this.mode() === "tactic")
+      return {
+        ...none,
+        targets: foes
+          .filter((f) => {
+            try {
+              g.apply({ type: "tactic", unit: u.id, target: f.id })
+              return true
+            } catch (e) {
+              if (!(e instanceof Illegal)) throw e
+              return false
+            }
+          })
+          .map((f) => f.at),
+      }
     if (this.mode() === "overwatch")
       return {
         ...none,

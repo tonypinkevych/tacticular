@@ -8,6 +8,7 @@ export type Action =
   | { type: "shoot"; unit: string; target?: string; at?: Point }
   | { type: "overwatch"; unit: string }
   | { type: "skill"; unit: string; target?: string; at?: Point; to?: Point }
+  | { type: "tactic"; unit: string; target: string }
   | { type: "endTurn" }
 
 /** An action the rules refuse. */
@@ -41,6 +42,7 @@ export class Orders {
       u.ap = 0
     }
     if (action.type === "skill") game.abilities.use(u, action)
+    if (action.type === "tactic") game.tactics.use(u, game.unit(action.target))
     game.settle()
   }
 
@@ -54,8 +56,13 @@ export class Orders {
     u.moved = true
   }
 
-  /** Walks a unit tile by tile: fire burns it, and an enemy on overwatch fires once when it comes in range. */
+  /**
+   * Walks a unit tile by tile: a Suppressed unit first draws a shot from its suppressor, fire burns it, and an
+   * enemy on overwatch fires once when it comes in range.
+   */
   walk(u: Unit, path: Point[]): void {
+    this.game.tactics.pin(u)
+    if (!u.alive()) return
     for (const p of path) {
       u.at = { ...p }
       if (this.game.board.at(p) === "fire") this.game.combat.burn(u)

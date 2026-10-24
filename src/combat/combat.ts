@@ -11,6 +11,8 @@ export interface Odds {
   crit: number
   damage: number
   cover: number
+  /** The shot turns the target's status into a combo. */
+  combo?: boolean
 }
 
 /** A shot's changes to its chance and its crit. */
@@ -35,13 +37,19 @@ export class Combat {
     const p = shooter.profile,
       from = fire.from ?? shooter.at
     if (p.melee) return { chance: 100, crit: 0, damage: p.damage, cover: 0 }
-    const c = cover(this.game.board, target.at, from)
+    const c = target.status === "exposed" ? 0 : cover(this.game.board, target.at, from)
     let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
+    if (target.status === "marked") aim += 10
+    if (shooter.status === "suppressed") aim -= 20
     if (p.passive === "pointBlank" && adjacent(from, target.at)) aim += 20
     if (p.passive === "steady" && !shooter.moved) aim += 20
     if (this.game.allies(target).some((a) => a.profile.passive === "aid" && a !== target && adjacent(a.at, target.at)))
       aim -= 10
-    return { chance: Math.max(5, Math.min(95, aim)), crit: c === 0 ? 50 : 0, damage: p.damage, cover: c }
+    const odds = { chance: Math.max(5, Math.min(95, aim)), crit: c === 0 ? 50 : 0, damage: p.damage, cover: c }
+    if (!target.status || p.combo !== target.status) return odds
+    if (target.status === "exposed") return { ...odds, crit: 100, combo: true }
+    if (target.status === "marked") return { ...odds, combo: true }
+    return { ...odds, damage: odds.damage + 1, combo: true }
   }
 
   /** Rolls a shot: a hit takes the damage, a crit 1 more; a melee hit or a point blank hit pushes the target back. */
@@ -68,6 +76,7 @@ export class Combat {
       (shooter.profile.melee || (shooter.profile.passive === "pointBlank" && adjacent(from, target.at)))
     )
       this.push(target, from)
+    if (o.combo) this.game.tactics.follow(shooter, target)
   }
 
   hurt(target: Unit, dmg: number): void {

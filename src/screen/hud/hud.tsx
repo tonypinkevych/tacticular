@@ -25,6 +25,10 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
     const u = b.unit()
     return u ? t(`skill.${u.profile.skill}`) : "—"
   }
+  const tactic = () => {
+    const s = b.unit()?.profile.tactic
+    return s ? t(`tactic.${s}`) : "—"
+  }
   const log = () => g().log.slice(-8).reverse()
   const busy = () => b.banner() || g().phase === "enemy"
   const name = (id: unknown) => {
@@ -91,6 +95,14 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
                   <span>{t("ui.crit")}</span>
                   <span>{o().odds.crit}%</span>
                 </div>
+                <Show when={o().odds.combo && o().target.status}>
+                  {(s) => (
+                    <div class="row combo">
+                      <span>{t("ui.combo")}</span>
+                      <span>{t(`status.${s()}`)}</span>
+                    </div>
+                  )}
+                </Show>
               </>
             )}
           </Show>
@@ -111,8 +123,16 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <button type="button" classList={{ on: b.mode() === "skill" }} onClick={() => b.choose("skill")}>
           <kbd>2</kbd> {skill()}
         </button>
+        <button
+          type="button"
+          classList={{ on: b.mode() === "tactic" }}
+          disabled={!b.unit()?.profile.tactic}
+          onClick={() => b.choose("tactic")}
+        >
+          <kbd>3</kbd> {tactic()}
+        </button>
         <button type="button" classList={{ on: b.mode() === "overwatch" }} onClick={() => b.choose("overwatch")}>
-          <kbd>3</kbd> {t("ui.overwatch")}
+          <kbd>4</kbd> {t("ui.overwatch")}
         </button>
         <button type="button" class="confirm" disabled={!b.planned()} onClick={() => b.confirm()}>
           <kbd>⏎</kbd> {t("ui.confirm")}

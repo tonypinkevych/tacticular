@@ -1,15 +1,18 @@
 import type { Odds } from "../combat/combat"
 import { cover } from "../map/cover"
 import { AROUND, adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
+import { clear } from "../map/sight"
 import { blocksMove } from "../map/tile"
 import type { Game } from "../mission/game"
 import type { Action } from "../mission/orders"
-import type { Side, Unit } from "../units/unit"
+import type { Side, Status, Unit } from "../units/unit"
 
 /** One choice of a unit: the action it starts with and what the plan is worth. */
 interface Plan {
   action: Action
   value: number
+  /** A tactic that a soldier still to act can turn into a combo. */
+  combo?: boolean
 }
 
 const KILL = 3
@@ -19,6 +22,10 @@ const SIDE = 0.3
 const BUNCH = 0.4
 /** What a hurt target adds to a shot at it, for each HP it lost: the side focuses fire. */
 const FOCUS = 0.15
+/** What the next link of the chain a combo puts on is worth. */
+const LINK = 0.5
+/** What each status is worth by its own effect. */
+const OWN: Record<Status, number> = { suppressed: 0.6, staggered: 0.3, exposed: 0.3, marked: 0.2 }
 
 /**
  * The player of a side: for each unit with AP it weighs where to stand and what to do there, through the
@@ -29,44 +36,97 @@ export class Mind {
 
   constructor(private readonly game: Game) {}
 
-  /** The next action of the side in turn; the turn ends when no unit has anything worth doing. */
+  /**
+   * The next action of the side in turn; the turn ends when no unit has anything worth doing. A soldier whose
+   * best plan is a tactic another soldier can turn into a combo acts first.
+   */
   next(): Action {
     const game = this.game
     const side = game.phase === "squad" ? "squad" : "enemy"
     const ready = game.units
       .filter((u) => u.side === side && u.alive() && u.ap > 0)
       .sort((a, b) => Number(b.kind === "commander") - Number(a.kind === "commander"))
+    const plans: Plan[] = []
     for (const u of ready) {
       const plan = this.plan(u)
-      if (plan) return plan.action
+      if (plan && side === "enemy") return plan.action
+      if (plan) plans.push(plan)
     }
-    return { type: "endTurn" }
+    return (plans.find((p) => p.combo) ?? plans[0])?.action ?? { type: "endTurn" }
   }
 
-  /** The best plan of a unit, or none when holding still is best. */
+  /** The best plan of a unit, valued by what it gains over holding still, or none when holding still is best. */
   private plan(u: Unit): Plan | null {
     const game = this.game
     const plans: Plan[] = []
-    const stay = this.ground(u, u.at)
+    const stay = this.ground(u, u.at),
+      pin = this.pin(u)
     for (const a of this.attacks(u, u.at)) plans.push({ action: a.action, value: a.value + stay })
+    const after = (at: Point) => Math.max(0, ...this.attacks(u, at).map((a) => a.value))
+    for (const a of this.tactics(u)) plans.push({ ...a, value: a.value + stay + (u.ap > 1 ? after(u.at) : 0) })
     const one = game.reach(u, 1)
-    for (const t of one.tiles()) {
-      const after = u.ap > 1 ? Math.max(0, ...this.attacks(u, t).map((a) => a.value)) : 0
-      plans.push({ action: { type: "move", unit: u.id, to: t }, value: after + this.ground(u, t) + this.closer(u, t) })
-    }
+    for (const t of one.tiles())
+      plans.push({
+        action: { type: "move", unit: u.id, to: t },
+        value: (u.ap > 1 ? after(t) : 0) + this.ground(u, t) + this.closer(u, t) - pin,
+      })
     if (u.ap > 1)
       for (const t of game.reach(u, 2).tiles())
         if (!one.has(t))
           plans.push({
             action: { type: "move", unit: u.id, to: t },
-            value: this.ground(u, t) + this.closer(u, t) - 0.3,
+            value: this.ground(u, t) + this.closer(u, t) - 0.3 - pin,
           })
-    const best = plans.sort((a, b) => b.value - a.value)[0]
+    plans.sort((a, b) => b.value - a.value)
+    const best = plans[0]
     const idle = stay + this.closer(u, u.at)
-    if (best && best.value > idle + 0.05) return best
+    if (best && best.value > idle + 0.05) return { ...best, value: best.value - idle }
     if (u.profile.range > 0 && !u.profile.melee && !u.overwatch)
-      return { action: { type: "overwatch", unit: u.id }, value: idle }
+      return { action: { type: "overwatch", unit: u.id }, value: 0 }
     return null
+  }
+
+  /** What a Suppressed unit loses when it moves: the shot it draws from its suppressor. */
+  private pin(u: Unit): number {
+    const by = u.status === "suppressed" ? this.game.units.find((x) => x.id === u.by) : undefined
+    if (!by?.alive() || !this.game.combat.canShoot(by, u)) return 0
+    return this.worth(this.game.combat.odds(by, u), u)
+  }
+
+  /**
+   * The tactics a soldier can use from its tile, each worth its status's own effect and the best combo a
+   * soldier still to act could make of it.
+   */
+  private tactics(u: Unit): Plan[] {
+    const game = this.game,
+      status = u.profile.tactic
+    if (!status) return []
+    const out: Plan[] = []
+    for (const f of game.foes(u)) {
+      if (status === "staggered" ? !adjacent(u.at, f.at) : distance(u.at, f.at) > u.profile.range) continue
+      if (status !== "staggered" && !clear(game.board, u.at, f.at)) continue
+      if (f.status === status) continue
+      let value = OWN[status]
+      if (status === "staggered") {
+        const to = { x: f.at.x + Math.sign(f.at.x - u.at.x), y: f.at.y + Math.sign(f.at.y - u.at.y) }
+        if (game.board.at(to) === "water" && game.board.inside(to)) value += KILL + 1
+        if (game.marks.some((m) => m.unit === f.id)) value += 1.5
+      }
+      const combo = game
+        .allies(u)
+        .filter((a) => a !== u && a.ap > 0 && a.profile.combo === status)
+        .flatMap((a) =>
+          [a.at, ...(a.ap > 1 ? game.reach(a, 1).tiles() : [])]
+            .filter((from) => game.combat.canShoot(a, f, from))
+            .map((from) => {
+              const was = this.worth(game.combat.odds(a, f, { from }), f)
+              return this.as(f, status, () => this.worth(game.combat.odds(a, f, { from }), f)) - was + LINK
+            }),
+        )
+      const gain = Math.max(0, ...combo)
+      out.push({ action: { type: "tactic", unit: u.id, target: f.id }, value: value + gain, combo: gain > 0 })
+    }
+    return out
   }
 
   /** What standing on a tile is worth: its cover against each foe, less the damage foes can deal there. */
@@ -235,6 +295,17 @@ export class Mind {
     const dmg = p * (o.damage + c)
     const kill = target.hp <= o.damage ? p : target.hp <= o.damage + 1 ? p * c : 0
     return dmg + kill * KILL + p * (target.profile.hp - target.hp) * FOCUS
+  }
+
+  /** Reads the game as if a unit held a status. */
+  private as<T>(u: Unit, status: Status, read: () => T): T {
+    const was = u.status
+    u.status = status
+    try {
+      return read()
+    } finally {
+      u.status = was
+    }
   }
 
   /** Reads the game as if a unit stood on another tile. */

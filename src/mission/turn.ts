@@ -75,7 +75,13 @@ export class Turn {
       u.moved = false
       u.overwatch = false
       u.cooldown = Math.max(0, u.cooldown - 1)
+      if (u.status === "staggered") u.ap = 1
     }
+    if (side === "squad")
+      for (const u of game.units) {
+        u.status = null
+        u.by = null
+      }
     if (side === "enemy") game.reinforcements.land()
     const marks = game.marks.filter((m) => game.unit(m.unit).side === side)
     game.marks = game.marks.filter((m) => !marks.includes(m))

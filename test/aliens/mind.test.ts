@@ -74,4 +74,12 @@ describe("mind", () => {
     g.unit("v").hp = 2
     expect(new Mind(g).next()).toEqual({ type: "skill", unit: "c", target: "v" })
   })
+  test("a squad suppresses an alien first when its Vanguard can then hit it for a combo", () => {
+    const g = setup(rows(["........", "........", "...l...."]), [
+      squad("v", "vanguard", { x: 2, y: 3 }),
+      squad("w", "warden", { x: 5, y: 5 }),
+      enemy("g", "commander", { x: 3, y: 1 }),
+    ])
+    expect(new Mind(g).next()).toEqual({ type: "tactic", unit: "w", target: "g" })
+  })
 })

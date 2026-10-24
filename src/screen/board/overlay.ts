@@ -1,8 +1,11 @@
 import { t } from "../../i18n/strings"
 import type { Point } from "../../map/point"
+import type { Status } from "../../units/unit"
 import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
 import { circle, type Pt, star } from "./outline"
 import type { Projection } from "./projection"
+
+const STATUS: Record<Status, string> = { suppressed: ORANGE, staggered: "#8a6d10", exposed: RED, marked: TEAL }
 
 /** The marks the board draws over its tiles: zones, targets, alien intents, drops, the evac and the beacon. */
 export class Overlay {
@@ -227,6 +230,12 @@ export class Overlay {
       ],
       { fill: YELLOW, key: 1061, w: 1.4 },
     )
+  }
+
+  /** The tag of a unit's status over its head. */
+  status(p: Point, status: Status): void {
+    const [x, y] = this.projection.center(p)
+    this.float([x, y - 62], t(`status.${status}`).toUpperCase(), STATUS[status])
   }
 
   /** A short text over a point, in the paper look: damage, MISS, a skill name. */

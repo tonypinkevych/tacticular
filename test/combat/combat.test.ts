@@ -30,6 +30,13 @@ describe("hit chance", () => {
     const g = sniper(true)
     expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 60, crit: 0, damage: 2 })
   })
+  test("a Marked target takes 10 more aim, and a Suppressed shooter 20 less", () => {
+    const g = sniper(true)
+    g.unit("g").status = "marked"
+    expect(g.combat.odds(g.unit("r"), g.unit("g")).chance).toBe(70)
+    g.unit("g").status = "suppressed"
+    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(75)
+  })
   test("a flank removes the cover, adds 10 to the aim and gives a 50% crit", () => {
     const g = sniper(false)
     expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 90, crit: 50 })
@@ -60,7 +67,7 @@ describe("hit chance", () => {
       squad("c", "cleric", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 3, y: 2 }),
     ])
-    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(80)
+    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(85)
   })
   test("a target past the range or behind a rock cannot be shot", () => {
     const far = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])

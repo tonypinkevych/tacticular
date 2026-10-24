@@ -207,7 +207,18 @@ export class Playback {
         this.pose(id, "death", 0.6)
         break
       case "log.overwatch":
+      case "log.pinned":
         this.note(where(id), t("ui.overwatch").toUpperCase(), "note")
+        break
+      case "log.suppressed":
+      case "log.staggered":
+      case "log.exposed":
+      case "log.marked":
+        this.note(where(id), t(`tactic.${key.slice(4)}`).toUpperCase(), "note", 0.05, "skill")
+        this.pose(id, key === "log.suppressed" ? "shoot" : "skill", 0.4, after.units.find((x) => x.id === target)?.at)
+        break
+      case "log.combo":
+        this.note(where(target), t("ui.combo").toUpperCase(), "crit", 0.3, "crit")
         break
       case "log.fire":
         this.note(where(target), "−1", "hit")

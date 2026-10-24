@@ -35,6 +35,7 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
       <div class="meta">
         {t(`skill.${u().profile.skill}`)} · {skill()}
       </div>
+      <Show when={u().status}>{(s) => <div class={`status ${s()}`}>{t(`status.${s()}`)}</div>}</Show>
     </button>
   )
 }

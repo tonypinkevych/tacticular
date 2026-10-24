@@ -18,7 +18,8 @@ addEventListener("keydown", (e) => {
   else if (e.key === "Backspace") void b.endTurn()
   else if (e.key === "1") b.choose("shoot")
   else if (e.key === "2") b.choose("skill")
-  else if (e.key === "3") b.choose("overwatch")
+  else if (e.key === "3") b.choose("tactic")
+  else if (e.key === "4") b.choose("overwatch")
   else if (e.key === "Escape") b.cancel()
 })
 

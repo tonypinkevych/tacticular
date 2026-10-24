@@ -98,6 +98,31 @@ h2 {
 .card.down {
   opacity: 0.45;
 }
+.card .status {
+  grid-column: 2;
+  justify-self: start;
+  padding: 0 6px;
+  color: var(--paper);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.status.suppressed {
+  background: #d67c2e;
+}
+.status.staggered {
+  background: #8a6d10;
+}
+.status.exposed {
+  background: var(--red);
+}
+.status.marked {
+  background: var(--teal);
+}
+.row.combo {
+  color: var(--red);
+  font-weight: bold;
+}
 .portrait {
   grid-row: span 3;
   width: 48px;

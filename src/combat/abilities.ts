@@ -1,4 +1,3 @@
-import { cover } from "../map/cover"
 import { adjacent, distance, ORTHOGONAL, type Point, plus } from "../map/point"
 import type { Game } from "../mission/game"
 import { type Action, check } from "../mission/orders"
@@ -32,7 +31,7 @@ export class Abilities {
       case "headshot": {
         const t = this.target(u, a)
         check(combat.canShoot(u, t), "range")
-        check(cover(game.board, t.at, u.at) === 0, "flank")
+        check(combat.odds(u, t).cover === 0, "flank")
         game.log.push({ key: "log.headshot", params: { unit: u.id, target: t.id } })
         combat.fire(u, t, { sureCrit: true })
         break

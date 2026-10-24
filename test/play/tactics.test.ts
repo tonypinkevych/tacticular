@@ -49,7 +49,7 @@ describe("tactics", () => {
 })
 
 describe("alien tactics", () => {
-  test("aliens fire at least 40% of their shots from a flank", () => {
+  test("aliens that are free to move fire at least 40% of their shots from a flank", () => {
     let shots = 0,
       flanks = 0
     for (let seed = 1; seed <= 100; seed++) {
@@ -60,7 +60,7 @@ describe("alien tactics", () => {
         if (g.phase === "enemy" && (a.type === "shoot" || a.type === "skill") && a.target) {
           const u = g.unit(a.unit),
             t = g.unit(a.target)
-          if (!u.profile.melee) {
+          if (!u.profile.melee && u.status !== "suppressed") {
             shots++
             if (cover(g.board, t.at, u.at) === 0) flanks++
           }

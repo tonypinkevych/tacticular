@@ -171,4 +171,19 @@ describe("battle", () => {
     g.goal = { kind: "defend", at: { x: 3, y: 3 }, rounds: 5, strikes: 2 }
     expect(new Battle(g).loss()).toBe("beacon")
   })
+  test("the tactic aims at the first alien in its reach, and picked again puts its status on", () => {
+    const b = new Battle(
+      setup(open(), [
+        squad("w", "warden", { x: 5, y: 6 }),
+        squad("r", "ranger", { x: 3, y: 6 }),
+        enemy("g", "grunt", { x: 3, y: 3 }),
+        enemy("h", "grunt", { x: 0, y: 0 }),
+      ]),
+    )
+    b.begin(0)
+    b.choose("tactic")
+    expect(b.zones().targets).toEqual([{ x: 3, y: 3 }])
+    b.choose("tactic")
+    expect([b.game().unit("g").status, b.game().unit("w").ap]).toEqual(["suppressed", 1])
+  })
 })

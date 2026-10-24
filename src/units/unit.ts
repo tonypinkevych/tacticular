@@ -3,6 +3,9 @@ import { type Kind, PROFILES, type Profile } from "./profiles"
 
 export type Side = "squad" | "enemy"
 
+/** A state a soldier's tactic puts on an alien until the next squad turn. */
+export type Status = "suppressed" | "staggered" | "exposed" | "marked"
+
 /** What a soldier gained in a run: HP, aim, and skill upgrades (a use more, or a turn less to wait). */
 export interface Training {
   hp: number
@@ -28,6 +31,9 @@ export class Unit {
     public rallied = false,
     public out = false,
     readonly extra: Training = UNTRAINED,
+    public status: Status | null = null,
+    /** The unit that put the status on. */
+    public by: string | null = null,
   ) {}
 
   /** A fresh unit of a kind with full HP and its skill uses. */
@@ -78,6 +84,8 @@ export class Unit {
       this.rallied,
       this.out,
       this.extra,
+      this.status,
+      this.by,
     )
   }
 }
