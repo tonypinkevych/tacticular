@@ -202,6 +202,7 @@ h2 {
 }
 .bar {
   grid-area: bar;
+  position: relative;
   display: flex;
   gap: 6px;
   align-items: center;
@@ -281,9 +282,14 @@ kbd {
 .go {
   padding: 8px 24px;
 }
-.go:disabled,
-.node:disabled {
+.go:disabled {
   opacity: 0.45;
+  cursor: default;
+}
+.node:disabled {
+  background: #dcdad2;
+  color: var(--muted);
+  border-style: dashed;
   cursor: default;
 }
 .chart {
@@ -305,10 +311,71 @@ kbd {
 }
 .node.open {
   border-color: var(--ink);
+  border-width: 2px;
 }
-.node.on {
-  background: var(--yellow);
+.node.kill:enabled {
+  background: #f1d9cf;
+}
+.node.evac:enabled {
+  background: #dbe7d2;
+}
+.node.defend:enabled {
+  background: #f3e6bd;
+}
+.node.elite:enabled {
+  background: #e8c9c0;
+}
+.node.fortress:enabled {
+  background: #d9c3bd;
+}
+.brief {
+  width: 640px;
+  min-height: 96px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.brief h2 {
+  margin: 0 0 4px;
+}
+.brief p {
+  margin: 2px 0;
+}
+.node.node.on {
+  color: var(--ink);
+  box-shadow:
+    0 0 0 3px var(--yellow),
+    0 0 0 4px var(--ink);
 }
 .node.here {
   box-shadow: inset 0 0 0 2px var(--red);
+}
+button.end-turn {
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border: 2px solid var(--ink);
+  background: var(--yellow);
+  font-size: 18px;
+  font-weight: bold;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+button.end-turn:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+button.end-turn svg {
+  width: 28px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+button.end-turn .sand {
+  fill: currentColor;
+  stroke: none;
 }

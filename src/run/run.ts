@@ -1,9 +1,9 @@
 import { Dice } from "../combat/dice"
 import type { Game } from "../mission/game"
-import type { Conditions } from "../mission/mission"
+import { aliens, type Conditions } from "../mission/mission"
 import { type ClassId, PROFILES } from "../units/profiles"
 import type { Training } from "../units/unit"
-import { Chart, type Node } from "./chart"
+import { Chart, type Node, type Task } from "./chart"
 
 /** Where a run stands: picking the squad, on the chart, in a mission, picking a reward, or over. */
 export type Stage = "draft" | "chart" | "mission" | "reward" | "won" | "lost"
@@ -87,13 +87,22 @@ export class Run {
 
   /** What the current mission holds: its goal, the deployed soldiers, and aliens that grow with the threat. */
   conditions(): Conditions {
-    const kind = this.chart.node(this.at ?? 0).kind
     const squad = this.deployed
       .map((id) => this.roster.find((s) => s.id === id) as Soldier)
       .map(({ id, kind, hp, extra }) => ({ id, kind, hp, extra }))
-    if (kind === "fortress") return { goal: "kill", squad, threat: 2, boss: true }
-    if (kind === "elite") return { goal: "kill", squad, threat: this.threat + 2 }
-    return { goal: kind, squad, threat: this.threat }
+    return { ...this.brief(this.chart.node(this.at ?? 0).kind, this.threat), squad }
+  }
+
+  /** The goal, threat and alien count of the mission on a node, if the squad went there now. */
+  preview(node: number): Omit<Conditions, "squad"> & { aliens: number } {
+    const brief = this.brief(this.chart.node(node).kind, this.threat + 1)
+    return { ...brief, aliens: aliens(brief) }
+  }
+
+  private brief(kind: Task, threat: number): Omit<Conditions, "squad"> {
+    if (kind === "fortress") return { goal: "kill", threat: 2, boss: true }
+    if (kind === "elite") return { goal: "kill", threat: threat + 2 }
+    return { goal: kind, threat }
   }
 
   /** Gives a soldier +1 HP and +5 aim for good. */

@@ -1,5 +1,5 @@
 import type { Point } from "../../map/point"
-import { GREEN, type Ink, PAPER, RED, TEAL, YELLOW } from "./ink"
+import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
 import { circle, type Pt, star } from "./outline"
 import type { Projection } from "./projection"
 
@@ -24,15 +24,80 @@ export class Overlay {
     })
   }
 
+  /** A tile only a second move reaches. */
   dash(p: Point): void {
     this.ink.shape(this.projection.diamond(p, 5), {
-      fill: "rgba(227,185,58,.1)",
+      fill: "rgba(214,124,46,.2)",
       sharp: true,
       w: 1.6,
-      stroke: "#b89020",
-      dash: [2, 5],
+      stroke: ORANGE,
+      dash: [5, 3],
       amp: 0,
     })
+  }
+
+  /** The tile a first click planned an action on. */
+  planned(p: Point): void {
+    this.ink.shape(this.projection.diamond(p, 2), { w: 3, sharp: true, stroke: INK, amp: 0 })
+  }
+
+  /** The way a planned move walks, from the soldier's tile. */
+  path(points: Point[]): void {
+    const pts = points.map((p) => this.projection.center(p))
+    this.ink.line(pts, 1080, 7, PAPER)
+    this.ink.line(pts, 1080, 3.5, INK)
+    for (const [i, [x, y]] of pts.entries())
+      if (i > 0) this.ink.shape(circle(x, y, 7, 4.5, 12), { fill: i === pts.length - 1 ? INK : PAPER, key: 1081, w: 2 })
+  }
+
+  /** A danger on a planned way: fire burns 1, or an alien on overwatch fires. */
+  peril(p: Point, kind: "fire" | "watch"): void {
+    const [x, y] = this.projection.center(p)
+    this.sign([x, y - 18], RED)
+    this.float([x, y - 36], kind === "fire" ? "FIRE −1" : "OVERWATCH", RED)
+  }
+
+  /** A cover mark on a tile's edge toward a side, or in its middle for a forest: filled when full. */
+  shield(p: Point, side: Point | null, full: boolean): void {
+    const [cx, cy] = this.projection.center(p)
+    const [tx, ty] = side ? this.projection.center({ x: p.x + side.x, y: p.y + side.y }) : [cx, cy]
+    const x = cx + (tx - cx) * 0.42,
+      y = cy + (ty - cy) * 0.42 - 4
+    const outline: Pt[] = [
+      [x - 6, y - 7],
+      [x + 6, y - 7],
+      [x + 6, y],
+      [x, y + 6],
+      [x - 6, y],
+    ]
+    this.ink.shape(outline, { fill: full ? INK : PAPER, sharp: true, w: 1.6, stroke: INK, amp: 0 })
+    if (!full)
+      this.ink.shape(
+        [
+          [x - 6, y - 2],
+          [x + 6, y - 2],
+          [x + 6, y],
+          [x, y + 6],
+          [x - 6, y],
+        ],
+        { fill: INK, sharp: true, w: 0, amp: 0 },
+      )
+  }
+
+  /** A tile the alien under the cursor can walk to. */
+  foeMove(p: Point): void {
+    this.ink.shape(this.projection.diamond(p, 5), {
+      fill: "rgba(63,156,136,.22)",
+      sharp: true,
+      w: 1.4,
+      stroke: TEAL,
+      amp: 0,
+    })
+  }
+
+  /** A tile the alien under the cursor can hit after one move. */
+  foeShot(p: Point): void {
+    this.ink.shape(this.projection.diamond(p, 9), { w: 1.4, sharp: true, stroke: RED, dash: [3, 3], amp: 0 })
   }
 
   /** A tile a skill can reach. */

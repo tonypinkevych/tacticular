@@ -17,15 +17,53 @@ describe("battle", () => {
   test("the first soldier is selected", () => {
     expect(start().selected()).toBe("r")
   })
-  test("a click on a tile in reach moves the selected soldier", () => {
+  test("a first click on a tile in reach plans the move and does not move", () => {
     const b = start()
+    b.click({ x: 3, y: 5 })
+    expect([b.game().unit("r").at, b.planned()]).toEqual([
+      { x: 3, y: 6 },
+      { x: 3, y: 5 },
+    ])
+  })
+  test("a second click on the planned tile moves the selected soldier", () => {
+    const b = start()
+    b.click({ x: 3, y: 5 })
     b.click({ x: 3, y: 5 })
     expect(b.game().unit("r").at).toEqual({ x: 3, y: 5 })
   })
-  test("a click on an alien in range shoots it", () => {
+  test("two clicks on an alien in range shoot it", () => {
     const b = start()
     b.click({ x: 3, y: 1 })
+    b.click({ x: 3, y: 1 })
     expect(b.game().unit("r").ap).toBe(0)
+  })
+  test("the route to the planned tile marks fire and the overwatch that fires on it", () => {
+    const g = setup(
+      ["........", "........", "........", "........", "........", "..lfl...", "........", "........"],
+      [squad("v", "vanguard", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 0 })],
+    )
+    g.unit("g").overwatch = true
+    const b = new Battle(g)
+    b.begin(0)
+    b.click({ x: 3, y: 4 })
+    expect(b.route()).toEqual({
+      path: [
+        { x: 3, y: 5 },
+        { x: 3, y: 4 },
+      ],
+      perils: [
+        { at: { x: 3, y: 5 }, kind: "fire" },
+        { at: { x: 3, y: 4 }, kind: "watch" },
+      ],
+    })
+  })
+  test("the cursor on an alien shows the tiles it walks to and the tiles it can shoot", () => {
+    const b = start()
+    b.point({ x: 3, y: 1 })
+    const z = b.zones()
+    expect(z.foeMove).toHaveLength(19)
+    expect(z.foeShot.some((p) => p.x === 3 && p.y === 6)).toBe(true)
+    expect(z.foeShot.some((p) => p.x === 3 && p.y === 7)).toBe(false)
   })
   test("a click on another soldier selects it", () => {
     const b = start()

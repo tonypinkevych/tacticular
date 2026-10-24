@@ -3,6 +3,7 @@ import { Mind } from "../aliens/mind"
 import type { Odds } from "../combat/combat"
 import { cover } from "../map/cover"
 import { adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
+import { clear } from "../map/sight"
 import type { Game } from "../mission/game"
 import { type Action, Illegal } from "../mission/orders"
 import type { Unit } from "../units/unit"
@@ -16,6 +17,16 @@ export interface Zones {
   reach: Point[]
   targets: Point[]
   area: Point[]
+  /** Where the alien under the cursor can walk with its two moves. */
+  foeMove: Point[]
+  /** The tiles the alien under the cursor can hit after one move. */
+  foeShot: Point[]
+}
+
+/** A danger on the way of a planned move: fire that burns, or an alien on overwatch that fires. */
+export interface Peril {
+  at: Point
+  kind: "fire" | "watch"
 }
 
 /** Seconds the alien turn banner stays at least. */
@@ -30,6 +41,8 @@ export class Battle {
   readonly selected: Accessor<string | null>
   readonly armed: Accessor<boolean>
   readonly hovered: Accessor<Point | null>
+  /** The tile of the action a first click planned; a second click on it carries the action out. */
+  readonly planned: Accessor<Point | null>
   readonly banner: Accessor<boolean>
   readonly notice: Accessor<string | null>
   readonly playback: Playback
@@ -38,6 +51,7 @@ export class Battle {
   private readonly select: Setter<string | null>
   private readonly arm: Setter<boolean>
   private readonly hover: Setter<Point | null>
+  private readonly plan: Setter<Point | null>
   private readonly setBanner: Setter<boolean>
   private readonly notify: Setter<string | null>
   private runTo: Point | null = null
@@ -51,6 +65,7 @@ export class Battle {
     ;[this.selected, this.select] = createSignal<string | null>(null)
     ;[this.armed, this.arm] = createSignal(false)
     ;[this.hovered, this.hover] = createSignal<Point | null>(null)
+    ;[this.planned, this.plan] = createSignal<Point | null>(null)
     ;[this.banner, this.setBanner] = createSignal(false)
     ;[this.notice, this.notify] = createSignal<string | null>(null)
     this.playback = new Playback((cue) => this.sound.play(cue))
@@ -104,6 +119,7 @@ export class Battle {
   disarm(): void {
     this.runTo = null
     this.arm(false)
+    this.plan(null)
   }
 
   overwatch(): void {
@@ -111,21 +127,43 @@ export class Battle {
     if (u && this.ready()) this.act({ type: "overwatch", unit: u.id })
   }
 
-  /** A click on a tile: select, move, shoot, or aim the armed skill. */
+  /**
+   * A click on a tile selects a soldier at once. Else the first click plans a move, a shot or the armed skill
+   * there, and a second click on the same tile carries it out.
+   */
   click(p: Point): void {
     if (!this.ready()) return
     const g = this.game(),
       u = this.unit(),
       there = g.unitAt(p)
-    if (there?.side === "squad" && !this.armed()) this.pick(there.id)
-    else if (!u) return
-    else if (this.armed()) this.aim(u, p, there)
-    else if (there && there.side !== u.side) this.act({ type: "shoot", unit: u.id, target: there.id })
-    else if (g.board.at(p) === "barrel") this.act({ type: "shoot", unit: u.id, at: p })
-    else this.act({ type: "move", unit: u.id, to: p })
+    if (there?.side === "squad" && !this.armed()) {
+      this.pick(there.id)
+      return
+    }
+    if (!u) return
+    const action = this.armed()
+      ? this.aim(u, p, there)
+      : there && there.side !== u.side
+        ? ({ type: "shoot", unit: u.id, target: there.id } as const)
+        : g.board.at(p) === "barrel"
+          ? ({ type: "shoot", unit: u.id, at: p } as const)
+          : ({ type: "move", unit: u.id, to: p } as const)
+    if (!action) return
+    const was = this.planned()
+    if (was && same(was, p)) {
+      this.act(action)
+      return
+    }
+    try {
+      g.apply(action)
+      this.plan(p)
+    } catch (e) {
+      if (!(e instanceof Illegal)) throw e
+      this.refuse(e.message)
+    }
   }
 
-  private aim(u: Unit, p: Point, there: Unit | undefined): void {
+  private aim(u: Unit, p: Point, there: Unit | undefined): Action | null {
     switch (u.profile.skill) {
       case "runGun":
         if (!this.runTo) {
@@ -133,16 +171,39 @@ export class Battle {
             this.runTo = p
             this.setGame(this.game())
           }
-          return
+          return null
         }
-        if (there && there.side !== u.side) this.act({ type: "skill", unit: u.id, to: this.runTo, target: there.id })
-        return
+        return there && there.side !== u.side ? { type: "skill", unit: u.id, to: this.runTo, target: there.id } : null
       case "grenade":
-        this.act({ type: "skill", unit: u.id, at: p })
-        return
+        return { type: "skill", unit: u.id, at: p }
       default:
-        if (there) this.act({ type: "skill", unit: u.id, target: there.id })
+        return there ? { type: "skill", unit: u.id, target: there.id } : null
     }
+  }
+
+  /** The way to the planned tile, or to the tile under the cursor, and the perils on it. */
+  route(): { path: Point[]; perils: Peril[] } | null {
+    const g = this.game(),
+      u = this.unit(),
+      to = this.planned() ?? this.hovered()
+    if (!u || !to || this.armed() || g.unitAt(to) || g.phase !== "squad") return null
+    const one = g.reach(u, 1),
+      reach = one.has(to) ? one : u.ap > 1 ? g.reach(u, 2) : one
+    if (!reach.has(to)) return null
+    const path = reach.path(to),
+      ghost = u.clone(),
+      watchers = g.foes(u).filter((f) => f.overwatch)
+    const perils: Peril[] = []
+    for (const at of path) {
+      ghost.at = at
+      if (g.board.at(at) === "fire") perils.push({ at, kind: "fire" })
+      const w = watchers.findIndex((f) => g.combat.canShoot(f, ghost))
+      if (w >= 0) {
+        watchers.splice(w, 1)
+        perils.push({ at, kind: "watch" })
+      }
+    }
+    return { path, perils }
   }
 
   /** Ends the squad turn and plays the alien turn. */
@@ -169,7 +230,9 @@ export class Battle {
   zones(): Zones {
     const g = this.game(),
       u = this.unit(),
-      none: Zones = { move: [], dash: [], reach: [], targets: [], area: [] }
+      none: Zones = { move: [], dash: [], reach: [], targets: [], area: [], foeMove: [], foeShot: [] }
+    const hovered = this.hovered() ? g.unitAt(this.hovered() as Point) : undefined
+    if (hovered?.side === "enemy" && !this.armed()) return { ...none, ...this.threat(hovered) }
     if (!u || g.phase !== "squad" || u.ap === 0) return none
     const foes = g.foes(u)
     if (!this.armed()) {
@@ -217,6 +280,18 @@ export class Battle {
     }
   }
 
+  private threat(foe: Unit): Pick<Zones, "foeMove" | "foeShot"> {
+    const g = this.game(),
+      p = foe.profile
+    const from = [foe.at, ...g.reach(foe, 1).tiles()]
+    const hits = (q: Point, t: Point) =>
+      p.melee || p.range === 0 ? adjacent(q, t) : distance(q, t) <= p.range && clear(g.board, q, t)
+    return {
+      foeMove: g.reach(foe, 2).tiles(),
+      foeShot: all(g).filter((t) => from.some((q) => hits(q, t))),
+    }
+  }
+
   /** The odds of the selected soldier against the hovered alien. */
   odds(): { target: Unit; odds: Odds } | null {
     const g = this.game(),
@@ -231,6 +306,7 @@ export class Battle {
     return { target, odds }
   }
 
+  /** Carries out an action; the squad turn ends on its own once no soldier has AP. */
   private act(action: Action): void {
     const before = this.game()
     try {
@@ -240,11 +316,17 @@ export class Battle {
       this.disarm()
       this.setGame(after)
       if (after.phase === "squad" && !this.unit()?.ap) this.next()
+      if (after.phase === "squad" && !after.units.some((x) => x.side === "squad" && x.alive() && x.ap > 0))
+        void this.idle().then(() => this.endTurn())
     } catch (e) {
       if (!(e instanceof Illegal)) throw e
-      this.notify(e.message)
-      setTimeout(() => this.notify(null), 1600)
+      this.refuse(e.message)
     }
+  }
+
+  private refuse(reason: string): void {
+    this.notify(reason)
+    setTimeout(() => this.notify(null), 1600)
   }
 
   private next(): void {

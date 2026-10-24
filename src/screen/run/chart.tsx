@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js"
+import { createSignal, For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Run } from "../../run/run"
 import { Unit } from "../../units/unit"
@@ -17,6 +17,10 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
       row = run.chart.layer(n.layer),
       i = row.indexOf(n)
     return [40 + (n.layer * (W - 80)) / 4, ((i + 1) * H) / (row.length + 1)]
+  }
+  const brief = () => {
+    const id = node()
+    return id === null ? null : { ...run.preview(id), kind: run.chart.node(id).kind }
   }
   const open = (id: number) => run.options().some((n) => n.id === id)
   const toggle = (id: string) =>
@@ -39,7 +43,7 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
           {(n) => (
             <button
               type="button"
-              class="node"
+              class={`node ${n.kind}`}
               classList={{ open: open(n.id), on: node() === n.id, here: run.at === n.id }}
               style={{ left: `${where(n.id)[0]}px`, top: `${where(n.id)[1]}px` }}
               disabled={!open(n.id)}
@@ -49,6 +53,20 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
             </button>
           )}
         </For>
+      </div>
+      <div class="brief">
+        <Show when={brief()} fallback={<span class="muted">{t("ui.brief.pick")}</span>}>
+          {(b) => (
+            <>
+              <h2>{t(`ui.task.${b().kind}`)}</h2>
+              <p>{t(`ui.brief.${b().kind}`)}</p>
+              <p>
+                <b>{t(`ui.goal.${b().goal}`, { left: 5 })}</b>
+              </p>
+              <p>{t("ui.brief.aliens", { count: b().aliens })}</p>
+            </>
+          )}
+        </Show>
       </div>
       <h2>{t("ui.run.deploy")}</h2>
       <div class="roster">

@@ -1,5 +1,6 @@
 import { onCleanup, onMount } from "solid-js"
-import type { Point } from "../../map/point"
+import { ORTHOGONAL, type Point, plus } from "../../map/point"
+import { coverOf } from "../../map/tile"
 import type { Battle } from "../battle"
 import { INK, Ink, RED, YELLOW } from "./ink"
 import { Overlay } from "./overlay"
@@ -67,13 +68,25 @@ export function Board(props: { battle: Battle }) {
         zones = battle.zones(),
         u = battle.unit(),
         hover = battle.hovered()
+      const route = ready ? battle.route() : null
       if (ready) {
         for (const p of zones.dash) overlay.dash(p)
         for (const p of zones.move) overlay.move(p)
         for (const p of zones.reach) overlay.reach(p)
         for (const p of zones.area) overlay.danger(p, 1, false)
+        for (const p of zones.foeMove) overlay.foeMove(p)
+        for (const p of zones.foeShot) overlay.foeShot(p)
+        for (const p of [...zones.move, ...zones.dash]) {
+          if (g.board.at(p) === "forest") overlay.shield(p, null, true)
+          for (const d of ORTHOGONAL) {
+            const c = coverOf(g.board.at(plus(p, d)))
+            if (c > 0) overlay.shield(p, d, c >= 40)
+          }
+        }
         if (u) overlay.selected(u.at)
         if (hover) overlay.hover(hover)
+        const planned = battle.planned()
+        if (planned) overlay.planned(planned)
       }
       const things: { x: number; y: number; draw: () => void }[] = []
       g.board.tiles.forEach((t, i) => {
@@ -99,6 +112,8 @@ export function Board(props: { battle: Battle }) {
       things.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y)
       for (const t of things) t.draw()
       if (ready) for (const p of zones.targets) overlay.target(p, frame)
+      if (route && u) overlay.path([u.at, ...route.path])
+      for (const peril of route?.perils ?? []) overlay.peril(peril.at, peril.kind)
       for (const b of battle.playback.bursts) overlay.blast(b.at, Math.min(3, Math.floor((now - b.since) * 7)))
       for (const f of battle.playback.floats) {
         const [x, y] = projection.center(f.at)

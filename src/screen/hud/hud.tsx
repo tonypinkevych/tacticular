@@ -109,10 +109,15 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <button type="button" onClick={() => b.overwatch()}>
           <kbd>4</kbd> {t("ui.overwatch")}
         </button>
-        <button type="button" onClick={() => void b.endTurn()}>
-          <kbd>⏎</kbd> {t("ui.endTurn")}
-        </button>
         <span class="hint">{t("ui.hint")}</span>
+        <button type="button" class="end-turn" onClick={() => void b.endTurn()}>
+          <svg viewBox="0 0 24 32" aria-hidden="true">
+            <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" />
+            <path class="sand" d="M8 7h8l-4 5zM7 28c1-4 9-4 10 0z" />
+          </svg>
+          <span>{t("ui.endTurn")}</span>
+          <kbd>⏎</kbd>
+        </button>
       </footer>
     </div>
   )

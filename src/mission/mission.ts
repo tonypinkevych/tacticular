@@ -45,21 +45,26 @@ export function mission(seed: number, c: Conditions): Game {
   })
   const kinds: AlienId[] = [
     ...ALIENS.slice(0, 3),
-    ...Array.from({ length: Math.floor((c.threat ?? 0) / 3) }, () => dice.pick(ALIENS)),
+    ...Array.from({ length: aliens({ threat: c.threat }) - 3 }, () => dice.pick(ALIENS)),
   ]
   if (c.boss) kinds.push("commander")
   const top = free([0, 1])
-  const aliens = kinds.map((k, i) => Unit.of(`a${i}`, k, "enemy", top[i]))
+  const foes = kinds.map((k, i) => Unit.of(`a${i}`, k, "enemy", top[i]))
   return Game.start({
     seed,
     board,
     drops: 1,
-    units: [...squad, ...aliens],
+    units: [...squad, ...foes],
     goal: goal(
       c.goal,
       board.tiles.map((_, i) => ({ x: i % 8, y: Math.floor(i / 8) })).filter((p) => !blocksMove(board.at(p))),
     ),
   })
+}
+
+/** How many aliens a mission starts with: 3, one more for each 3 threat, and the Commander at the fortress. */
+export function aliens(c: Pick<Conditions, "threat" | "boss">): number {
+  return 3 + Math.floor((c.threat ?? 0) / 3) + (c.boss ? 1 : 0)
 }
 
 function goal(kind: GoalKind, open: Point[]): Goal {

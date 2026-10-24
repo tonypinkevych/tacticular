@@ -1,3 +1,4 @@
+import { aliens } from "../../src/mission/mission"
 import { Run } from "../../src/run/run"
 
 const drafted = () => {
@@ -12,6 +13,13 @@ describe("run", () => {
     const r = Run.start(5)
     expect(r.candidates.map((c) => c.kind).sort()).toEqual(["cleric", "ranger", "vanguard", "warden"])
     expect(drafted().roster).toHaveLength(3)
+  })
+  test("a node on the chart tells the goal and the aliens its mission would start with", () => {
+    const r = drafted()
+    const n = r.options()[0]
+    go(r)
+    const c = r.conditions()
+    expect(drafted().preview(n.id)).toEqual({ goal: c.goal, threat: c.threat, boss: c.boss, aliens: aliens(c) })
   })
   test("going to a mission raises the threat and builds it", () => {
     const r = drafted()
