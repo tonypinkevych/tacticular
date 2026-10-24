@@ -88,7 +88,7 @@ export class Playback {
       const path = (one.has(to) ? one : before.reach(u, 2)).path(to)
       this.walk(u.id, path, action.type === "skill" ? "skill" : "walk")
     }
-    for (const e of entries) this.entry(e.key, e.params, before, after)
+    for (const e of entries) this.entry(e.key, e.params, before, after, action)
     this.beats.push({ length: 0.05, start: (now) => this.sync(after, now) })
   }
 
@@ -168,7 +168,13 @@ export class Playback {
     })
   }
 
-  private entry(key: string, params: Record<string, string | number | boolean>, before: Game, after: Game): void {
+  private entry(
+    key: string,
+    params: Record<string, string | number | boolean>,
+    before: Game,
+    after: Game,
+    action: Action,
+  ): void {
     const id = String(params.unit ?? ""),
       target = String(params.target ?? "")
     const where = (u: string) => () => {
@@ -182,7 +188,8 @@ export class Playback {
       case "log.miss": {
         const victim = after.units.find((x) => x.id === target)
         const shooter = after.units.find((x) => x.id === id)
-        if (alien(id)) this.note(where(id), `${params.chance}%`, "note", 0.5)
+        const own = (action.type === "shoot" || action.type === "skill") && action.unit === id && !alien(id)
+        if (!own) this.note(where(id), `${params.chance}%`, "note", 0.5)
         this.beats.push({ length: 0, start: () => this.cue(WEAPON[shooter?.kind ?? "grunt"]) })
         this.pose(
           id,

@@ -70,4 +70,12 @@ describe("playback", () => {
     expect(texts).toContain("float:НАБЛЮДЕНИЕ")
     expect(texts.some((x) => /[A-Z]/.test(x.slice(6)))).toBe(false)
   })
+  test("a soldier's overwatch shot at a moving alien shows its hit chance", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 0 })])
+    g.unit("r").overwatch = true
+    g.phase = "enemy"
+    const { seen, after } = run(g, { type: "move", unit: "g", to: { x: 3, y: 1 } })
+    const chance = after.log.find((e) => e.params.unit === "r" && e.params.chance !== undefined)?.params.chance
+    expect(seen).toContain(`float:${chance}%`)
+  })
 })
