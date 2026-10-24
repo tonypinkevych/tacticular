@@ -1,13 +1,20 @@
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, For, type JSX, Show } from "solid-js"
 import { t } from "../../i18n/strings"
-import type { Battle } from "../battle"
+import type { Unit } from "../../units/unit"
+import type { Battle, Mode } from "../battle"
 import { Board } from "../board/board"
-import { Card, charge } from "./card"
+import { charge } from "./card"
+import { Portrait } from "./portrait"
 
-/** The battle screen: the board in the middle, the squad left, the target and aliens right, actions below. */
+/**
+ * The battle screen: the board fills it, with floating cards on top. The objective sits top left, the turn
+ * top centre, the alien plans top right, the selected soldier and the squad bottom left, the actions bottom
+ * centre and End turn bottom right.
+ */
 export function Hud(props: { battle: Battle; onNext: () => void }) {
   const b = props.battle
   const [muted, setMuted] = createSignal(b.sound.muted)
+  const [log, setLog] = createSignal(false)
   const g = () => b.game()
   const goal = () => {
     const x = g().goal
@@ -17,155 +24,245 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
   }
   const drop = () => {
     if (g().landing.length) return t("ui.dropNow")
-    if (!g().reinforcements.left()) return t("ui.dropNone")
+    if (!g().reinforcements.left()) return null
     const every = g().reinforcements.every()
     return t("ui.drop", { rounds: every - (g().round % every) })
   }
-  const skill = () => {
-    const u = b.unit()
-    return u ? t(`skill.${u.profile.skill}`) : "—"
-  }
-  const tactic = () => {
-    const s = b.unit()?.profile.tactic
-    return s ? t(`tactic.${s}`) : "—"
-  }
-  const log = () => g().log.slice(-8).reverse()
   const busy = () => b.banner() || g().phase === "enemy"
+  const squad = () => g().units.filter((u) => u.side === "squad" && u.alive())
+  const aliens = () => g().units.filter((u) => u.side === "enemy" && u.alive())
   const name = (id: unknown) => {
     const u = g().units.find((x) => x.id === id)
     return u ? t(`kind.${u.kind}`) : String(id ?? "")
   }
+  const odds = (id: string) => {
+    const m = g().marks.find((x) => x.unit === id && x.target)
+    if (!m) return null
+    const o = b.aimed(m)
+    return o === null ? "—" : `${m.kind === "volley" ? "2×" : ""}${o}%`
+  }
+  const aimedAt = (u: Unit) => g().marks.filter((m) => m.target === u.id).length
+  const hint = () => {
+    const o = b.odds()
+    if (!o) return t("ui.hint")
+    return t("ui.hintAim", { target: t(`kind.${o.target.kind}`), chance: o.odds.chance, damage: o.odds.damage })
+  }
+  const action = (mode: Mode, key: string, label: string, icon: JSX.Element, sub?: string, off?: boolean) => (
+    <button
+      type="button"
+      class="ability"
+      classList={{ on: b.mode() === mode }}
+      disabled={off}
+      onClick={() => b.choose(mode)}
+    >
+      <span class="ring">
+        {icon}
+        <kbd>{key}</kbd>
+      </span>
+      <b>{label}</b>
+      <small>{sub ?? " "}</small>
+    </button>
+  )
   return (
-    <div class="battle">
-      <header class="top">
-        <b>TACTICULAR</b>
-        <span>{t("ui.round", { round: g().round })}</span>
-        <span>{goal()}</span>
-        <span class="warn">{drop()}</span>
-        <span class="grow" />
-        <span>{t(`ui.phase.${g().phase}`)}</span>
-        <button type="button" class="mute" onClick={() => setMuted(b.sound.toggle())}>
-          {t(muted() ? "ui.soundOff" : "ui.soundOn")}
-        </button>
-      </header>
-      <aside class="left">
-        <h2>{t("ui.squad")}</h2>
-        <For each={g().units.filter((u) => u.side === "squad")}>
-          {(u) => <Card unit={u} selected={b.selected() === u.id} onPick={() => b.pick(u.id)} />}
-        </For>
-      </aside>
+    <div class="field">
       <main class="stage">
         <Board battle={b} />
-        <Show when={b.banner()}>
-          <div class="activity">{t("ui.alienActivity")}</div>
+      </main>
+
+      <section class="float objective">
+        <header>
+          <Icon d="M5 21V4h11l-2 4 2 4H5" />
+          <b>{t(`ui.task.${g().goal.kind}`)}</b>
+          <span class="grow" />
+          <span class="muted">{t("ui.round", { round: g().round })}</span>
+          <button
+            type="button"
+            class="icon"
+            aria-label={t(muted() ? "ui.soundOff" : "ui.soundOn")}
+            onClick={() => setMuted(b.sound.toggle())}
+          >
+            <Icon d={muted() ? "M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6" : "M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 010 6"} />
+          </button>
+        </header>
+        <span>{goal()}</span>
+        <button type="button" class="link" onClick={() => setLog((v) => !v)}>
+          {t("ui.log")} {log() ? "▴" : "▾"}
+        </button>
+        <Show when={log()}>
+          <ol class="log">
+            <For each={g().log.slice(-8).reverse()}>
+              {(e) => <li>{t(e.key, { ...e.params, unit: name(e.params.unit), target: name(e.params.target) })}</li>}
+            </For>
+          </ol>
         </Show>
-        <Show when={b.notice()}>{(n) => <div class="notice">{t(`illegal.${n()}`)}</div>}</Show>
-        <Show when={g().phase === "won" || g().phase === "lost"}>
-          <div class="end">
+      </section>
+
+      <div class="ribbon" classList={{ alien: busy() }}>
+        <b>{busy() ? t("ui.alienActivity") : t(`ui.phase.${g().phase}`)}</b>
+        <Show when={drop()}>{(d) => <span class="drop">{d()}</span>}</Show>
+      </div>
+
+      <section class="float incoming">
+        <header>
+          <span>{t("ui.incoming")}</span>
+          <b>{g().marks.length}</b>
+        </header>
+        <For each={aliens()}>
+          {(u) => (
+            <button
+              type="button"
+              class="plan"
+              classList={{ armed: !!b.intent(u.id) }}
+              onMouseEnter={() => b.point(u.at)}
+              onMouseLeave={() => b.point(null)}
+              onClick={() => b.click(u.at)}
+            >
+              <Portrait kind={u.kind} face={-1} />
+              <span class="who">
+                <b>{t(`kind.${u.kind}`)}</b>
+                <Pips unit={u} />
+                <small>{b.intent(u.id) ?? (u.status ? t(`status.${u.status}`) : "—")}</small>
+              </span>
+              <b class="odds">{odds(u.id) ?? ""}</b>
+            </button>
+          )}
+        </For>
+      </section>
+
+      <section class="float soldier">
+        <div class="squad">
+          <For each={squad()}>
+            {(u) => (
+              <button
+                type="button"
+                class="mini"
+                classList={{ on: b.selected() === u.id, spent: u.ap === 0 }}
+                aria-label={t(`kind.${u.kind}`)}
+                onClick={() => b.pick(u.id)}
+              >
+                <Portrait kind={u.kind} />
+              </button>
+            )}
+          </For>
+        </div>
+        <Show when={b.unit()}>
+          {(u) => (
+            <div class="sheet">
+              <Portrait kind={u().kind} />
+              <div class="title">
+                <b>{t(`kind.${u().kind}`)}</b>
+                <span class="ap">
+                  <For each={[0, 1]}>{(i) => <i classList={{ off: i >= u().ap }} />}</For>
+                </span>
+              </div>
+              <Pips unit={u()} />
+              <div class="tags">
+                <Show when={u().hunkered}>
+                  <span class="status hunkered">{t("ui.hunker")}</span>
+                </Show>
+                <Show when={u().overwatch}>
+                  <span class="status watching">{t("ui.overwatch")}</span>
+                </Show>
+                <Show when={u().extra.partner}>
+                  <span class="status partner">{t("ui.partner")}</span>
+                </Show>
+                <Show when={u().profile.combo}>
+                  {(c) => <span class="muted">{t("ui.gains", { status: t(`status.${c()}`) })}</span>}
+                </Show>
+              </div>
+              <Show when={aimedAt(u())}>{(n) => <span class="threat">{t("ui.aimedAt", { count: n() })}</span>}</Show>
+            </div>
+          )}
+        </Show>
+      </section>
+
+      <section class="abilities">
+        <div class="row">
+          {action(
+            "shoot",
+            "1",
+            t("ui.shoot"),
+            <Icon d="M12 4a8 8 0 100 16 8 8 0 000-16zM12 2v5M12 17v5M2 12h5M17 12h5" />,
+          )}
+          {action(
+            "skill",
+            "2",
+            b.unit() ? t(`skill.${b.unit()?.profile.skill}`) : "—",
+            <Icon d="M4 18l6-6 3 3 7-9M15 6h5v5" />,
+            b.unit() ? charge(b.unit() as Unit) : undefined,
+            !b.unit() || (b.unit()?.cooldown ?? 0) > 0 || b.unit()?.uses === 0,
+          )}
+          {action(
+            "tactic",
+            "3",
+            b.unit()?.profile.tactic ? t(`tactic.${b.unit()?.profile.tactic}`) : "—",
+            <Icon d="M5 12h9M10 7l5 5-5 5M18 5v14" />,
+            t("ui.oneAp"),
+            !b.unit()?.profile.tactic,
+          )}
+          {action(
+            "overwatch",
+            "4",
+            t("ui.overwatch"),
+            <Icon d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z" />,
+            undefined,
+            !b.unit() || b.unit()?.profile.melee || !b.unit()?.profile.range,
+          )}
+          {action("hunker", "5", t("ui.hunker"), <Icon d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z" />)}
+        </div>
+        <span class="hint">{hint()}</span>
+      </section>
+
+      <Show when={b.notice()}>{(n) => <div class="notice">{t(`illegal.${n()}`)}</div>}</Show>
+
+      <button
+        type="button"
+        class="end-turn"
+        classList={{ wait: busy() }}
+        disabled={busy()}
+        onClick={() => void b.endTurn()}
+      >
+        <svg viewBox="0 0 24 32" aria-hidden="true">
+          <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" />
+          <path class="sand" d="M8 7h8l-4 5zM7 28c1-4 9-4 10 0z" />
+        </svg>
+        <span>{busy() ? t("ui.phase.enemy") : t("ui.endTurn")}</span>
+        <Show when={!busy()}>
+          <kbd>⌫</kbd>
+        </Show>
+      </button>
+
+      <Show when={g().phase === "won" || g().phase === "lost"}>
+        <div class="end">
+          <div class="float">
             <h1>{t(`ui.phase.${g().phase}`)}</h1>
             <Show when={b.loss()}>{(r) => <p>{t(`ui.lost.${r()}`)}</p>}</Show>
-            <button type="button" onClick={() => props.onNext()}>
+            <button type="button" class="go" onClick={() => props.onNext()}>
               {t("ui.continue")}
             </button>
           </div>
-        </Show>
-      </main>
-      <aside class="right">
-        <h2>{t("ui.target")}</h2>
-        <div class="odds">
-          <Show when={b.odds()} fallback={<span class="muted">{t("ui.pickTarget")}</span>}>
-            {(o) => (
-              <>
-                <div class="row">
-                  <span>{t(`kind.${o().target.kind}`)}</span>
-                  <span>
-                    {t("ui.hp")} {o().target.hp}/{o().target.profile.hp}
-                  </span>
-                </div>
-                <div class="big">{o().odds.chance}%</div>
-                <div class="row">
-                  <span>{t("ui.cover")}</span>
-                  <span>−{o().odds.cover}</span>
-                </div>
-                <div class="row">
-                  <span>{t("ui.damage")}</span>
-                  <span>{o().odds.damage}</span>
-                </div>
-                <div class="row">
-                  <span>{t("ui.crit")}</span>
-                  <span>{o().odds.crit}%</span>
-                </div>
-                <Show when={o().odds.combo && o().target.status}>
-                  {(s) => (
-                    <div class="row combo">
-                      <span>{t("ui.combo")}</span>
-                      <span>{t(`status.${s()}`)}</span>
-                    </div>
-                  )}
-                </Show>
-              </>
-            )}
-          </Show>
         </div>
-        <h2>{t("ui.aliens")}</h2>
-        <For each={g().units.filter((u) => u.side === "enemy" && u.alive())}>
-          {(u) => <Card unit={u} intent={b.intent(u.id)} />}
-        </For>
-        <h2>{t("ui.log")}</h2>
-        <ol class="log">
-          <For each={log()}>
-            {(e) => <li>{t(e.key, { ...e.params, unit: name(e.params.unit), target: name(e.params.target) })}</li>}
-          </For>
-        </ol>
-      </aside>
-      <footer class="bar">
-        <button type="button" classList={{ on: b.mode() === "shoot" }} onClick={() => b.choose("shoot")}>
-          <kbd>1</kbd> {t("ui.shoot")}
-        </button>
-        <button
-          type="button"
-          classList={{ on: b.mode() === "skill" }}
-          disabled={!b.unit() || (b.unit()?.cooldown ?? 0) > 0 || b.unit()?.uses === 0}
-          onClick={() => b.choose("skill")}
-        >
-          <kbd>2</kbd> {skill()}
-          <Show when={b.unit()}>{(u) => <small class="charge">{charge(u())}</small>}</Show>
-        </button>
-        <button
-          type="button"
-          classList={{ on: b.mode() === "tactic" }}
-          disabled={!b.unit()?.profile.tactic}
-          onClick={() => b.choose("tactic")}
-        >
-          <kbd>3</kbd> {tactic()}
-        </button>
-        <button type="button" classList={{ on: b.mode() === "overwatch" }} onClick={() => b.choose("overwatch")}>
-          <kbd>4</kbd> {t("ui.overwatch")}
-        </button>
-        <button type="button" classList={{ on: b.mode() === "hunker" }} onClick={() => b.choose("hunker")}>
-          <kbd>5</kbd> {t("ui.hunker")}
-        </button>
-        <button type="button" class="confirm" disabled={!b.planned()} onClick={() => b.confirm()}>
-          <kbd>⏎</kbd> {t("ui.confirm")}
-        </button>
-        <span class="hint">{t("ui.hint")}</span>
-        <button
-          type="button"
-          class="end-turn"
-          classList={{ wait: busy() }}
-          disabled={busy()}
-          onClick={() => void b.endTurn()}
-        >
-          <svg viewBox="0 0 24 32" aria-hidden="true">
-            <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" />
-            <path class="sand" d="M8 7h8l-4 5zM7 28c1-4 9-4 10 0z" />
-          </svg>
-          <span>{busy() ? t("ui.phase.enemy") : t("ui.endTurn")}</span>
-          <Show when={!busy()}>
-            <kbd>⌫</kbd>
-          </Show>
-        </button>
-      </footer>
+      </Show>
     </div>
+  )
+}
+
+/** A unit's HP as pips, red for soldiers and teal for aliens. */
+function Pips(props: { unit: Unit }) {
+  return (
+    <span class="pips" classList={{ alien: props.unit.side === "enemy" }}>
+      <For each={Array.from({ length: props.unit.profile.hp }, (_, i) => i)}>
+        {(i) => <i classList={{ off: i >= props.unit.hp }} />}
+      </For>
+    </span>
+  )
+}
+
+/** A stroke icon of one path. */
+function Icon(props: { d: string }) {
+  return (
+    <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+      <path d={props.d} />
+    </svg>
   )
 }

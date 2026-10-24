@@ -270,10 +270,26 @@ export class Overlay {
     this.float([ax + (bx - ax) * 0.66, ay + (by - ay) * 0.66 - 30], text, live ? RED : "#8f8b80")
   }
 
-  /** The tags over a unit's head, one above another: its status, Hunker down, Overwatch. */
+  /** The tags over a unit's head, one above another as filled pills: its status, Hunker down, Overwatch. */
   tags(p: Point, tags: { text: string; color: string }[]): void {
-    const [x, y] = this.projection.center(p)
-    for (const [i, tag] of tags.entries()) this.float([x, y - 62 - i * 14], tag.text, tag.color)
+    const [x, y] = this.projection.center(p),
+      ctx = this.ink.ctx
+    ctx.font = "bold 10px ui-monospace, Menlo, monospace"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    for (const [i, tag] of tags.entries()) {
+      const w = ctx.measureText(tag.text).width + 10,
+        top = y - 70 - i * 16
+      ctx.fillStyle = tag.color
+      ctx.strokeStyle = INK
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.rect(x - w / 2, top - 7, w, 14)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = PAPER
+      ctx.fillText(tag.text, x, top + 0.5)
+    }
   }
 
   /** The tag of a status. */

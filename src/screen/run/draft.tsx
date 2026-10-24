@@ -29,6 +29,12 @@ export function Draft(props: { candidates: Soldier[]; onPick: (ids: string[]) =>
               <span class="muted">
                 {t(`skill.${PROFILES[c.kind].skill}`)}: {t(`skill.about.${PROFILES[c.kind].skill}`)}
               </span>
+              <span class="combo">
+                {t("ui.run.links", {
+                  tactic: t(`tactic.${PROFILES[c.kind].tactic}`),
+                  status: t(`status.${PROFILES[c.kind].combo}`),
+                })}
+              </span>
             </button>
           )}
         </For>

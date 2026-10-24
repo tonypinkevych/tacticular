@@ -1,4 +1,4 @@
-import { onCleanup, onMount } from "solid-js"
+import { createSignal, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../../i18n/strings"
 import { ORTHOGONAL, type Point, plus } from "../../map/point"
 import { coverOf } from "../../map/tile"
@@ -11,9 +11,14 @@ import { FEET, SH, Sprites, SW } from "./sprites"
 
 const TONE = { hit: RED, crit: YELLOW, miss: "#6f6b62", note: INK }
 
-/** The whole ink board of a battle on one canvas: ground, overlays, props and units in depth order, and texts. */
+/**
+ * The whole ink board of a battle on one canvas: ground, overlays, props and units in depth order, and texts,
+ * with the card of the aimed alien beside it.
+ */
 export function Board(props: { battle: Battle }) {
   let canvas!: HTMLCanvasElement
+  let wrap!: HTMLDivElement
+  const [zoom, setZoom] = createSignal(1)
   const battle = props.battle
   const projection = new Projection(battle.game().board.width, battle.game().board.height)
   const [bw, bh] = projection.size
@@ -30,8 +35,8 @@ export function Board(props: { battle: Battle }) {
       overlay = new Overlay(ink, projection),
       scenery = new Scenery(ink, projection)
     const resize = () => {
-      const box = canvas.parentElement as HTMLElement
-      scale = Math.min(box.clientWidth / bw, box.clientHeight / bh)
+      scale = Math.min(wrap.clientWidth / bw, wrap.clientHeight / bh)
+      setZoom(scale)
       canvas.style.width = `${bw * scale}px`
       canvas.style.height = `${bh * scale}px`
       canvas.width = Math.round(bw * scale * dpr)
@@ -166,20 +171,51 @@ export function Board(props: { battle: Battle }) {
     return projection.tile([(e.clientX - r.left) / scale, (e.clientY - r.top) / scale])
   }
 
+  const aimed = () => {
+    const o = battle.odds()
+    if (!o) return null
+    const [x, y] = projection.center(o.target.at)
+    return { ...o, left: (x + 34) * zoom(), top: (y - 96) * zoom() }
+  }
+
   return (
-    <canvas
-      ref={canvas}
-      class="board"
-      onMouseMove={(e) => battle.point(tileAt(e))}
-      onMouseLeave={() => battle.point(null)}
-      onClick={(e) => {
-        const p = tileAt(e)
-        if (p) battle.click(p)
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        battle.cancel()
-      }}
-    />
+    <div ref={wrap} class="boardwrap">
+      <div class="plate" style={{ width: `${bw * zoom()}px`, height: `${bh * zoom()}px` }}>
+        <canvas
+          ref={canvas}
+          class="board"
+          onMouseMove={(e) => battle.point(tileAt(e))}
+          onMouseLeave={() => battle.point(null)}
+          onClick={(e) => {
+            const p = tileAt(e)
+            if (p) battle.click(p)
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            battle.cancel()
+          }}
+        />
+        <Show when={aimed()}>
+          {(a) => (
+            <div class="aimcard" style={{ left: `${a().left}px`, top: `${a().top}px` }}>
+              <div class="head">
+                <b>{t(`kind.${a().target.kind}`)}</b>
+                <span class="hp">
+                  {a().target.hp}/{a().target.profile.hp}
+                </span>
+                <b class="big">{a().odds.chance}%</b>
+              </div>
+              <span class="muted">
+                {t("ui.cover")} −{a().odds.cover} · {t("ui.crit")} {a().odds.crit}% · {t("ui.damage")} {a().odds.damage}
+              </span>
+              <Show when={a().odds.combo && a().target.status}>
+                {(s) => <span class="combo">{t("ui.comboOn", { status: t(`status.${s()}`) })}</span>}
+              </Show>
+              <Show when={battle.intent(a().target.id)}>{(i) => <span class="plan">{i()}</span>}</Show>
+            </div>
+          )}
+        </Show>
+      </div>
+    </div>
   )
 }
