@@ -152,4 +152,16 @@ describe("battle", () => {
     const key = (p: { x: number; y: number }) => `${p.x},${p.y}`
     expect(b.zones().area.map(key).sort()).toEqual(["3,2", "4,2", "2,2", "5,2", "3,1", "3,3", "4,1", "4,3"].sort())
   })
+  test("an aimed barrel keeps its blast shown when the cursor leaves it", () => {
+    const b = new Battle(
+      setup(
+        ["........", "........", "...b....", "........", "........", "........", "........", "........"],
+        [squad("r", "ranger", { x: 3, y: 6 }), squad("w", "warden", { x: 5, y: 6 })],
+      ),
+    )
+    b.begin(0)
+    b.click({ x: 3, y: 2 })
+    b.point({ x: 0, y: 7 })
+    expect([b.mode(), b.zones().area.length]).toEqual(["shoot", 5])
+  })
 })
