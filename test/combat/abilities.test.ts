@@ -40,7 +40,7 @@ describe("squad skills", () => {
       enemy("b", "grunt", { x: 4, y: 2 }),
     ])
     const after = g.apply({ type: "skill", unit: "w", at: { x: 3, y: 2 } })
-    expect([after.unit("a").hp, after.unit("b").hp, after.board.at({ x: 2, y: 2 })]).toEqual([4, 4, "torn"])
+    expect([after.unit("a").hp, after.unit("b").hp, after.board.at({ x: 2, y: 2 })]).toEqual([5, 5, "torn"])
     expect(() => end(after, 2).apply({ type: "skill", unit: "w", at: { x: 3, y: 2 } })).toThrow(Illegal)
   })
   test("a Medkit heals an adjacent ally for 2, up to its HP", () => {

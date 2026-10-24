@@ -42,12 +42,8 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
         )}
       </Show>
       <Show when={u().status}>{(s) => <div class={`status ${s()}`}>{t(`status.${s()}`)}</div>}</Show>
-      <Show when={u().extra.branch || u().extra.partner}>
-        <div class="meta">
-          {[u().extra.branch && t(`branch.${u().extra.branch}`), u().extra.partner && t("ui.partner")]
-            .filter(Boolean)
-            .join(" · ")}
-        </div>
+      <Show when={u().extra.branch}>
+        <div class="meta">{t(`branch.${u().extra.branch}`)}</div>
       </Show>
       <Show when={props.intent}>{(i) => <div class="meta intent">{i()}</div>}</Show>
       <Show when={u().hunkered}>

@@ -24,11 +24,10 @@ export type Reward =
   | { kind: "train"; id: string }
   | { kind: "upgrade"; id: string; branch?: Branch }
 
-/** How a mission ended for the run: won or not, the HP each soldier in it left with (0 is dead), and its combos. */
+/** How a mission ended for the run: won or not, and the HP each soldier in it left with (0 is dead). */
 export interface Result {
   won: boolean
   hp: Record<string, number>
-  combos?: Record<string, number>
 }
 
 /** One choice of the player in a run; the run replays from its seed and its choices. */
@@ -141,14 +140,12 @@ export class Run {
   }
 
   /**
-   * Soldiers keep the HP they left with and heal 3, those who stayed out heal 5; the fallen are dead. A soldier
-   * with 2 combos becomes a Partner.
+   * Soldiers keep the HP they left with and heal 3, those who stayed out heal 5; the fallen are dead.
    */
   private finish(result: Result): void {
     must(this.stage === "mission", "finish")
     const node = this.chart.node(this.at ?? 0)
     for (const s of this.roster) {
-      if ((result.combos?.[s.id] ?? 0) >= 2) s.extra = { ...s.extra, partner: true }
       const out = !this.deployed.includes(s.id)
       if (!out) s.hp = result.hp[s.id] ?? 0
       if (s.hp > 0) s.hp = Math.min(s.max, s.hp + (out ? 5 : 3))
@@ -220,14 +217,11 @@ export class Run {
   }
 }
 
-/** The result of a finished mission: a soldier who left by the evac keeps its HP; each soldier's combos are counted. */
+/** The result of a finished mission: a soldier who left by the evac keeps its HP. */
 export function outcome(game: Game): Result {
-  const hp: Record<string, number> = {},
-    combos: Record<string, number> = {}
+  const hp: Record<string, number> = {}
   for (const u of game.units) if (u.side === "squad") hp[u.id] = u.hp
-  for (const e of game.log)
-    if (e.key === "log.combo") combos[String(e.params.unit)] = (combos[String(e.params.unit)] ?? 0) + 1
-  return { won: game.phase === "won", hp, combos }
+  return { won: game.phase === "won", hp }
 }
 
 function soldier(id: string, kind: ClassId): Soldier {

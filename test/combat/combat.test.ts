@@ -84,14 +84,14 @@ describe("shots", () => {
     ])
   test("every shot hits for its damage", () => {
     const g = duel().apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(4)
+    expect(g.unit("g").hp).toBe(5)
   })
   test("a shot the cover cuts to 0 is blocked", () => {
     const g = duel()
     g.unit("r").moved = true
     g.unit("g").hunkered = true
     const after = g.apply({ type: "shoot", unit: "r", target: "g" })
-    expect([after.unit("g").hp, after.log.some((e) => e.key === "log.block")]).toEqual([6, true])
+    expect([after.unit("g").hp, after.log.some((e) => e.key === "log.block")]).toEqual([7, true])
   })
   test("the Brute's claws always hit for its damage and push the target back", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
@@ -113,7 +113,7 @@ describe("shots", () => {
       enemy("b", "brute", { x: 5, y: 3 }),
     ]).apply({ type: "shoot", unit: "r", at: { x: 3, y: 3 } })
     expect([g.unit("a").hp, g.unit("b").hp, g.board.at({ x: 3, y: 3 }), g.board.at({ x: 4, y: 3 })]).toEqual([
-      4,
+      5,
       6,
       "fire",
       "fire",
@@ -181,9 +181,15 @@ describe("branches and traits", () => {
       squad("w", "warden", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 4, y: 3 }),
     ])
-    const before = g.combat.hit(g.unit("w"), g.unit("g")).damage
+    const plain = setup(open(), [
+      squad("r", "ranger", { x: 3, y: 6 }),
+      squad("w", "warden", { x: 4, y: 6 }),
+      enemy("g", "grunt", { x: 4, y: 3 }),
+    ]).apply({ type: "tactic", unit: "r", target: "g" })
     const marked = g.apply({ type: "tactic", unit: "r", target: "g" })
-    expect(marked.combat.hit(marked.unit("w"), marked.unit("g")).damage).toBe(before + 2)
+    expect(marked.combat.hit(marked.unit("w"), marked.unit("g")).damage).toBe(
+      plain.combat.hit(plain.unit("w"), plain.unit("g")).damage + 1,
+    )
   })
   test("Brawler: a Vanguard combo deals 3 more", () => {
     const g = setup(open(), [
@@ -193,6 +199,19 @@ describe("branches and traits", () => {
     ]).apply({ type: "tactic", unit: "w", target: "g" })
     expect(g.combat.hit(g.unit("v"), g.unit("g")).damage).toBe(7)
   })
+  test("a soldier deals 1 more to an alien with a status a teammate put on, and its own status gives nothing", () => {
+    const g = setup(open(), [
+      squad("w", "warden", { x: 2, y: 6 }),
+      squad("r", "ranger", { x: 3, y: 6 }),
+      enemy("g", "commander", { x: 3, y: 3 }),
+    ])
+    const plain = [g.combat.hit(g.unit("r"), g.unit("g")).damage, g.combat.hit(g.unit("w"), g.unit("g")).damage]
+    const set = g.apply({ type: "tactic", unit: "w", target: "g" })
+    expect([
+      set.combat.hit(set.unit("r"), set.unit("g")).damage,
+      set.combat.hit(set.unit("w"), set.unit("g")).damage,
+    ]).toEqual([plain[0] + 1, plain[1]])
+  })
   test("Wrecker: every Warden hit breaks the cover next to its target", () => {
     const g = setup(rows(["........", "...l....", "........"]), [
       trained("w", "warden", { x: 5, y: 2 }, { branch: "wrecker" }),
@@ -200,19 +219,6 @@ describe("branches and traits", () => {
     ])
     const hit = g.apply({ type: "shoot", unit: "w", target: "g" })
     expect(hit.board.at({ x: 3, y: 1 })).toBe("torn")
-  })
-  test("a Partner deals 1 more to an alien with the status its class gains from", () => {
-    const g = setup(open(), [
-      trained("v", "vanguard", { x: 3, y: 6 }, { partner: true }),
-      squad("w", "warden", { x: 4, y: 6 }),
-      enemy("g", "commander", { x: 3, y: 3 }),
-    ])
-    const plain = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("g", "commander", { x: 3, y: 3 })])
-    g.unit("g").status = "suppressed"
-    plain.unit("g").status = "suppressed"
-    expect(g.combat.hit(g.unit("v"), g.unit("g")).damage).toBe(
-      plain.combat.hit(plain.unit("v"), plain.unit("g")).damage + 1,
-    )
   })
   describe("the Blade", () => {
     test("a Blade strike next to an alien always hits for 3 and does not push", () => {

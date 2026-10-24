@@ -7,8 +7,8 @@ import { history, Journal, KIND, RUN } from "./journal"
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">
 
-const RUN_KEY = "tacticular.run.v5"
-const MISSION_KEY = "tacticular.mission.v5"
+const RUN_KEY = "tacticular.run.v6"
+const MISSION_KEY = "tacticular.mission.v6"
 
 /** The saved run: its signed log of choices, and the mission in play with its own signed log of actions. */
 export class Chronicle {

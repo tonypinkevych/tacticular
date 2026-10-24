@@ -1,4 +1,5 @@
 import type { Hit } from "../combat/combat"
+import { READY } from "../combat/ultimates"
 import { cover } from "../map/cover"
 import { AROUND, adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
 import { clear } from "../map/sight"
@@ -292,6 +293,7 @@ export class Mind {
           action: { type: "shoot", unit: u.id, target: f.id },
           value: this.worth(combat.hit(u, f, { from: at }), f),
         })
+    if (same(at, u.at)) out.push(...this.ultimates(u))
     if (u.cooldown > 0 || (u.uses !== null && u.uses <= 0)) return out
     const skill = (value: number, extra: Partial<Extract<Action, { type: "skill" }>> = {}) =>
       out.push({ action: { type: "skill", unit: u.id, ...extra }, value })
@@ -371,6 +373,49 @@ export class Mind {
           skill(1.2 * game.allies(u).filter((a) => a !== u && a.ap > 0).length)
         break
     }
+    return out
+  }
+
+  /** The ultimate a ready soldier can use from its tile, each worth the damage, statuses and healing it brings. */
+  private ultimates(u: Unit): Plan[] {
+    const game = this.game,
+      combat = game.combat,
+      kind = u.profile.ultimate,
+      foes = game.foes(u),
+      out: Plan[] = []
+    if (!kind || u.charge < READY) return out
+    const ult = (value: number, extra: Partial<Extract<Action, { type: "ultimate" }>> = {}) =>
+      out.push({ action: { type: "ultimate", unit: u.id, ...extra }, value })
+    if (kind === "killshot")
+      for (const f of foes)
+        if (combat.canShoot(u, f)) {
+          const h = combat.hit(u, f, { pierce: true, more: 3 })
+          ult(this.worth(h, f) + (f.hp <= h.damage ? 1.5 : 0), { target: f.id })
+        }
+    if (kind === "whirlwind") {
+      const near = foes.filter((f) => distance(u.at, f.at) <= 1)
+      if (near.length) ult(near.reduce((sum, f) => sum + this.worth(combat.hit(u, f), f), 0))
+    }
+    if (kind === "lockdown") {
+      const n = foes.filter((f) => distance(u.at, f.at) <= u.profile.range && clear(game.board, u.at, f.at)).length
+      if (n) ult(1.5 * n)
+    }
+    if (kind === "barrage") {
+      const n = foes.filter((f) => distance(u.at, f.at) <= 2).length,
+        heal = game.allies(u).reduce((sum, a) => sum + Math.min(2, a.profile.hp - a.hp), 0)
+      if (n || heal) ult(1.2 * n + 0.9 * heal)
+    }
+    if (kind === "breach")
+      for (const d of ORTHOGONAL)
+        for (let n = 1; n <= 3; n++) {
+          const path = Array.from({ length: n }, (_, i) => ({ x: u.at.x + d.x * (i + 1), y: u.at.y + d.y * (i + 1) }))
+          if (!path.every((p) => game.board.inside(p) && !blocksMove(game.board.at(p)) && !game.unitAt(p))) break
+          const hit = foes.filter((f) =>
+            path.some((p) => distance(p, f.at) === 1 && (p.x === f.at.x || p.y === f.at.y)),
+          ).length
+          const to = path[n - 1]
+          if (hit) ult(1.5 * hit + this.ground(u, to) - this.ground(u, u.at), { to })
+        }
     return out
   }
 

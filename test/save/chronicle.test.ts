@@ -18,13 +18,13 @@ describe("chronicle", () => {
   test("a new store starts a run from the seed", () => {
     expect(Chronicle.open(memory(), () => 42).run.seed).toBe(42)
   })
-  test("a save of the rules before sure attacks is not resumed", () => {
+  test("a save of older rules is not resumed", () => {
     const store = memory()
     const old = Chronicle.open(store, () => 42)
     into(old)
     for (const k of ["run", "mission"]) {
-      store.setItem(`tacticular.${k}.v4`, store.getItem(`tacticular.${k}.v5`) ?? "")
-      store.removeItem(`tacticular.${k}.v5`)
+      store.setItem(`tacticular.${k}.v5`, store.getItem(`tacticular.${k}.v6`) ?? "")
+      store.removeItem(`tacticular.${k}.v6`)
     }
     expect(Chronicle.open(store, () => 7).run.seed).toBe(7)
   })

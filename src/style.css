@@ -590,9 +590,6 @@ button.link {
 .sheet .status {
   color: var(--paper);
 }
-.status.partner {
-  background: #2c7a69;
-}
 .sheet .threat {
   justify-self: start;
   border: 1px solid #b23f2b;

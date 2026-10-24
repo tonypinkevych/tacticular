@@ -11,6 +11,8 @@ export interface Hit {
   cover: number
   /** The attack turns the target's status into a combo. */
   combo?: boolean
+  /** The attack gains 1 from a status a teammate put on, without a combo. */
+  link?: boolean
 }
 
 /** Changes to one attack: where it comes from and damage taken off or added. */
@@ -18,6 +20,8 @@ export interface Fire {
   from?: Point
   less?: number
   more?: number
+  /** The shot ignores cover, with no flank bonus. */
+  pierce?: boolean
 }
 
 /** Attacks, damage, blasts and pushes in a game. */
@@ -40,7 +44,6 @@ export class Combat {
       from = fire.from ?? shooter.at
     let status = (fire.more ?? 0) - (fire.less ?? 0)
     if (target.status === "marked") status += this.spotted(target) ? 2 : 1
-    if (shooter.extra.partner && target.status && p.combo === target.status) status += 1
     if (shooter.status === "suppressed") status -= 1
     if (p.melee)
       return this.combo(shooter, target, {
@@ -48,8 +51,8 @@ export class Combat {
         cover: 0,
       })
     const base = cover(this.game.board, target.at, from)
-    const c = target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 1) * 2 : base
-    let dmg = p.damage - c + (c === 0 ? 1 : 0) + status
+    const c = fire.pierce || target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 1) * 2 : base
+    let dmg = p.damage - c + (c === 0 && !fire.pierce ? 1 : 0) + status
     if (p.passive === "pointBlank" && adjacent(from, target.at)) dmg += 1
     if (p.passive === "steady" && !shooter.moved) dmg += 1
     if (this.game.allies(target).some((a) => a.profile.passive === "aid" && a !== target && adjacent(a.at, target.at)))
@@ -60,9 +63,13 @@ export class Combat {
     })
   }
 
-  /** The hit with the combo the shooter makes of the target's status: more damage. */
+  /** The hit with the combo the shooter makes of the target's status, or 1 more from a teammate's status. */
   private combo(shooter: Unit, target: Unit, hit: Hit): Hit {
-    if (!target.status || shooter.profile.combo !== target.status) return hit
+    if (!target.status) return hit
+    if (shooter.profile.combo !== target.status)
+      return target.by && target.by !== shooter.id && hit.damage > 0
+        ? { ...hit, damage: hit.damage + 1, link: true }
+        : hit
     if (shooter.kind === "blade") return { ...hit, damage: hit.damage + 3, combo: true }
     if (target.status === "marked") return { ...hit, combo: true }
     return { ...hit, damage: hit.damage + (shooter.extra.branch === "brawler" ? 3 : 2), combo: true }
@@ -70,7 +77,8 @@ export class Combat {
 
   /**
    * Lands an attack for its damage; one cut to 0 is blocked. A melee hit or a point blank hit pushes the target back,
-   * and claws at a Blade with Riposte cost the alien 2.
+   * and claws at a Blade with Riposte cost the alien 2. A combo or a link charges the shooter and the teammate whose
+   * status it used.
    */
   fire(shooter: Unit, target: Unit, fire: Fire = {}): void {
     const h = this.hit(shooter, target, fire),
@@ -82,6 +90,7 @@ export class Combat {
       this.hurt(shooter, 2)
     }
     if (h.damage === 0) return
+    if (h.combo || h.link) this.game.ultimates.charge(shooter, target.by)
     const guard = shelter(this.game.board, target.at, from)
     if (shooter.profile.passive === "shred" && guard && ["bags", "torn"].includes(this.game.board.at(guard)))
       this.game.board.break(guard)

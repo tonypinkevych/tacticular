@@ -102,7 +102,7 @@ describe("run", () => {
       r.play({ type: "go", node: n.id, deploy: r.roster.map((x) => x.id) })
       r.play({
         type: "finish",
-        result: { won: true, hp: Object.fromEntries(r.roster.map((x) => [x.id, x.max])), combos: {} },
+        result: { won: true, hp: Object.fromEntries(r.roster.map((x) => [x.id, x.max])) },
       })
       const first = r.offers[0]
       if (first.kind !== "upgrade") throw new Error("not an upgrade")
@@ -113,13 +113,5 @@ describe("run", () => {
       return
     }
     throw new Error("no seed")
-  })
-  test("a soldier who lands 2 combos in a mission becomes a Partner", () => {
-    const r = drafted()
-    go(r)
-    const [a, b] = r.deployed
-    r.play({ type: "finish", result: { won: false, hp: { [a]: 3, [b]: 3 }, combos: { [a]: 2, [b]: 1 } } })
-    const partner = (id: string) => r.roster.find((s) => s.id === id)?.extra.partner
-    expect([partner(a), partner(b)]).toEqual([true, undefined])
   })
 })

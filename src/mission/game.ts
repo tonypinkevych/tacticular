@@ -3,6 +3,7 @@ import { Abilities } from "../combat/abilities"
 import { Combat } from "../combat/combat"
 import { Dice } from "../combat/dice"
 import { Tactics } from "../combat/tactics"
+import { Ultimates } from "../combat/ultimates"
 import type { Board } from "../map/board"
 import { type Point, same } from "../map/point"
 import { Reach } from "../map/reach"
@@ -80,6 +81,7 @@ export class Game implements GameData {
   readonly combat = new Combat(this)
   readonly abilities = new Abilities(this)
   readonly tactics = new Tactics(this)
+  readonly ultimates = new Ultimates(this)
   readonly turn = new Turn(this)
   readonly reinforcements = new Reinforcements(this)
   readonly orders = new Orders(this)

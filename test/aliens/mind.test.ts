@@ -115,6 +115,22 @@ describe("mind", () => {
     const after = g.apply(new Mind(g).next())
     expect(damage(after)).toBeLessThan(damage(g))
   })
+  test("a Blade with a ready ultimate uses it in its turn on the aliens next to it", () => {
+    const g = setup(open(), [
+      squad("b", "blade", { x: 3, y: 4 }),
+      enemy("a", "grunt", { x: 3, y: 3 }),
+      enemy("c", "grunt", { x: 4, y: 5 }),
+      enemy("d", "grunt", { x: 2, y: 4 }),
+    ])
+    g.unit("b").charge = 2
+    let now = g
+    const done: unknown[] = []
+    for (let a = new Mind(now).next(); a.type !== "endTurn"; a = new Mind(now).next()) {
+      done.push(a)
+      now = now.apply(a)
+    }
+    expect(done).toContainEqual({ type: "ultimate", unit: "b" })
+  })
   test("a Pod neither moves nor attacks", () => {
     const g = aliens(setup(open(), [squad("r", "ranger", { x: 3, y: 2 }), enemy("p", "pod", { x: 3, y: 1 })]))
     expect(new Mind(g).next()).toEqual({ type: "endTurn" })

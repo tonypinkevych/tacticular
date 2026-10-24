@@ -20,6 +20,9 @@ export type SkillId =
   | "blast"
   | "warcry"
 
+/** The fight-turning move of each class, ready after 2 combos. */
+export type UltimateId = "breach" | "killshot" | "lockdown" | "barrage" | "whirlwind"
+
 /** The upgrade branches a soldier can take, 2 for each class. */
 export type Branch =
   | "bulldozer"
@@ -65,6 +68,7 @@ export interface Profile {
   tactic?: Status
   /** The status a hit of the class turns into a combo. */
   combo?: Status
+  ultimate?: UltimateId
 }
 
 const ALL = 99
@@ -81,6 +85,7 @@ export const PROFILES: Record<Kind, Profile> = {
     passive: "pointBlank",
     tactic: "staggered",
     combo: "suppressed",
+    ultimate: "breach",
   },
   ranger: {
     hp: 5,
@@ -93,6 +98,7 @@ export const PROFILES: Record<Kind, Profile> = {
     passive: "steady",
     tactic: "marked",
     combo: "exposed",
+    ultimate: "killshot",
   },
   warden: {
     hp: 7,
@@ -105,6 +111,7 @@ export const PROFILES: Record<Kind, Profile> = {
     passive: "shred",
     tactic: "suppressed",
     combo: "staggered",
+    ultimate: "lockdown",
   },
   cleric: {
     hp: 6,
@@ -117,6 +124,7 @@ export const PROFILES: Record<Kind, Profile> = {
     passive: "aid",
     tactic: "exposed",
     combo: "marked",
+    ultimate: "barrage",
   },
   blade: {
     hp: 8,
@@ -130,8 +138,9 @@ export const PROFILES: Record<Kind, Profile> = {
     passive: "parry",
     tactic: "taunted",
     combo: "exposed",
+    ultimate: "whirlwind",
   },
-  grunt: { hp: 6, move: 1, damage: 3, range: 4, skill: "covering", cooldown: 3, uses: null },
+  grunt: { hp: 7, move: 1, damage: 3, range: 4, skill: "covering", cooldown: 3, uses: null },
   brute: {
     hp: 8,
     move: 3,

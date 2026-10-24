@@ -131,9 +131,6 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
                   <Show when={u.overwatch}>
                     <span class="status watching">{t("ui.overwatch")}</span>
                   </Show>
-                  <Show when={u.extra.partner}>
-                    <span class="status partner">{t("ui.partner")}</span>
-                  </Show>
                   <Show when={aimedAt(u)}>{(n) => <span class="threat">{t("ui.aimedAt", { count: n() })}</span>}</Show>
                   <Show when={b.selected() === u.id && u.profile.combo}>
                     {(c) => <span class="muted">{t("ui.gains", { status: t(`status.${c()}`) })}</span>}

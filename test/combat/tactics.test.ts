@@ -43,7 +43,7 @@ describe("tactics", () => {
       squad("v", "vanguard", { x: 3, y: 5 }),
       enemy("g", "grunt", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "v", target: "g" })
-    expect(g.unit("g").hp).toBe(5)
+    expect(g.unit("g").hp).toBe(6)
   })
   test("a Staggered alien loses its marked attack and has 1 AP in its next turn", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("b", "bomber", { x: 3, y: 5 })])
@@ -141,8 +141,8 @@ describe("combos", () => {
         enemy("g", "grunt", { x: 3, y: 4 }),
       ])
       const pinned = g.apply({ type: "tactic", unit: "w", target: "g" })
-      expect(pinned.unit("g").hp).toBe(5)
-      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(4)
+      expect(pinned.unit("g").hp).toBe(6)
+      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(5)
     })
     test("Chaplain: a Cleric combo heals 2", () => {
       const g = setup(open(), [
