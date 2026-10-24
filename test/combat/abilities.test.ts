@@ -1,5 +1,6 @@
 import type { Game } from "../../src/mission/game"
 import { Illegal } from "../../src/mission/orders"
+import { Unit } from "../../src/units/unit"
 import { enemy, open, reseed, setup, squad } from "../fixture"
 
 const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
@@ -136,5 +137,14 @@ describe("alien skills", () => {
     ).apply({ type: "skill", unit: "k" })
     expect(g.unit("g").steps()).toBe(2)
     expect(end(g, 2).unit("g").steps()).toBe(1)
+  })
+  test("Deadeye: Headshot works on a Marked alien behind cover", () => {
+    const g = setup(rows(["........", "........", "...l...."]), [
+      Unit.of("r", "ranger", "squad", { x: 3, y: 6 }, { hp: 0, aim: 0, upgrades: 0, branch: "deadeye" }),
+      squad("c", "cleric", { x: 4, y: 6 }),
+      enemy("g", "grunt", { x: 3, y: 1 }),
+    ])
+    g.unit("g").status = "marked"
+    expect(() => g.apply({ type: "skill", unit: "r", target: "g" })).not.toThrow()
   })
 })

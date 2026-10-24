@@ -1,7 +1,7 @@
 import { Dice } from "../combat/dice"
 import type { Game } from "../mission/game"
 import { aliens, type Conditions } from "../mission/mission"
-import { type ClassId, PROFILES } from "../units/profiles"
+import { BRANCHES, type Branch, type ClassId, PROFILES } from "../units/profiles"
 import type { Training } from "../units/unit"
 import { Chart, type Node, type Prize } from "./chart"
 
@@ -22,12 +22,13 @@ export type Reward =
   | { kind: "heal" }
   | { kind: "recruit"; soldier: Soldier }
   | { kind: "train"; id: string }
-  | { kind: "upgrade"; id: string }
+  | { kind: "upgrade"; id: string; branch?: Branch }
 
-/** How a mission ended for the run: won or not, and the HP each soldier in it left with; 0 is dead. */
+/** How a mission ended for the run: won or not, the HP each soldier in it left with (0 is dead), and its combos. */
 export interface Result {
   won: boolean
   hp: Record<string, number>
+  combos?: Record<string, number>
 }
 
 /** One choice of the player in a run; the run replays from its seed and its choices. */
@@ -113,10 +114,11 @@ export class Run {
     s.hp += 1
   }
 
-  /** Upgrades a soldier's skill: a use more, or a turn less to wait. */
-  upgrade(id: string): void {
+  /** Gives a soldier a branch of its class, or once it has one, a use more or a turn less to wait. */
+  upgrade(id: string, branch?: Branch): void {
     const s = this.soldier(id)
-    s.extra = { ...s.extra, upgrades: s.extra.upgrades + 1 }
+    if (branch && !s.extra.branch && BRANCHES[s.kind].includes(branch)) s.extra = { ...s.extra, branch }
+    else s.extra = { ...s.extra, upgrades: s.extra.upgrades + 1 }
   }
 
   private draft(picks: string[]): void {
@@ -138,11 +140,15 @@ export class Run {
     this.stage = "mission"
   }
 
-  /** Soldiers keep the HP they left with and heal 3, those who stayed out heal 5; after a win the fallen come back with 1 HP, after a loss they are dead. */
+  /**
+   * Soldiers keep the HP they left with and heal 3, those who stayed out heal 5; after a win the fallen come back
+   * with 1 HP, after a loss they are dead. A soldier with 2 combos becomes a Partner.
+   */
   private finish(result: Result): void {
     must(this.stage === "mission", "finish")
     const node = this.chart.node(this.at ?? 0)
     for (const s of this.roster) {
+      if ((result.combos?.[s.id] ?? 0) >= 2) s.extra = { ...s.extra, partner: true }
       const out = !this.deployed.includes(s.id)
       if (!out) s.hp = result.hp[s.id] ?? 0
       if (!out && result.won && s.hp <= 0) s.hp = 1
@@ -168,7 +174,7 @@ export class Run {
     if (r.kind === "heal") this.heal(3)
     if (r.kind === "recruit") this.roster.push(r.soldier)
     if (r.kind === "train") this.train(r.id)
-    if (r.kind === "upgrade") this.upgrade(r.id)
+    if (r.kind === "upgrade") this.upgrade(r.id, r.branch)
     this.offers = []
     this.stage = "chart"
   }
@@ -177,7 +183,10 @@ export class Run {
     for (const s of this.roster) s.hp = Math.min(s.max, s.hp + n)
   }
 
-  /** The choices of a prize: heal all; a recruit of up to 3 classes while the roster has room, else a heal; training or an upgrade for up to 3 soldiers. */
+  /**
+   * The choices of a prize: heal all; a recruit of up to 3 classes while the roster has room, else a heal; training
+   * for up to 3 soldiers; up to 3 upgrades, both branches of a soldier that has none.
+   */
   private offer(prize: Prize): Reward[] {
     if (prize === "recruit" && this.roster.length < ROSTER) {
       const lacking = CLASSES.filter((c) => !this.roster.some((s) => s.kind === c))
@@ -189,11 +198,21 @@ export class Run {
           return { kind: "recruit", soldier: soldier(`r${this.recruits}`, kind) }
         })
     }
-    if (prize === "train" || prize === "upgrade")
+    if (prize === "train")
       return this.dice
         .shuffle(this.roster)
         .slice(0, 3)
         .map((s) => ({ kind: prize, id: s.id }))
+    if (prize === "upgrade") {
+      const out: Reward[] = []
+      for (const s of this.dice.shuffle(this.roster)) {
+        const choices: Reward[] = s.extra.branch
+          ? [{ kind: "upgrade", id: s.id }]
+          : BRANCHES[s.kind].map((branch) => ({ kind: "upgrade", id: s.id, branch }))
+        if (out.length + choices.length <= 3) out.push(...choices)
+      }
+      return out
+    }
     return [{ kind: "heal" }]
   }
 
@@ -202,11 +221,14 @@ export class Run {
   }
 }
 
-/** The result of a finished mission: a soldier who left by the evac keeps its HP. */
+/** The result of a finished mission: a soldier who left by the evac keeps its HP; each soldier's combos are counted. */
 export function outcome(game: Game): Result {
-  const hp: Record<string, number> = {}
+  const hp: Record<string, number> = {},
+    combos: Record<string, number> = {}
   for (const u of game.units) if (u.side === "squad") hp[u.id] = u.hp
-  return { won: game.phase === "won", hp }
+  for (const e of game.log)
+    if (e.key === "log.combo") combos[String(e.params.unit)] = (combos[String(e.params.unit)] ?? 0) + 1
+  return { won: game.phase === "won", hp, combos }
 }
 
 function soldier(id: string, kind: ClassId): Soldier {

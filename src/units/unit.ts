@@ -1,4 +1,5 @@
 import type { Point } from "../map/point"
+import type { Branch } from "./profiles"
 import { type Kind, PROFILES, type Profile } from "./profiles"
 
 export type Side = "squad" | "enemy"
@@ -6,11 +7,14 @@ export type Side = "squad" | "enemy"
 /** A state a soldier's tactic puts on an alien until the next squad turn. */
 export type Status = "suppressed" | "staggered" | "exposed" | "marked"
 
-/** What a soldier gained in a run: HP, aim, and skill upgrades (a use more, or a turn less to wait). */
+/** What a soldier gained in a run: HP, aim, skill upgrades (a use more, or a turn less to wait), a branch and the Partner trait. */
 export interface Training {
   hp: number
   aim: number
   upgrades: number
+  branch?: Branch
+  /** 10 more aim on aliens with the status the class gains from. */
+  partner?: boolean
 }
 
 const UNTRAINED: Training = { hp: 0, aim: 0, upgrades: 0 }

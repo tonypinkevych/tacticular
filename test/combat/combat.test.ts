@@ -1,6 +1,10 @@
 import type { Game } from "../../src/mission/game"
+import type { ClassId } from "../../src/units/profiles"
+import { type Training, Unit } from "../../src/units/unit"
 import { enemy, open, reseed, setup, squad } from "../fixture"
 
+const trained = (id: string, kind: ClassId, at: { x: number; y: number }, extra: Partial<Training>) =>
+  Unit.of(id, kind, "squad", at, { hp: 0, aim: 0, upgrades: 0, ...extra })
 const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
 
 /** A game whose next two rolls fall below a hit chance and a crit chance. */
@@ -157,5 +161,47 @@ describe("shots", () => {
       const shot = moved.log.find((e) => e.params.unit === "s" && e.params.chance !== undefined)
       expect(shot?.params.chance).toBe(g.combat.odds(g.unit("s"), moved.unit("r")).chance)
     })
+  })
+})
+
+describe("branches and traits", () => {
+  test("Spotter: a Marked alien gives 20 aim, not 10", () => {
+    const g = setup(open(), [
+      trained("r", "ranger", { x: 3, y: 6 }, { branch: "spotter" }),
+      squad("w", "warden", { x: 4, y: 6 }),
+      enemy("g", "grunt", { x: 4, y: 3 }),
+    ])
+    const before = g.combat.odds(g.unit("w"), g.unit("g")).chance
+    const marked = g.apply({ type: "tactic", unit: "r", target: "g" })
+    expect(marked.combat.odds(marked.unit("w"), marked.unit("g")).chance).toBe(before + 20)
+  })
+  test("Brawler: a Vanguard combo deals 2 more", () => {
+    const g = setup(open(), [
+      squad("w", "warden", { x: 2, y: 6 }),
+      trained("v", "vanguard", { x: 3, y: 6 }, { branch: "brawler" }),
+      enemy("g", "commander", { x: 3, y: 4 }),
+    ]).apply({ type: "tactic", unit: "w", target: "g" })
+    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(5)
+  })
+  test("Wrecker: every Warden hit breaks the cover next to its target", () => {
+    const g = setup(rows(["........", "...l....", "........"]), [
+      trained("w", "warden", { x: 5, y: 2 }, { branch: "wrecker" }),
+      enemy("g", "commander", { x: 3, y: 2 }),
+    ])
+    const hit = lucky(g, g.combat.odds(g.unit("w"), g.unit("g")).chance, 101).apply({
+      type: "shoot",
+      unit: "w",
+      target: "g",
+    })
+    expect(hit.board.at({ x: 3, y: 1 })).toBe("torn")
+  })
+  test("a Partner gets 10 aim on an alien with the status its class gains from", () => {
+    const g = setup(open(), [
+      trained("v", "vanguard", { x: 3, y: 6 }, { partner: true }),
+      enemy("g", "commander", { x: 3, y: 3 }),
+    ])
+    const before = g.combat.odds(g.unit("v"), g.unit("g")).chance
+    g.unit("g").status = "suppressed"
+    expect(g.combat.odds(g.unit("v"), g.unit("g")).chance).toBe(Math.min(95, before + 10))
   })
 })

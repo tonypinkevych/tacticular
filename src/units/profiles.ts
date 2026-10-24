@@ -11,6 +11,16 @@ export type Kind = ClassId | AlienId
 
 export type SkillId = "runGun" | "headshot" | "grenade" | "medkit" | "covering" | "charge" | "blast" | "warcry"
 
+/** The upgrade branches a soldier can take, 2 for each class. */
+export type Branch = "bulldozer" | "brawler" | "spotter" | "deadeye" | "pinning" | "wrecker" | "chaplain" | "searing"
+
+export const BRANCHES: Record<ClassId, [Branch, Branch]> = {
+  vanguard: ["bulldozer", "brawler"],
+  ranger: ["spotter", "deadeye"],
+  warden: ["pinning", "wrecker"],
+  cleric: ["chaplain", "searing"],
+}
+
 export type Passive = "pointBlank" | "steady" | "shred" | "aid" | "shell" | "keen" | "nest"
 
 export interface Profile {

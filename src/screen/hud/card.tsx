@@ -40,6 +40,13 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
         )}
       </Show>
       <Show when={u().status}>{(s) => <div class={`status ${s()}`}>{t(`status.${s()}`)}</div>}</Show>
+      <Show when={u().extra.branch || u().extra.partner}>
+        <div class="meta">
+          {[u().extra.branch && t(`branch.${u().extra.branch}`), u().extra.partner && t("ui.partner")]
+            .filter(Boolean)
+            .join(" · ")}
+        </div>
+      </Show>
       <Show when={u().hunkered}>
         <div class="status hunkered">{t("ui.hunker")}</div>
       </Show>

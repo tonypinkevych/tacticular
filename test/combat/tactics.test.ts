@@ -1,5 +1,7 @@
 import type { Game } from "../../src/mission/game"
 import { Illegal } from "../../src/mission/orders"
+import type { Branch } from "../../src/units/profiles"
+import { Unit } from "../../src/units/unit"
 import { enemy, open, reseed, setup, squad } from "../fixture"
 
 const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
@@ -116,5 +118,39 @@ describe("combos", () => {
     g.unit("c").hp = 3
     const hit = hitting(g, 95).apply({ type: "shoot", unit: "c", target: "g" })
     expect([hit.unit("r").hp, hit.unit("c").hp, hit.unit("g").status]).toEqual([3, 4, null])
+  })
+  describe("branches", () => {
+    const trained = (
+      id: string,
+      kind: "vanguard" | "ranger" | "warden" | "cleric",
+      at: { x: number; y: number },
+      branch: string,
+    ) => Unit.of(id, kind, "squad", at, { hp: 0, aim: 0, upgrades: 0, branch: branch as Branch })
+    test("Bulldozer: a Shove pushes 2 tiles", () => {
+      const g = setup(open(), [
+        trained("v", "vanguard", { x: 3, y: 6 }, "bulldozer"),
+        enemy("g", "grunt", { x: 3, y: 5 }),
+      ])
+      expect(g.apply({ type: "tactic", unit: "v", target: "g" }).unit("g").at).toEqual({ x: 3, y: 3 })
+    })
+    test("Pinning and Searing: Suppress and Flare deal 1", () => {
+      const g = setup(open(), [
+        trained("w", "warden", { x: 3, y: 6 }, "pinning"),
+        trained("c", "cleric", { x: 4, y: 6 }, "searing"),
+        enemy("g", "grunt", { x: 3, y: 4 }),
+      ])
+      const pinned = g.apply({ type: "tactic", unit: "w", target: "g" })
+      expect(pinned.unit("g").hp).toBe(3)
+      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(2)
+    })
+    test("Chaplain: a Cleric combo heals 2", () => {
+      const g = setup(open(), [
+        squad("r", "ranger", { x: 3, y: 6 }),
+        trained("c", "cleric", { x: 4, y: 6 }, "chaplain"),
+        enemy("g", "commander", { x: 4, y: 4 }),
+      ]).apply({ type: "tactic", unit: "r", target: "g" })
+      g.unit("r").hp = 1
+      expect(hitting(g, 95).apply({ type: "shoot", unit: "c", target: "g" }).unit("r").hp).toBe(3)
+    })
   })
 })

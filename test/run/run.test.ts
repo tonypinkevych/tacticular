@@ -1,5 +1,6 @@
 import { aliens } from "../../src/mission/mission"
 import { Run } from "../../src/run/run"
+import { BRANCHES } from "../../src/units/profiles"
 
 const drafted = () => {
   const r = Run.start(5)
@@ -79,5 +80,38 @@ describe("run", () => {
     go(l)
     l.play({ type: "finish", result: { won: false, hp: {} } })
     expect(l.stage).toBe("lost")
+  })
+  test("the first upgrade of a soldier picks one of its 2 branches, and later ones add a use or take a turn", () => {
+    const r = drafted()
+    const s = r.roster.find((x) => x.kind === "ranger") ?? r.roster[0]
+    r.upgrade(s.id, BRANCHES[s.kind][1])
+    r.upgrade(s.id)
+    expect(s.extra).toMatchObject({ branch: BRANCHES[s.kind][1], upgrades: 1 })
+  })
+  test("an upgrade prize offers both branches of a soldier that has none", () => {
+    for (let seed = 1; seed < 50; seed++) {
+      const r = Run.start(seed)
+      r.play({ type: "draft", picks: r.candidates.slice(0, 3).map((c) => c.id) })
+      const n = r.options().find((x) => x.prize === "upgrade")
+      if (!n) continue
+      r.play({ type: "go", node: n.id, deploy: r.roster.map((x) => x.id) })
+      r.play({ type: "finish", result: { won: true, hp: {}, combos: {} } })
+      const first = r.offers[0]
+      if (first.kind !== "upgrade") throw new Error("not an upgrade")
+      const s = r.roster.find((x) => x.id === first.id)
+      expect(
+        r.offers.filter((o) => o.kind === "upgrade" && o.id === first.id).map((o) => o.kind === "upgrade" && o.branch),
+      ).toEqual(s ? BRANCHES[s.kind] : [])
+      return
+    }
+    throw new Error("no seed")
+  })
+  test("a soldier who lands 2 combos in a mission becomes a Partner", () => {
+    const r = drafted()
+    go(r)
+    const [a, b] = r.deployed
+    r.play({ type: "finish", result: { won: false, hp: { [a]: 3, [b]: 3 }, combos: { [a]: 2, [b]: 1 } } })
+    const partner = (id: string) => r.roster.find((s) => s.id === id)?.extra.partner
+    expect([partner(a), partner(b)]).toEqual([true, undefined])
   })
 })

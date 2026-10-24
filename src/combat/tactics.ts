@@ -17,7 +17,11 @@ export class Tactics {
     if (status === "staggered") check(adjacent(u.at, target.at), "range")
     else check(distance(u.at, target.at) <= u.profile.range && clear(this.game.board, u.at, target.at), "range")
     this.game.log.push({ key: `log.${status}`, params: { unit: u.id, target: target.id } })
-    if (status === "staggered") this.game.combat.push(target, u.at)
+    if (status === "staggered") {
+      this.game.combat.push(target, u.at)
+      if (u.extra.branch === "bulldozer" && target.alive()) this.game.combat.push(target, u.at)
+    }
+    if (u.extra.branch === "pinning" || u.extra.branch === "searing") this.game.combat.hurt(target, 1)
     if (target.alive()) this.put(target, status, u)
     u.ap -= 1
   }
@@ -36,18 +40,24 @@ export class Tactics {
     game.log.push({ key: "log.combo", params: { unit: shooter.id, target: target.id } })
     target.status = null
     target.by = null
+    const heal = shooter.extra.branch === "chaplain" ? 2 : 1
     if (status === "marked")
       for (const a of game.allies(shooter))
-        if (adjacent(a.at, shooter.at, true)) a.hp = Math.min(a.profile.hp, a.hp + 1)
+        if (adjacent(a.at, shooter.at, true)) a.hp = Math.min(a.profile.hp, a.hp + heal)
     if (!target.alive()) return
     if (status === "suppressed") this.put(target, "staggered", shooter)
     if (status === "exposed") this.put(target, "marked", shooter)
     if (status === "staggered") {
-      for (const d of ORTHOGONAL) {
-        const p = plus(target.at, d)
-        if (coverOf(game.board.at(p)) > 0 && game.board.at(p) !== "barrel") game.board.break(p)
-      }
+      this.wreck(target)
       this.put(target, "exposed", shooter)
+    }
+  }
+
+  /** Breaks the cover next to a unit. */
+  wreck(target: Unit): void {
+    for (const d of ORTHOGONAL) {
+      const p = plus(target.at, d)
+      if (coverOf(this.game.board.at(p)) > 0 && this.game.board.at(p) !== "barrel") this.game.board.break(p)
     }
   }
 

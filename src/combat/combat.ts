@@ -41,7 +41,8 @@ export class Combat {
     if (p.melee) return { chance: 100, crit: 0, damage: p.damage, cover: 0 }
     const c = (target.status === "exposed" ? 0 : cover(this.game.board, target.at, from)) * (target.hunkered ? 2 : 1)
     let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
-    if (target.status === "marked") aim += 10
+    if (target.status === "marked") aim += this.spotted(target) ? 20 : 10
+    if (shooter.extra.partner && target.status && p.combo === target.status) aim += 10
     if (fire.aimed) aim += 20
     if (shooter.status === "suppressed") aim -= 20
     if (p.passive === "pointBlank" && adjacent(from, target.at)) aim += 20
@@ -57,7 +58,7 @@ export class Combat {
     if (!target.status || p.combo !== target.status) return odds
     if (target.status === "exposed") return { ...odds, crit: 100, combo: true }
     if (target.status === "marked") return { ...odds, combo: true }
-    return { ...odds, damage: odds.damage + 1, combo: true }
+    return { ...odds, damage: odds.damage + (shooter.extra.branch === "brawler" ? 2 : 1), combo: true }
   }
 
   /** Rolls a shot: a hit takes the damage, a crit 1 more; a melee hit or a point blank hit pushes the target back. */
@@ -85,6 +86,11 @@ export class Combat {
     )
       this.push(target, from)
     if (o.combo) this.game.tactics.follow(shooter, target)
+    else if (shooter.extra.branch === "wrecker" && target.alive()) this.game.tactics.wreck(target)
+  }
+
+  private spotted(target: Unit): boolean {
+    return this.game.units.find((u) => u.id === target.by)?.extra.branch === "spotter"
   }
 
   hurt(target: Unit, dmg: number): void {

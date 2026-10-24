@@ -14,6 +14,12 @@ export function RewardView(props: { run: Run; onTake: (pick: number) => void }) 
     if (r.kind === "recruit") return t("ui.reward.recruit", { kind: t(`kind.${r.soldier.kind}`) })
     if (r.kind === "train") return t("ui.reward.train", { unit: name(r.id) })
     const s = props.run.roster.find((x) => x.id === r.id)
+    if (r.branch)
+      return t("ui.reward.branch", {
+        unit: name(r.id),
+        branch: t(`branch.${r.branch}`),
+        about: t(`branch.about.${r.branch}`),
+      })
     return t("ui.reward.upgrade", { unit: name(r.id), skill: s ? t(`skill.${PROFILES[s.kind].skill}`) : "" })
   }
   return (
