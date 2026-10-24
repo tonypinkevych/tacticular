@@ -43,6 +43,14 @@ describe("playback", () => {
     expect(seen.some((x) => /float:(CRIT )?−\d/.test(x))).toBe(true)
     expect(seen).toContain("g:hit")
   })
+  test("a grenade shows the damage over each unit it hits and plays its hit", () => {
+    const { seen } = run(setup(open(), [squad("w", "warden", { x: 5, y: 6 }), enemy("g", "grunt", { x: 5, y: 3 })]), {
+      type: "skill",
+      unit: "w",
+      at: { x: 5, y: 3 },
+    })
+    expect([seen.includes("float:−2"), seen.includes("g:hit")]).toEqual([true, true])
+  })
   test("a death plays the death and then the unit is gone", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
     g.unit("g").hp = 0.5

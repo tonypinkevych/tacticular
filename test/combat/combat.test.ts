@@ -163,6 +163,11 @@ describe("shots", () => {
       g.combat.blast({ x: 3, y: 1 }, 2)
       expect(g.unit("q").hp).toBe(3)
     })
+    test("a blast logs the damage to each unit it hits", () => {
+      const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("q", "grunt", { x: 3, y: 1 })])
+      g.combat.blast({ x: 3, y: 1 }, 2)
+      expect(g.log.at(-1)).toEqual({ key: "log.burst", params: { target: "q", dmg: 2 } })
+    })
     test("a Sniper reaches across the board for 3 damage", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 0, y: 7 }), enemy("s", "sniper", { x: 7, y: 0 })])
       expect([g.combat.canShoot(g.unit("s"), g.unit("r")), g.combat.odds(g.unit("s"), g.unit("r")).damage]).toEqual([

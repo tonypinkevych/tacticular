@@ -143,7 +143,7 @@ export class Combat {
   blast(center: Point, dmg: number): void {
     for (const p of [center, ...ORTHOGONAL.map((d) => plus(center, d))]) {
       const u = this.game.unitAt(p)
-      if (u) this.hurt(u, dmg)
+      if (u) this.burst(u, dmg)
       if (this.game.board.at(p) === "barrel") this.explode(p)
       else this.game.board.break(p)
     }
@@ -157,9 +157,15 @@ export class Combat {
     for (const d of ORTHOGONAL) {
       const p = plus(at, d)
       const u = this.game.unitAt(p)
-      if (u) this.hurt(u, 2)
+      if (u) this.burst(u, 2)
       if (this.game.board.at(p) === "barrel") this.explode(p)
       else this.game.board.break(p)
     }
+  }
+
+  private burst(u: Unit, dmg: number): void {
+    if (!u.alive()) return
+    this.game.log.push({ key: "log.burst", params: { target: u.id, dmg } })
+    this.hurt(u, dmg)
   }
 }

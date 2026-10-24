@@ -236,6 +236,10 @@ export class Playback {
       case "log.fire":
         this.note(where(target), "−1", "hit")
         break
+      case "log.burst":
+        this.note(where(target), `−${params.dmg}`, "hit")
+        this.pose(target, "hit", 0.3)
+        break
       case "log.headshot":
       case "log.grenade":
       case "log.covering":
