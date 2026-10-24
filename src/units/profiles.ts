@@ -72,7 +72,7 @@ const ALL = 99
 
 export const PROFILES: Record<Kind, Profile> = {
   vanguard: {
-    hp: 7,
+    hp: 9,
     aim: 70,
     move: 2,
     damage: 3,
@@ -85,7 +85,7 @@ export const PROFILES: Record<Kind, Profile> = {
     combo: "suppressed",
   },
   ranger: {
-    hp: 5,
+    hp: 7,
     aim: 80,
     move: 1,
     damage: 2,
@@ -98,7 +98,7 @@ export const PROFILES: Record<Kind, Profile> = {
     combo: "exposed",
   },
   warden: {
-    hp: 7,
+    hp: 9,
     aim: 65,
     move: 1,
     damage: 2,
@@ -111,7 +111,7 @@ export const PROFILES: Record<Kind, Profile> = {
     combo: "staggered",
   },
   cleric: {
-    hp: 6,
+    hp: 8,
     aim: 65,
     move: 2,
     damage: 2,
@@ -124,7 +124,7 @@ export const PROFILES: Record<Kind, Profile> = {
     combo: "marked",
   },
   blade: {
-    hp: 8,
+    hp: 10,
     aim: 100,
     move: 3,
     damage: 3,
@@ -137,9 +137,9 @@ export const PROFILES: Record<Kind, Profile> = {
     tactic: "taunted",
     combo: "exposed",
   },
-  grunt: { hp: 4, aim: 85, move: 1, damage: 3, range: 4, skill: "covering", cooldown: 3, uses: null },
+  grunt: { hp: 5, aim: 85, move: 1, damage: 3, range: 4, skill: "covering", cooldown: 3, uses: null },
   brute: {
-    hp: 5,
+    hp: 7,
     aim: 100,
     move: 3,
     damage: 3,
@@ -151,9 +151,9 @@ export const PROFILES: Record<Kind, Profile> = {
     cooldown: 2,
     uses: null,
   },
-  bomber: { hp: 2, aim: 0, move: 2, damage: 2, range: 0, skill: "blast", cooldown: 1, uses: null },
-  guard: { hp: 5, aim: 70, move: 1, damage: 2, range: 3, skill: "covering", cooldown: 3, uses: null, passive: "shell" },
-  sniper: { hp: 3, aim: 80, move: 1, damage: 3, range: ALL, cooldown: 0, uses: null, passive: "keen" },
-  pod: { hp: 5, aim: 0, move: 0, damage: 0, range: 0, cooldown: 0, uses: null, passive: "nest" },
-  commander: { hp: 6, aim: 70, move: 1, damage: 3, range: 5, skill: "warcry", cooldown: 3, uses: null },
+  bomber: { hp: 3, aim: 0, move: 2, damage: 2, range: 0, skill: "blast", cooldown: 1, uses: null },
+  guard: { hp: 7, aim: 70, move: 1, damage: 2, range: 3, skill: "covering", cooldown: 3, uses: null, passive: "shell" },
+  sniper: { hp: 4, aim: 80, move: 1, damage: 3, range: ALL, cooldown: 0, uses: null, passive: "keen" },
+  pod: { hp: 7, aim: 0, move: 0, damage: 0, range: 0, cooldown: 0, uses: null, passive: "nest" },
+  commander: { hp: 8, aim: 70, move: 1, damage: 3, range: 5, skill: "warcry", cooldown: 3, uses: null },
 }

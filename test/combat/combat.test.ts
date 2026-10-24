@@ -100,20 +100,20 @@ describe("shots", () => {
     ])
   test("a hit takes the weapon damage", () => {
     const g = lucky(duel(), 80, 100).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(2)
+    expect(g.unit("g").hp).toBe(3)
   })
   test("a miss takes nothing", () => {
     const g = unlucky(duel(), 80).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(4)
+    expect(g.unit("g").hp).toBe(5)
   })
   test("a crit adds 1 damage", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
-    expect(lucky(g, 95, 50).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp).toBe(1)
+    expect(lucky(g, 95, 50).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp).toBe(2)
   })
   test("the Brute's claws always hit for its damage and push the target back", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
     g.combat.fire(g.unit("b"), g.unit("v"))
-    expect(g.unit("v")).toMatchObject({ hp: 4, at: { x: 3, y: 5 } })
+    expect(g.unit("v")).toMatchObject({ hp: 6, at: { x: 3, y: 5 } })
   })
   test("a push into water kills", () => {
     const g = setup(rows(["........", "........", "........", "........", "........", "...~...."]), [
@@ -130,8 +130,8 @@ describe("shots", () => {
       enemy("b", "brute", { x: 5, y: 3 }),
     ]).apply({ type: "shoot", unit: "r", at: { x: 3, y: 3 } })
     expect([g.unit("a").hp, g.unit("b").hp, g.board.at({ x: 3, y: 3 }), g.board.at({ x: 4, y: 3 })]).toEqual([
-      2,
       3,
+      5,
       "fire",
       "fire",
     ])
@@ -161,7 +161,7 @@ describe("shots", () => {
         enemy("q", "guard", { x: 3, y: 1 }),
       ])
       g.combat.blast({ x: 3, y: 1 }, 2)
-      expect(g.unit("q").hp).toBe(3)
+      expect(g.unit("q").hp).toBe(5)
     })
     test("a blast logs the damage to each unit it hits", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("q", "grunt", { x: 3, y: 1 })])
@@ -203,13 +203,13 @@ describe("branches and traits", () => {
     const marked = g.apply({ type: "tactic", unit: "r", target: "g" })
     expect(marked.combat.odds(marked.unit("w"), marked.unit("g")).chance).toBe(before + 20)
   })
-  test("Brawler: a Vanguard combo deals 2 more", () => {
+  test("Brawler: a Vanguard combo deals 3 more", () => {
     const g = setup(open(), [
       squad("w", "warden", { x: 2, y: 6 }),
       trained("v", "vanguard", { x: 3, y: 6 }, { branch: "brawler" }),
       enemy("g", "commander", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "w", target: "g" })
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(5)
+    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(6)
   })
   test("Wrecker: every Warden hit breaks the cover next to its target", () => {
     const g = setup(rows(["........", "...l....", "........"]), [
@@ -237,17 +237,17 @@ describe("branches and traits", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("q", "commander", { x: 3, y: 3 })])
       expect(g.combat.odds(g.unit("b"), g.unit("q"))).toMatchObject({ chance: 100, damage: 3 })
       const hit = g.apply({ type: "shoot", unit: "b", target: "q" })
-      expect(hit.unit("q")).toMatchObject({ hp: 3, at: { x: 3, y: 3 } })
+      expect(hit.unit("q")).toMatchObject({ hp: 5, at: { x: 3, y: 3 } })
     })
     test("Parry: claws at the Blade hit half the time", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("x", "brute", { x: 3, y: 3 })])
       expect(g.combat.odds(g.unit("x"), g.unit("b")).chance).toBe(50)
     })
-    test("a Blade hit on an Exposed alien deals 2 more and staggers it", () => {
+    test("a Blade hit on an Exposed alien deals 3 more and staggers it", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("q", "commander", { x: 3, y: 3 })])
       g.unit("q").status = "exposed"
-      expect(g.combat.odds(g.unit("b"), g.unit("q")).damage).toBe(5)
-      expect(g.apply({ type: "shoot", unit: "b", target: "q" }).unit("q")).toMatchObject({ hp: 1, status: "staggered" })
+      expect(g.combat.odds(g.unit("b"), g.unit("q")).damage).toBe(6)
+      expect(g.apply({ type: "shoot", unit: "b", target: "q" }).unit("q")).toMatchObject({ hp: 2, status: "staggered" })
     })
     test("Riposte: claws that miss the Blade cost the alien 2", () => {
       const g = setup(open(), [
@@ -256,7 +256,7 @@ describe("branches and traits", () => {
       ])
       const missed = unlucky(g, 50)
       missed.combat.fire(missed.unit("x"), missed.unit("b"))
-      expect(missed.unit("x").hp).toBe(3)
+      expect(missed.unit("x").hp).toBe(5)
     })
     test("Reaper: a kill with a strike gives 1 AP back", () => {
       const g = setup(open(), [

@@ -32,7 +32,7 @@ export interface Conditions {
 
 const ALIENS: AlienId[] = ["grunt", "grunt", "brute", "bomber"]
 
-/** A new mission from a seed: its map, the squad on the bottom row, 5 aliens and more with threat on the top two, one drop, and its goal. */
+/** A new mission from a seed: its map, the squad on the bottom row, 4 aliens and more with threat on the top two, its drops, and its goal. */
 export function mission(seed: number, c: Conditions): Game {
   const board = terrain(seed, c.biome ?? BIOMES[seed % BIOMES.length]),
     dice = new Dice({ rng: seed * 31 + 7 })
@@ -58,7 +58,7 @@ export function mission(seed: number, c: Conditions): Game {
   return Game.start({
     seed,
     board,
-    drops: 1,
+    drops: drops(c.goal),
     units: [...squad, ...foes],
     goal: goal(
       c.goal,
@@ -67,9 +67,9 @@ export function mission(seed: number, c: Conditions): Game {
   })
 }
 
-/** How many aliens a mission starts with: 5, one more for each 3 threat, and the Commander at the fortress. */
+/** How many aliens a mission starts with: 4, one more for each 3 threat, and the Commander at the fortress. */
 export function aliens(c: Pick<Conditions, "threat" | "boss">): number {
-  return 5 + Math.floor((c.threat ?? 0) / 3) + (c.boss ? 1 : 0)
+  return 4 + Math.floor((c.threat ?? 0) / 3) + (c.boss ? 1 : 0)
 }
 
 function goal(kind: GoalKind, open: Point[]): Goal {
@@ -79,4 +79,9 @@ function goal(kind: GoalKind, open: Point[]): Goal {
     return { kind, at: middle[0] ?? { x: 3, y: 3 }, rounds: 5, strikes: 0 }
   }
   return { kind: "kill" }
+}
+
+/** How many alien drops a mission holds: 3 for Kill all, 1 for the other goals. */
+export function drops(goal: GoalKind): number {
+  return goal === "kill" ? 3 : 1
 }

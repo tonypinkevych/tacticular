@@ -50,7 +50,7 @@ describe("tactics", () => {
       squad("v", "vanguard", { x: 3, y: 5 }),
       enemy("g", "grunt", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "v", target: "g" })
-    expect(g.unit("g").hp).toBe(3)
+    expect(g.unit("g").hp).toBe(4)
   })
   test("a Staggered alien loses its marked attack and has 1 AP in its next turn", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("b", "bomber", { x: 3, y: 5 })])
@@ -81,13 +81,13 @@ describe("tactics", () => {
 })
 
 describe("combos", () => {
-  test("a Vanguard hit on a Suppressed alien deals 1 more and staggers it", () => {
+  test("a Vanguard hit on a Suppressed alien deals 2 more and staggers it", () => {
     const g = setup(open(), [
       squad("w", "warden", { x: 2, y: 6 }),
       squad("v", "vanguard", { x: 3, y: 6 }),
       enemy("g", "commander", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "w", target: "g" })
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(4)
+    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(5)
     const hit = hitting(g, 95).apply({ type: "shoot", unit: "v", target: "g" })
     expect(hit.unit("g").status).toBe("staggered")
     expect(hit.log.some((e) => e.key === "log.combo" && e.params.unit === "v")).toBe(true)
@@ -118,7 +118,7 @@ describe("combos", () => {
     const odds = g.combat.odds(g.unit("r"), g.unit("g"))
     expect([odds.cover, odds.crit]).toEqual([0, 100])
     const hit = hitting(g, odds.chance).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(hit.unit("g")).toMatchObject({ status: "marked", hp: 3 })
+    expect(hit.unit("g")).toMatchObject({ status: "marked", hp: 5 })
   })
   test("a Cleric hit on a Marked alien heals each soldier within 1 tile of the Cleric", () => {
     const g = setup(open(), [
@@ -152,8 +152,8 @@ describe("combos", () => {
         enemy("g", "grunt", { x: 3, y: 4 }),
       ])
       const pinned = g.apply({ type: "tactic", unit: "w", target: "g" })
-      expect(pinned.unit("g").hp).toBe(3)
-      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(2)
+      expect(pinned.unit("g").hp).toBe(4)
+      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(3)
     })
     test("Chaplain: a Cleric combo heals 2", () => {
       const g = setup(open(), [

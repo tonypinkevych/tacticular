@@ -68,10 +68,10 @@ export class Combat {
   /** The odds with the combo the shooter makes of the target's status: more damage or a sure crit. */
   private combo(shooter: Unit, target: Unit, odds: Odds): Odds {
     if (!target.status || shooter.profile.combo !== target.status) return odds
-    if (shooter.kind === "blade") return { ...odds, damage: odds.damage + 2, combo: true }
+    if (shooter.kind === "blade") return { ...odds, damage: odds.damage + 3, combo: true }
     if (target.status === "exposed") return { ...odds, crit: 100, combo: true }
     if (target.status === "marked") return { ...odds, combo: true }
-    return { ...odds, damage: odds.damage + (shooter.extra.branch === "brawler" ? 2 : 1), combo: true }
+    return { ...odds, damage: odds.damage + (shooter.extra.branch === "brawler" ? 3 : 2), combo: true }
   }
 
   /** Rolls a shot: a hit takes the damage, a crit 1 more; a melee hit or a point blank hit pushes the target back. */

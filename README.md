@@ -24,7 +24,8 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
   next turn.
 - Blasts tear sandbags and crack rocks, then leave rubble. Barrels blow up and set their tile on fire. Fire burns
   and spreads to the next forest. A push into water drowns.
-- A mission starts with 5 aliens. 2 more drop once a mission, on tiles marked a round before.
+- A mission starts with 4 aliens. 2 more drop every 3 rounds, on tiles marked a round before: 3 times in Kill all,
+  once in the other missions.
 - Each mission past the first layer of the chart holds a special alien. A Guard takes no damage from a shot its cover
   faces. A Sniper shoots across the board, but only in a turn it has not moved, and its overwatch has no penalty. A
   Pod does not fight, but while it stands a drop comes every 2 rounds and drops never run out.
@@ -41,11 +42,11 @@ the next link of the chain.
 
 | Class | Tactic, puts on | Base effect of the status | Combo on a hit, when the alien is |
 |---|---|---|---|
-| Warden | Suppress: Suppressed | −20 aim; its first move draws a Warden shot | Staggered: +1 damage, the cover next to it breaks, it is Exposed |
-| Vanguard | Shove (next to it, push 1): Staggered | its aimed attack is cancelled; 1 AP next turn | Suppressed: +1 damage, it is Staggered |
+| Warden | Suppress: Suppressed | −20 aim; its first move draws a Warden shot | Staggered: +2 damage, the cover next to it breaks, it is Exposed |
+| Vanguard | Shove (next to it, push 1): Staggered | its aimed attack is cancelled; 1 AP next turn | Suppressed: +2 damage, it is Staggered |
 | Cleric | Flare: Exposed | its cover counts as 0 | Marked: soldiers within 1 tile of the Cleric heal 1 |
 | Ranger | Mark: Marked | +10 aim on shots at it | Exposed: a sure crit, it is Marked |
-| Blade | Taunt (4 tiles): Taunted | its aimed attack turns to the Blade, and it attacks only the Blade | Exposed: +2 damage, it is Staggered |
+| Blade | Taunt (4 tiles): Taunted | its aimed attack turns to the Blade, and it attacks only the Blade | Exposed: +3 damage, it is Staggered |
 
 The chain is Suppress → Vanguard → Warden → Ranger → Cleric, and each tactic starts it at its own link. The Blade
 shares Exposed with the Ranger and sends the chain back to the Warden. The squad you draft decides which links you
@@ -59,7 +60,7 @@ mission is dead. Each mission on the chart shows its reward and its special alie
 The reward is heal all, a recruit, training (+1 HP, +5 aim) or an upgrade; an Elite always gives an upgrade. A win
 gives that reward. A soldier's first upgrade picks one of 2 branches of its class:
 
-- Vanguard: Bulldozer (Shove pushes 2) or Brawler (a combo deals 2 more).
+- Vanguard: Bulldozer (Shove pushes 2) or Brawler (a combo deals 3 more).
 - Ranger: Spotter (Marked gives +20 aim) or Deadeye (Headshot works on Marked aliens too).
 - Warden: Pinning fire (Suppress deals 1) or Wrecker (every hit breaks the cover next to the target).
 - Cleric: Chaplain (a combo heals 2) or Searing flare (Flare deals 1).

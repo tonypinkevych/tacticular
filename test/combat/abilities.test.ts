@@ -34,7 +34,7 @@ describe("squad skills", () => {
   })
   test("Headshot crits on a hit", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
-    expect(hitting(g, 95).apply({ type: "skill", unit: "r", target: "g" }).unit("g").hp).toBe(1)
+    expect(hitting(g, 95).apply({ type: "skill", unit: "r", target: "g" }).unit("g").hp).toBe(2)
   })
   test("a Grenade hits a plus for 2 and breaks the cover in it, once a mission", () => {
     const g = setup(rows(["........", "........", "..l....."]), [
@@ -43,7 +43,7 @@ describe("squad skills", () => {
       enemy("b", "grunt", { x: 4, y: 2 }),
     ])
     const after = g.apply({ type: "skill", unit: "w", at: { x: 3, y: 2 } })
-    expect([after.unit("a").hp, after.unit("b").hp, after.board.at({ x: 2, y: 2 })]).toEqual([2, 2, "torn"])
+    expect([after.unit("a").hp, after.unit("b").hp, after.board.at({ x: 2, y: 2 })]).toEqual([3, 3, "torn"])
     expect(() => end(after, 2).apply({ type: "skill", unit: "w", at: { x: 3, y: 2 } })).toThrow(Illegal)
   })
   test("a Medkit heals an adjacent ally for 2, up to its HP", () => {
@@ -53,7 +53,7 @@ describe("squad skills", () => {
       enemy("g", "grunt", { x: 0, y: 0 }),
     ])
     g.unit("v").hp = 6
-    expect(g.apply({ type: "skill", unit: "c", target: "v" }).unit("v").hp).toBe(7)
+    expect(g.apply({ type: "skill", unit: "c", target: "v" }).unit("v").hp).toBe(8)
   })
   test("a Medkit gives an ally with no AP 1 AP back", () => {
     const g = setup(open(), [
@@ -104,7 +104,7 @@ describe("alien skills", () => {
       },
     ])
     const run = end(marked, 2)
-    expect([run.unit("b").at, run.unit("v").hp, run.unit("v").at]).toEqual([{ x: 3, y: 3 }, 4, { x: 3, y: 5 }])
+    expect([run.unit("b").at, run.unit("v").hp, run.unit("v").at]).toEqual([{ x: 3, y: 3 }, 6, { x: 3, y: 5 }])
   })
   test("a Bomber marks a plus, then blows it next turn for 2", () => {
     const g = end(
@@ -115,7 +115,7 @@ describe("alien skills", () => {
       ]),
     ).apply({ type: "skill", unit: "m", at: { x: 3, y: 4 } })
     const run = end(g, 2)
-    expect([run.unit("r").hp, run.unit("c").hp]).toEqual([3, 4])
+    expect([run.unit("r").hp, run.unit("c").hp]).toEqual([5, 6])
   })
   test("killing the Bomber removes its mark", () => {
     const g = end(setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("m", "bomber", { x: 3, y: 1 })])).apply({
@@ -155,6 +155,6 @@ describe("alien skills", () => {
       target: "q",
     })
     expect(g.unit("b")).toMatchObject({ at: { x: 3, y: 3 }, ap: 0, cooldown: 3 })
-    expect(g.unit("q").hp).toBe(3)
+    expect(g.unit("q").hp).toBe(5)
   })
 })

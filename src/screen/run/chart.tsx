@@ -1,5 +1,6 @@
 import { createSignal, For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
+import { drops } from "../../mission/mission"
 import type { Prize as PrizeKind } from "../../run/chart"
 import type { Run } from "../../run/run"
 import { Unit } from "../../units/unit"
@@ -69,7 +70,7 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
               <p>
                 <b>{t(`ui.goal.${b().goal}`, { left: 5 })}</b>
               </p>
-              <p>{t("ui.brief.aliens", { count: b().aliens })}</p>
+              <p>{t("ui.brief.aliens", { count: b().aliens, more: drops(b().goal) * 2 })}</p>
               <Show when={b().foe}>
                 {(f) => (
                   <p>

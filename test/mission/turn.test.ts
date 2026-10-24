@@ -20,7 +20,7 @@ describe("turns", () => {
       squad("v", "vanguard", { x: 3, y: 3 }),
       enemy("g", "grunt", { x: 7, y: 0 }),
     ])
-    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).unit("v").hp).toBe(6)
+    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).unit("v").hp).toBe(8)
   })
   test("fire spreads to the next forest at the end of the round", () => {
     const g = setup(rows(["........", "........", "........", "...fT..."]), [
@@ -55,7 +55,7 @@ describe("aimed attacks", () => {
       .apply({ type: "shoot", unit: "g", target: "r" })
   test("an alien shot is aimed, not fired, and shows its target", () => {
     const g = aim()
-    expect([g.unit("r").hp, g.unit("g").ap]).toEqual([5, 0])
+    expect([g.unit("r").hp, g.unit("g").ap]).toEqual([7, 0])
     expect(g.marks).toEqual([{ kind: "shot", unit: "g", target: "r", tiles: [{ x: 3, y: 6 }] }])
   })
   test("an aimed shot fires at the start of the next alien turn", () => {
@@ -71,7 +71,7 @@ describe("aimed attacks", () => {
     const hidden = g.apply({ type: "endTurn" }).apply({ type: "move", unit: "r", to: { x: 4, y: 7 } })
     const next = hidden.apply({ type: "endTurn" })
     expect(next.log.some((e) => e.key === "log.dodge" && e.params.target === "r")).toBe(true)
-    expect(next.unit("r").hp).toBe(5)
+    expect(next.unit("r").hp).toBe(7)
   })
   test("claws land only on a target still next to the alien", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
@@ -80,7 +80,7 @@ describe("aimed attacks", () => {
       .apply({ type: "endTurn" })
       .apply({ type: "move", unit: "v", to: { x: 3, y: 6 } })
       .apply({ type: "endTurn" })
-    expect(g.unit("v").hp).toBe(7)
+    expect(g.unit("v").hp).toBe(9)
   })
   test("a Shove cancels the shot the alien aimed", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("g", "grunt", { x: 3, y: 3 })])
