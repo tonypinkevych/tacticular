@@ -15,8 +15,7 @@ The folders name what the game is made of.
 - **`src/units/`**: units and the profiles of the classes and the aliens.
 - **`src/combat/`**: dice, weapons, attacks and abilities.
 - **`src/aliens/`**: the mind that plays a side (always the aliens) and the alien drops.
-- **`src/mission/`**: the game, its turns and orders, the mission generator, and the match that plays the
-  alien side.
+- **`src/mission/`**: the game, its goals, turns and orders, and the mission generator.
 - **`src/campaign/`**: the campaign: the world's regions, weeks, both economies, operations, infiltration, research
   and soldier levels.
 - **`src/save/`**: the signed event logs of the run and the mission, and their saved copies.

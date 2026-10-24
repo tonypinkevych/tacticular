@@ -17,6 +17,7 @@ export class Unit {
     public uses: number | null = null,
     public overwatch = false,
     public rallied = false,
+    public out = false,
   ) {}
 
   /** A fresh unit of a kind with full HP and its skill uses. */
@@ -29,8 +30,9 @@ export class Unit {
     return PROFILES[this.kind]
   }
 
+  /** Standing on the board: not dead and not gone by the evac. */
   alive(): boolean {
-    return this.hp > 0
+    return this.hp > 0 && !this.out
   }
 
   /** Tiles one move goes now. */
@@ -51,6 +53,7 @@ export class Unit {
       this.uses,
       this.overwatch,
       this.rallied,
+      this.out,
     )
   }
 }

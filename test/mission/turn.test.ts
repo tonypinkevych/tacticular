@@ -46,3 +46,42 @@ describe("turns", () => {
     expect(g.apply({ type: "endTurn" }).apply({ type: "shoot", unit: "b", target: "v" }).phase).toBe("lost")
   })
 })
+
+describe("goals", () => {
+  const evac = () => {
+    const g = setup(open(), [
+      squad("r", "ranger", { x: 3, y: 0 }),
+      squad("v", "vanguard", { x: 5, y: 5 }),
+      enemy("g", "grunt", { x: 7, y: 7 }),
+    ])
+    g.goal = { kind: "evac", tiles: Array.from({ length: 8 }, (_, x) => ({ x, y: 0 })) }
+    return g
+  }
+  test("a soldier on an evac tile leaves at the end of the squad turn", () => {
+    const g = evac().apply({ type: "endTurn" })
+    expect([g.unit("r").out, g.phase]).toEqual([true, "enemy"])
+  })
+  test("Evac is won when every living soldier has left", () => {
+    const g = evac()
+    g.unit("v").hp = 0
+    expect(g.apply({ type: "endTurn" }).phase).toBe("won")
+  })
+  const defend = (aliens: number) => {
+    const g = setup(open(), [
+      squad("r", "ranger", { x: 0, y: 7 }),
+      ...Array.from({ length: aliens }, (_, i) => enemy(`g${i}`, "grunt", { x: 2 + i, y: 3 })),
+    ])
+    g.goal = { kind: "defend", at: { x: 3, y: 3 }, rounds: 5, strikes: 0 }
+    return g
+  }
+  const round = (g: ReturnType<typeof defend>) => g.apply({ type: "endTurn" }).apply({ type: "endTurn" })
+  test("Defend is lost when aliens hold the beacon area 2 round ends in a row", () => {
+    expect(round(round(defend(2))).phase).toBe("lost")
+  })
+  test("Defend is won after its rounds", () => {
+    let g = defend(0)
+    g.units.push(enemy("far", "grunt", { x: 7, y: 0 }))
+    for (let i = 0; i < 5; i++) g = round(g)
+    expect(g.phase).toBe("won")
+  })
+})

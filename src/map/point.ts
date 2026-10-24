@@ -15,7 +15,9 @@ export const plus = (a: Point, b: Point): Point => ({ x: a.x + b.x, y: a.y + b.y
 /** Grid distance where a diagonal step costs 1, as a king moves in chess. */
 export const distance = (a: Point, b: Point): number => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
 
-export const adjacent = (a: Point, b: Point): boolean => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) === 1
+/** Whether two tiles touch, edge or corner; with `orSame`, the tile itself counts too. */
+export const adjacent = (a: Point, b: Point, orSame = false): boolean =>
+  Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) === 1 || (orSame && same(a, b))
 
 /** The square of points around a center, edge to edge. */
 export function area(center: Point, radius: number): Point[] {

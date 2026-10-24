@@ -51,7 +51,7 @@ describe("hit chance", () => {
       squad("c", "cleric", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 3, y: 2 }),
     ])
-    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(50)
+    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(55)
   })
   test("a target past the range or behind a rock cannot be shot", () => {
     const far = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])

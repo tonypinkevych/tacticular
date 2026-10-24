@@ -1,4 +1,4 @@
-import { ORTHOGONAL, plus } from "../map/point"
+import { adjacent, ORTHOGONAL, plus, same } from "../map/point"
 import { blocksMove } from "../map/tile"
 import type { Side } from "../units/unit"
 import type { Game, Mark } from "./game"
@@ -10,12 +10,18 @@ export class Turn {
   end(): void {
     const game = this.game
     if (game.phase === "squad") {
+      this.evacuate()
       game.phase = "enemy"
       this.begin("enemy")
     } else {
       for (const u of game.units) u.rallied = false
       this.close()
+      if (game.phase === "lost") return
       game.round += 1
+      if (game.goal.kind === "defend" && game.round > game.goal.rounds) {
+        game.phase = "won"
+        return
+      }
       game.phase = "squad"
       game.log.push({ key: "log.round", params: { round: game.round } })
       this.begin("squad")
@@ -23,9 +29,22 @@ export class Turn {
     game.settle()
   }
 
-  /** The end of a round: units in fire burn, fire spreads to the next forest, and the next drop is marked. */
+  /** Soldiers on an evac tile leave the board at the end of the squad turn. */
+  private evacuate(): void {
+    const game = this.game,
+      goal = game.goal
+    if (goal.kind !== "evac") return
+    for (const u of game.units)
+      if (u.side === "squad" && u.alive() && goal.tiles.some((p) => same(p, u.at))) {
+        u.out = true
+        game.log.push({ key: "log.evac", params: { unit: u.id } })
+      }
+  }
+
+  /** The end of a round: fire burns and spreads, the beacon is counted, and the next drop is marked. */
   private close(): void {
     const game = this.game
+    this.hold()
     for (const u of game.units) if (u.alive() && game.board.at(u.at) === "fire") game.combat.burn(u)
     const fires = game.board.tiles.flatMap((t, i) =>
       t === "fire" ? [{ x: i % game.board.width, y: Math.floor(i / game.board.width) }] : [],
@@ -33,6 +52,19 @@ export class Turn {
     for (const f of fires)
       for (const d of ORTHOGONAL) if (game.board.at(plus(f, d)) === "forest") game.board.set(plus(f, d), "fire")
     game.reinforcements.mark()
+  }
+
+  /** Defend: aliens that outnumber soldiers around the beacon 2 round ends in a row win. */
+  private hold(): void {
+    const game = this.game,
+      goal = game.goal
+    if (goal.kind !== "defend") return
+    const near = (side: Side) =>
+      game.units.filter((u) => u.side === side && u.alive() && adjacent(u.at, goal.at, true)).length
+    goal.strikes = near("enemy") > near("squad") ? goal.strikes + 1 : 0
+    if (goal.strikes === 0) return
+    game.log.push({ key: "log.beacon", params: {} })
+    if (goal.strikes >= 2) game.phase = "lost"
   }
 
   /** A side's turn starts: 2 AP, cooldowns count down, overwatch ends, then a drop and marked attacks land. */

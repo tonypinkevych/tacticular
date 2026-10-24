@@ -16,6 +16,12 @@ export interface Entry {
 
 export type Phase = "squad" | "enemy" | "won" | "lost"
 
+/** What wins the mission besides killing every alien. */
+export type Goal =
+  | { kind: "kill" }
+  | { kind: "evac"; tiles: Point[] }
+  | { kind: "defend"; at: Point; rounds: number; strikes: number }
+
 /** An alien attack shown a turn before it lands: a Bomber's blast or a Brute's charge. */
 export interface Mark {
   kind: "blast" | "charge"
@@ -36,6 +42,7 @@ export interface GameData {
   landing: Point[]
   /** Alien drops left in the mission. */
   drops: number
+  goal: Goal
   log: Entry[]
 }
 
@@ -45,6 +52,7 @@ export interface Setup {
   board: Board
   units: Unit[]
   drops?: number
+  goal?: Goal
 }
 
 /**
@@ -61,6 +69,7 @@ export class Game implements GameData {
   marks!: Mark[]
   landing!: Point[]
   drops!: number
+  goal!: Goal
   log!: Entry[]
   readonly dice = new Dice(this)
   readonly combat = new Combat(this)
@@ -74,8 +83,20 @@ export class Game implements GameData {
   }
 
   /** A new game in the squad's first turn. */
-  static start({ seed, board, units, drops = 2 }: Setup): Game {
-    return new Game({ seed, rng: seed, round: 1, phase: "squad", board, units, marks: [], landing: [], drops, log: [] })
+  static start({ seed, board, units, drops = 2, goal = { kind: "kill" } }: Setup): Game {
+    return new Game({
+      seed,
+      rng: seed,
+      round: 1,
+      phase: "squad",
+      board,
+      units,
+      marks: [],
+      landing: [],
+      drops,
+      goal,
+      log: [],
+    })
   }
 
   /** Applies one action and returns the next game; this game is not changed. */
@@ -94,6 +115,7 @@ export class Game implements GameData {
       marks: this.marks,
       landing: this.landing,
       drops: this.drops,
+      goal: this.goal,
       log: this.log,
     })
     return new Game({ ...plain, board: this.board.clone(), units: this.units.map((u) => u.clone()) })
@@ -123,10 +145,12 @@ export class Game implements GameData {
     return Reach.of(this, unit, moves)
   }
 
-  /** Ends the mission when one side has no unit standing. */
+  /** Ends the mission when one side has no unit standing, or every living soldier has left by the evac. */
   settle(): void {
     if (this.phase === "won" || this.phase === "lost") return
+    const squad = this.units.filter((u) => u.side === "squad")
     if (!this.units.some((u) => u.side === "enemy" && u.alive())) this.phase = "won"
-    else if (!this.units.some((u) => u.side === "squad" && u.alive())) this.phase = "lost"
+    else if (squad.some((u) => u.alive())) return
+    else this.phase = squad.some((u) => u.out && u.hp > 0) ? "won" : "lost"
   }
 }

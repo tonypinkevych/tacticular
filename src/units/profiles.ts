@@ -54,7 +54,7 @@ export const PROFILES: Record<Kind, Profile> = {
   },
   warden: { hp: 7, aim: 65, move: 1, damage: 2, range: 4, skill: "grenade", cooldown: 0, uses: 1, passive: "shred" },
   cleric: { hp: 6, aim: 65, move: 2, damage: 2, range: 3, skill: "medkit", cooldown: 0, uses: 2, passive: "aid" },
-  grunt: { hp: 3, aim: 60, move: 1, damage: 2, range: 4, skill: "covering", cooldown: 3, uses: null },
+  grunt: { hp: 3, aim: 65, move: 1, damage: 2, range: 4, skill: "covering", cooldown: 3, uses: null },
   brute: {
     hp: 5,
     aim: 100,

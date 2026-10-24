@@ -1,10 +1,10 @@
 import type { Odds } from "../combat/combat"
 import { cover } from "../map/cover"
-import { adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
+import { AROUND, adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
 import { blocksMove } from "../map/tile"
 import type { Game } from "../mission/game"
 import type { Action } from "../mission/orders"
-import type { Unit } from "../units/unit"
+import type { Side, Unit } from "../units/unit"
 
 /** One choice of a unit: the action it starts with and what the plan is worth. */
 interface Plan {
@@ -19,6 +19,8 @@ const KILL = 3
  * rules, and gives the first action of the best plan. Either side can be played; the aliens always are.
  */
 export class Mind {
+  private readonly fields = new Map<Side, number[]>()
+
   constructor(private readonly game: Game) {}
 
   /** The next action of the side in turn; the turn ends when no unit has anything worth doing. */
@@ -74,18 +76,43 @@ export class Mind {
       const marked = this.game.marks.some(
         (m) => m.tiles.some((p) => same(p, at)) && this.game.unit(m.unit).side !== u.side,
       )
-      return shelter * 0.8 - threat * 0.5 - (marked ? 3 : 0) - (this.game.board.at(at) === "fire" ? 1 : 0)
+      const goal = this.game.goal
+      const beacon = goal.kind === "defend" && adjacent(at, goal.at, true) ? (u.side === "enemy" ? 1.2 : 0.8) : 0
+      return shelter * 0.8 - threat * 0.5 - (marked ? 3 : 0) - (this.game.board.at(at) === "fire" ? 1 : 0) + beacon
     })
   }
 
-  /** A pull toward the nearest foe past the unit's range; for aliens it grows each round after the sixth. */
+  /** A pull toward the nearest foe past the unit's range by walking steps, or a soldier's pull toward the evac; for aliens it grows each round after the sixth. */
   private closer(u: Unit, at: Point): number {
-    const foes = this.game.foes(u)
-    if (!foes.length) return 0
-    const gap = Math.min(...foes.map((f) => distance(f.at, at)))
-    return (
-      -Math.max(0, gap - u.profile.range) * (u.side === "enemy" ? 0.45 + 0.15 * Math.max(0, this.game.round - 6) : 0.45)
-    )
+    const goal = this.game.goal
+    if (goal.kind === "evac" && u.side === "squad") return -Math.min(...goal.tiles.map((p) => distance(p, at))) * 0.8
+    if (!this.game.foes(u).length) return 0
+    const gap = this.walk(u.side)[at.y * this.game.board.width + at.x]
+    const pull = u.side === "enemy" ? 0.45 + 0.15 * Math.max(0, this.game.round - 6) : 0.45
+    return -Math.max(0, gap - u.profile.range) * pull
+  }
+
+  /** Walking steps from every tile to the nearest foe of a side, around anything that blocks a move. */
+  private walk(side: Side): number[] {
+    const known = this.fields.get(side)
+    if (known) return known
+    const board = this.game.board,
+      width = board.width
+    const field = new Array(board.tiles.length).fill(99)
+    const queue = this.game.units.filter((f) => f.alive() && f.side !== side).map((f) => f.at)
+    for (const p of queue) field[p.y * width + p.x] = 0
+    while (queue.length) {
+      const p = queue.shift() as Point
+      for (const d of AROUND) {
+        const q = plus(p, d)
+        if (!board.inside(q) || blocksMove(board.at(q)) || field[q.y * width + q.x] <= field[p.y * width + p.x] + 1)
+          continue
+        field[q.y * width + q.x] = field[p.y * width + p.x] + 1
+        queue.push(q)
+      }
+    }
+    this.fields.set(side, field)
+    return field
   }
 
   /** The attacks a unit can make from a tile, with what each is worth. */

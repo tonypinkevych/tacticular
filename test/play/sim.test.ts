@@ -1,48 +1,33 @@
 import { Mind } from "../../src/aliens/mind"
 import type { Game } from "../../src/mission/game"
-import { enemy, setup, squad } from "../fixture"
+import { type GoalKind, mission } from "../../src/mission/mission"
+import type { ClassId } from "../../src/units/profiles"
 
-const MAPS = [
-  ["..h...l.", ".l...T..", "....r...", "..l...h.", ".T...l..", "...h....", ".l....l.", "........"],
-  ["...#....", ".l..h...", "T.....l.", "..~~..T.", ".h....r.", "....l...", "..l..h..", "........"],
-  ["..T..h..", "l....l..", "...bb...", ".h....T.", "..r..l..", "l.....h.", "...l....", "........"],
-]
-const SQUADS = [
-  ["vanguard", "ranger", "warden"],
-  ["ranger", "warden", "cleric"],
-  ["vanguard", "cleric", "ranger"],
-  ["warden", "vanguard", "cleric"],
-] as const
-const ALIENS = [
-  ["grunt", "grunt", "brute", "bomber"],
-  ["grunt", "brute", "grunt", "commander"],
-  ["grunt", "bomber", "grunt", "brute"],
-] as const
+const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric"]
 
-/** Both sides played by the mind until the mission ends. */
-function game(seed: number): Game {
-  const map = MAPS[seed % MAPS.length],
-    kinds = SQUADS[seed % SQUADS.length],
-    foes = ALIENS[seed % ALIENS.length]
-  let g = setup(
-    map,
-    [
-      ...kinds.map((k, i) => squad(`s${i}`, k, { x: 2 + i * 2, y: 7 })),
-      ...foes.map((k, i) => enemy(`a${i}`, k, { x: 1 + i * 2, y: 0 })),
-    ],
-    seed,
-  )
-  for (let i = 0; i < 2000 && (g.phase === "squad" || g.phase === "enemy"); i++) g = g.apply(new Mind(g).next())
+/** Both sides played by the mind on a generated mission until it ends. */
+function game(seed: number, goal: GoalKind): Game {
+  const squad = CLASSES.filter((_, i) => i !== seed % 4).map((kind, i) => ({ id: `s${i}`, kind }))
+  let g = mission(seed, { goal, squad })
+  for (let i = 0; i < 3000 && (g.phase === "squad" || g.phase === "enemy"); i++) g = g.apply(new Mind(g).next())
   return g
 }
 
 describe("bot games", () => {
-  test("100 games end and the squad wins 40-70%", () => {
-    const ends = Array.from({ length: 100 }, (_, s) => game(s + 1).phase)
+  test("100 Kill all missions end and the squad wins 40-70%", () => {
+    const ends = Array.from({ length: 100 }, (_, s) => game(s + 1, "kill").phase)
     const won = ends.filter((p) => p === "won").length
-    console.log(`squad won ${won} of 100`)
+    console.log(`kill: squad won ${won} of 100`)
     expect(ends.every((p) => p === "won" || p === "lost")).toBe(true)
     expect(won).toBeGreaterThanOrEqual(40)
     expect(won).toBeLessThanOrEqual(70)
+  }, 60000)
+  test("Evac and Defend missions end, and the squad can win them", () => {
+    for (const goal of ["evac", "defend"] as const) {
+      const ends = Array.from({ length: 40 }, (_, s) => game(s + 1, goal).phase)
+      console.log(`${goal}: squad won ${ends.filter((p) => p === "won").length} of 40`)
+      expect(ends.every((p) => p === "won" || p === "lost")).toBe(true)
+      expect(ends.filter((p) => p === "won").length).toBeGreaterThan(0)
+    }
   }, 60000)
 })
