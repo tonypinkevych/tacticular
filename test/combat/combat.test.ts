@@ -1,27 +1,13 @@
-import type { Game } from "../../src/mission/game"
 import { Illegal } from "../../src/mission/orders"
 import type { ClassId } from "../../src/units/profiles"
 import { type Training, Unit } from "../../src/units/unit"
-import { enemy, open, reseed, setup, squad } from "../fixture"
+import { enemy, open, setup, squad } from "../fixture"
 
 const trained = (id: string, kind: ClassId, at: { x: number; y: number }, extra: Partial<Training>) =>
-  Unit.of(id, kind, "squad", at, { hp: 0, aim: 0, upgrades: 0, ...extra })
+  Unit.of(id, kind, "squad", at, { hp: 0, upgrades: 0, ...extra })
 const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
 
-/** A game whose next two rolls fall below a hit chance and a crit chance. */
-function lucky(game: Game, hit: number, crit: number): Game {
-  for (let s = 1; s < 20000; s++) {
-    const d = reseed(game, s).dice
-    if (d.random() * 100 < hit && d.random() * 100 < crit) return reseed(game, s)
-  }
-  throw new Error("no seed")
-}
-function unlucky(game: Game, hit: number): Game {
-  for (let s = 1; s < 20000; s++) if (reseed(game, s).dice.random() * 100 >= hit) return reseed(game, s)
-  throw new Error("no seed")
-}
-
-describe("hit chance", () => {
+describe("damage", () => {
   const sniper = (cover: boolean, moved = true) => {
     const g = setup(rows(["........", "........", cover ? "...l...." : "........"]), [
       squad("r", "ranger", { x: 3, y: 6 }),
@@ -30,56 +16,54 @@ describe("hit chance", () => {
     g.unit("r").moved = moved
     return g
   }
-  test("low cover toward the shooter takes 20 from the aim", () => {
+  test("low cover toward the shooter takes 1 from the damage", () => {
     const g = sniper(true)
-    expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 60, crit: 0, damage: 2 })
+    expect(g.combat.hit(g.unit("r"), g.unit("g"))).toMatchObject({ damage: 1, cover: 1 })
   })
-  test("a Marked target takes 10 more aim, and a Suppressed shooter 20 less", () => {
+  test("a Marked target takes 1 more, and a Suppressed shooter deals 1 less", () => {
     const g = sniper(true)
     g.unit("g").status = "marked"
-    expect(g.combat.odds(g.unit("r"), g.unit("g")).chance).toBe(70)
+    expect(g.combat.hit(g.unit("r"), g.unit("g")).damage).toBe(2)
     g.unit("g").status = "suppressed"
-    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(75)
+    expect(g.combat.hit(g.unit("g"), g.unit("r")).damage).toBe(3)
   })
-  test("a Hunkered target has its cover doubled, the open counting as low cover, and cannot be crit", () => {
+  test("a Hunkered target doubles the cover cut, the open counting as low, and can block a hit fully", () => {
     const covered = sniper(true)
     covered.unit("g").hunkered = true
-    expect(covered.combat.odds(covered.unit("r"), covered.unit("g"))).toMatchObject({ chance: 40, cover: 40, crit: 0 })
+    expect(covered.combat.hit(covered.unit("r"), covered.unit("g"))).toMatchObject({ damage: 0, cover: 2 })
     const open = sniper(false)
     open.unit("g").hunkered = true
-    expect(open.combat.odds(open.unit("r"), open.unit("g"))).toMatchObject({ chance: 40, cover: 40, crit: 0 })
+    expect(open.combat.hit(open.unit("r"), open.unit("g"))).toMatchObject({ damage: 0, cover: 2 })
   })
-  test("a flank removes the cover, adds 10 to the aim and gives a 50% crit", () => {
+  test("a flank adds 1 to the damage", () => {
     const g = sniper(false)
-    expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 90, crit: 50 })
+    expect(g.combat.hit(g.unit("r"), g.unit("g"))).toMatchObject({ damage: 3, cover: 0 })
   })
-  test("Steady gives the Ranger 20 when it did not move, up to 95", () => {
+  test("Steady adds 1 when the Ranger did not move", () => {
     const g = sniper(true, false)
-    expect(g.combat.odds(g.unit("r"), g.unit("g")).chance).toBe(80)
-    expect(
-      sniper(false, false).combat.odds(sniper(false, false).unit("r"), sniper(false, false).unit("g")).chance,
-    ).toBe(95)
+    expect(g.combat.hit(g.unit("r"), g.unit("g")).damage).toBe(2)
   })
-  test("Point blank gives the Vanguard 20 next to its target", () => {
+  test("Point blank adds 1 when the Vanguard is next to its target", () => {
     const g = setup(rows(["........", "........", "........", "........", "........", "...l...."]), [
       squad("v", "vanguard", { x: 3, y: 4 }),
       enemy("g", "grunt", { x: 3, y: 3 }),
       enemy("h", "grunt", { x: 3, y: 6 }),
     ])
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).chance).toBe(95)
-    expect(g.combat.odds(g.unit("v"), g.unit("h")).chance).toBe(50)
+    expect([g.combat.hit(g.unit("v"), g.unit("g")).damage, g.combat.hit(g.unit("v"), g.unit("h")).damage]).toEqual([
+      5, 2,
+    ])
   })
   test("a Vanguard hit next to its target pushes it back", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 2 }), enemy("g", "brute", { x: 3, y: 1 })])
-    expect(lucky(g, 95, 100).apply({ type: "shoot", unit: "v", target: "g" }).unit("g").at).toEqual({ x: 3, y: 0 })
+    expect(g.apply({ type: "shoot", unit: "v", target: "g" }).unit("g").at).toEqual({ x: 3, y: 0 })
   })
-  test("Aid takes 10 from shots at an ally next to the Cleric", () => {
+  test("Aid takes 1 from shots at an ally next to the Cleric", () => {
     const g = setup(open(), [
       squad("r", "ranger", { x: 3, y: 6 }),
       squad("c", "cleric", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 3, y: 2 }),
     ])
-    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(85)
+    expect(g.combat.hit(g.unit("g"), g.unit("r")).damage).toBe(3)
   })
   test("a target past the range or behind a rock cannot be shot", () => {
     const far = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
@@ -98,22 +82,21 @@ describe("shots", () => {
       squad("r", "ranger", { x: 3, y: 6 }),
       enemy("g", "grunt", { x: 3, y: 1 }),
     ])
-  test("a hit takes the weapon damage", () => {
-    const g = lucky(duel(), 80, 100).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(3)
+  test("every shot hits for its damage", () => {
+    const g = duel().apply({ type: "shoot", unit: "r", target: "g" })
+    expect(g.unit("g").hp).toBe(4)
   })
-  test("a miss takes nothing", () => {
-    const g = unlucky(duel(), 80).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(g.unit("g").hp).toBe(5)
-  })
-  test("a crit adds 1 damage", () => {
-    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
-    expect(lucky(g, 95, 50).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp).toBe(2)
+  test("a shot the cover cuts to 0 is blocked", () => {
+    const g = duel()
+    g.unit("r").moved = true
+    g.unit("g").hunkered = true
+    const after = g.apply({ type: "shoot", unit: "r", target: "g" })
+    expect([after.unit("g").hp, after.log.some((e) => e.key === "log.block")]).toEqual([6, true])
   })
   test("the Brute's claws always hit for its damage and push the target back", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
     g.combat.fire(g.unit("b"), g.unit("v"))
-    expect(g.unit("v")).toMatchObject({ hp: 6, at: { x: 3, y: 5 } })
+    expect(g.unit("v")).toMatchObject({ hp: 4, at: { x: 3, y: 5 } })
   })
   test("a push into water kills", () => {
     const g = setup(rows(["........", "........", "........", "........", "........", "...~...."]), [
@@ -130,8 +113,8 @@ describe("shots", () => {
       enemy("b", "brute", { x: 5, y: 3 }),
     ]).apply({ type: "shoot", unit: "r", at: { x: 3, y: 3 } })
     expect([g.unit("a").hp, g.unit("b").hp, g.board.at({ x: 3, y: 3 }), g.board.at({ x: 4, y: 3 })]).toEqual([
-      3,
-      5,
+      4,
+      6,
       "fire",
       "fire",
     ])
@@ -141,7 +124,7 @@ describe("shots", () => {
       squad("w", "warden", { x: 3, y: 5 }),
       enemy("g", "grunt", { x: 3, y: 1 }),
     ])
-    expect(lucky(g, 45, 101).apply({ type: "shoot", unit: "w", target: "g" }).board.at({ x: 3, y: 2 })).toBe("torn")
+    expect(g.apply({ type: "shoot", unit: "w", target: "g" }).board.at({ x: 3, y: 2 })).toBe("torn")
   })
   describe("new aliens", () => {
     test("a Guard takes no damage from a shot its cover faces, but a flank or Exposed hurts it", () => {
@@ -150,10 +133,10 @@ describe("shots", () => {
         squad("v", "vanguard", { x: 5, y: 1 }),
         enemy("q", "guard", { x: 3, y: 1 }),
       ])
-      expect(g.combat.odds(g.unit("r"), g.unit("q")).damage).toBe(0)
-      expect(g.combat.odds(g.unit("v"), g.unit("q")).damage).toBe(3)
+      expect(g.combat.hit(g.unit("r"), g.unit("q")).damage).toBe(0)
+      expect(g.combat.hit(g.unit("v"), g.unit("q")).damage).toBe(4)
       g.unit("q").status = "exposed"
-      expect(g.combat.odds(g.unit("r"), g.unit("q")).damage).toBe(2)
+      expect(g.combat.hit(g.unit("r"), g.unit("q")).damage).toBe(6)
     })
     test("a blast hurts a Guard behind cover", () => {
       const g = setup(rows(["........", "........", "...l...."]), [
@@ -161,18 +144,18 @@ describe("shots", () => {
         enemy("q", "guard", { x: 3, y: 1 }),
       ])
       g.combat.blast({ x: 3, y: 1 }, 2)
-      expect(g.unit("q").hp).toBe(5)
+      expect(g.unit("q").hp).toBe(6)
     })
     test("a blast logs the damage to each unit it hits", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("q", "grunt", { x: 3, y: 1 })])
       g.combat.blast({ x: 3, y: 1 }, 2)
       expect(g.log.at(-1)).toEqual({ key: "log.burst", params: { target: "q", dmg: 2 } })
     })
-    test("a Sniper reaches across the board for 3 damage", () => {
+    test("a Sniper reaches across the board for 3 damage, 4 on a flank", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 0, y: 7 }), enemy("s", "sniper", { x: 7, y: 0 })])
-      expect([g.combat.canShoot(g.unit("s"), g.unit("r")), g.combat.odds(g.unit("s"), g.unit("r")).damage]).toEqual([
+      expect([g.combat.canShoot(g.unit("s"), g.unit("r")), g.combat.hit(g.unit("s"), g.unit("r")).damage]).toEqual([
         true,
-        3,
+        4,
       ])
     })
     test("a Sniper that moved cannot shoot in that turn", () => {
@@ -182,26 +165,25 @@ describe("shots", () => {
       const moved = g.apply({ type: "move", unit: "s", to: { x: 6, y: 0 } })
       expect(() => moved.apply({ type: "shoot", unit: "s", target: "r" })).toThrow(Illegal)
     })
-    test("a Sniper on overwatch fires without the aim penalty", () => {
+    test("a Sniper on overwatch fires at full damage", () => {
       const g = setup(open(), [squad("r", "ranger", { x: 3, y: 7 }), enemy("s", "sniper", { x: 3, y: 0 })])
       g.unit("s").overwatch = true
       const moved = g.apply({ type: "move", unit: "r", to: { x: 3, y: 6 } })
-      const shot = moved.log.find((e) => e.params.unit === "s" && e.params.chance !== undefined)
-      expect(shot?.params.chance).toBe(g.combat.odds(g.unit("s"), moved.unit("r")).chance)
+      expect(moved.unit("r").hp).toBe(g.unit("r").hp - g.combat.hit(g.unit("s"), moved.unit("r")).damage)
     })
   })
 })
 
 describe("branches and traits", () => {
-  test("Spotter: a Marked alien gives 20 aim, not 10", () => {
+  test("Spotter: a Marked alien takes 2 more, not 1", () => {
     const g = setup(open(), [
       trained("r", "ranger", { x: 3, y: 6 }, { branch: "spotter" }),
       squad("w", "warden", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 4, y: 3 }),
     ])
-    const before = g.combat.odds(g.unit("w"), g.unit("g")).chance
+    const before = g.combat.hit(g.unit("w"), g.unit("g")).damage
     const marked = g.apply({ type: "tactic", unit: "r", target: "g" })
-    expect(marked.combat.odds(marked.unit("w"), marked.unit("g")).chance).toBe(before + 20)
+    expect(marked.combat.hit(marked.unit("w"), marked.unit("g")).damage).toBe(before + 2)
   })
   test("Brawler: a Vanguard combo deals 3 more", () => {
     const g = setup(open(), [
@@ -209,54 +191,53 @@ describe("branches and traits", () => {
       trained("v", "vanguard", { x: 3, y: 6 }, { branch: "brawler" }),
       enemy("g", "commander", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "w", target: "g" })
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(6)
+    expect(g.combat.hit(g.unit("v"), g.unit("g")).damage).toBe(7)
   })
   test("Wrecker: every Warden hit breaks the cover next to its target", () => {
     const g = setup(rows(["........", "...l....", "........"]), [
       trained("w", "warden", { x: 5, y: 2 }, { branch: "wrecker" }),
       enemy("g", "commander", { x: 3, y: 2 }),
     ])
-    const hit = lucky(g, g.combat.odds(g.unit("w"), g.unit("g")).chance, 101).apply({
-      type: "shoot",
-      unit: "w",
-      target: "g",
-    })
+    const hit = g.apply({ type: "shoot", unit: "w", target: "g" })
     expect(hit.board.at({ x: 3, y: 1 })).toBe("torn")
   })
-  test("a Partner gets 10 aim on an alien with the status its class gains from", () => {
+  test("a Partner deals 1 more to an alien with the status its class gains from", () => {
     const g = setup(open(), [
       trained("v", "vanguard", { x: 3, y: 6 }, { partner: true }),
+      squad("w", "warden", { x: 4, y: 6 }),
       enemy("g", "commander", { x: 3, y: 3 }),
     ])
-    const before = g.combat.odds(g.unit("v"), g.unit("g")).chance
+    const plain = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("g", "commander", { x: 3, y: 3 })])
     g.unit("g").status = "suppressed"
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).chance).toBe(Math.min(95, before + 10))
+    plain.unit("g").status = "suppressed"
+    expect(g.combat.hit(g.unit("v"), g.unit("g")).damage).toBe(
+      plain.combat.hit(plain.unit("v"), plain.unit("g")).damage + 1,
+    )
   })
   describe("the Blade", () => {
     test("a Blade strike next to an alien always hits for 3 and does not push", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("q", "commander", { x: 3, y: 3 })])
-      expect(g.combat.odds(g.unit("b"), g.unit("q"))).toMatchObject({ chance: 100, damage: 3 })
+      expect(g.combat.hit(g.unit("b"), g.unit("q"))).toMatchObject({ damage: 3 })
       const hit = g.apply({ type: "shoot", unit: "b", target: "q" })
-      expect(hit.unit("q")).toMatchObject({ hp: 5, at: { x: 3, y: 3 } })
+      expect(hit.unit("q")).toMatchObject({ hp: 6, at: { x: 3, y: 3 } })
     })
-    test("Parry: claws at the Blade hit half the time", () => {
+    test("Parry: claws at the Blade deal 1 less", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("x", "brute", { x: 3, y: 3 })])
-      expect(g.combat.odds(g.unit("x"), g.unit("b")).chance).toBe(50)
+      expect(g.combat.hit(g.unit("x"), g.unit("b")).damage).toBe(2)
     })
     test("a Blade hit on an Exposed alien deals 3 more and staggers it", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("q", "commander", { x: 3, y: 3 })])
       g.unit("q").status = "exposed"
-      expect(g.combat.odds(g.unit("b"), g.unit("q")).damage).toBe(6)
-      expect(g.apply({ type: "shoot", unit: "b", target: "q" }).unit("q")).toMatchObject({ hp: 2, status: "staggered" })
+      expect(g.combat.hit(g.unit("b"), g.unit("q")).damage).toBe(6)
+      expect(g.apply({ type: "shoot", unit: "b", target: "q" }).unit("q")).toMatchObject({ hp: 3, status: "staggered" })
     })
-    test("Riposte: claws that miss the Blade cost the alien 2", () => {
+    test("Riposte: every claw at the Blade costs the alien 2", () => {
       const g = setup(open(), [
         trained("b", "blade", { x: 3, y: 4 }, { branch: "riposte" }),
         enemy("x", "brute", { x: 3, y: 3 }),
       ])
-      const missed = unlucky(g, 50)
-      missed.combat.fire(missed.unit("x"), missed.unit("b"))
-      expect(missed.unit("x").hp).toBe(5)
+      g.combat.fire(g.unit("x"), g.unit("b"))
+      expect(g.unit("x").hp).toBe(6)
     })
     test("Reaper: a kill with a strike gives 1 AP back", () => {
       const g = setup(open(), [

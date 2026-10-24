@@ -8,12 +8,12 @@ import type { ClassId } from "../../src/units/profiles"
 
 const CLASSES: ClassId[] = ["vanguard", "ranger", "warden", "cleric", "blade"]
 
-/** The squad of a greedy player: shoot the likeliest hit from here, else walk one move straight at the aliens. */
+/** The squad of a greedy player: shoot the hardest hit from here, else walk one move straight at the aliens. */
 function greedy(g: Game): Action {
   for (const u of g.units.filter((x) => x.side === "squad" && x.alive() && x.ap > 0)) {
     const shots = g.foes(u).filter((f) => g.combat.canShoot(u, f))
     if (shots.length) {
-      const t = shots.sort((a, b) => g.combat.odds(u, b).chance - g.combat.odds(u, a).chance)[0]
+      const t = shots.sort((a, b) => g.combat.hit(u, b).damage - g.combat.hit(u, a).damage)[0]
       return { type: "shoot", unit: u.id, target: t.id }
     }
     const near = (p: { x: number; y: number }) => Math.min(...g.foes(u).map((f) => distance(f.at, p)))

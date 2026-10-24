@@ -27,10 +27,10 @@ export const blocksShot = (tile: Tile): boolean => tile === "rock" || tile === "
 /** Ground that ends a move on entry. */
 export const rough = (tile: Tile): boolean => tile === "forest" || tile === "rubble"
 
-/** The percent a tile takes from shots at a unit behind it. */
+/** The damage a tile cuts from shots at a unit behind it: 2 for high cover, 1 for low. */
 export function coverOf(tile: Tile): number {
-  if (tile === "rock" || tile === "cracked" || tile === "house") return 40
-  if (tile === "bags" || tile === "torn" || tile === "barrel" || tile === "forest") return 20
+  if (tile === "rock" || tile === "cracked" || tile === "house") return 2
+  if (tile === "bags" || tile === "torn" || tile === "barrel" || tile === "forest") return 1
   return 0
 }
 

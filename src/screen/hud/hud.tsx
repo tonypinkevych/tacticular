@@ -39,15 +39,14 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
   }
   const odds = (id: string) => {
     const m = g().marks.find((x) => x.unit === id && x.target)
-    if (!m) return null
-    const o = b.aimed(m)
-    return o === null ? "—" : `${m.kind === "volley" ? "2×" : ""}${o}%`
+    return m ? b.toll(m) : null
   }
   const aimedAt = (u: Unit) => g().marks.filter((m) => m.target === u.id).length
   const hint = () => {
-    const o = b.odds()
+    const o = b.hit()
     if (!o) return t("ui.hint")
-    return t("ui.hintAim", { target: t(`kind.${o.target.kind}`), chance: o.odds.chance, damage: o.odds.damage })
+    const damage = o.hit.damage >= o.target.hp ? t("ui.kill") : `−${o.hit.damage}`
+    return t("ui.hintAim", { target: t(`kind.${o.target.kind}`), damage })
   }
   const action = (mode: Mode, key: string, label: string, icon: JSX.Element, sub?: string, off?: boolean) => (
     <button

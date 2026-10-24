@@ -72,7 +72,7 @@ describe("run", () => {
     r.train(id)
     r.upgrade(id)
     go(r)
-    expect(r.conditions().squad[0].extra).toEqual({ hp: 1, aim: 5, upgrades: 1 })
+    expect(r.conditions().squad[0].extra).toEqual({ hp: 2, upgrades: 1 })
   })
   test("winning the fortress wins the run; losing every soldier loses it", () => {
     const r = drafted()

@@ -43,9 +43,9 @@ export class Abilities {
       case "headshot": {
         const t = this.target(u, a)
         check(combat.canShoot(u, t), "range")
-        check(combat.odds(u, t).cover === 0 || (u.extra.branch === "deadeye" && t.status === "marked"), "flank")
+        check(combat.hit(u, t).cover === 0 || (u.extra.branch === "deadeye" && t.status === "marked"), "flank")
         game.log.push({ key: "log.headshot", params: { unit: u.id, target: t.id } })
-        combat.fire(u, t, { sureCrit: true })
+        combat.fire(u, t, { more: 2 })
         break
       }
       case "grenade": {

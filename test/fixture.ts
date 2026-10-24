@@ -20,12 +20,3 @@ export function reseed(game: Game, rng: number): Game {
   next.rng = rng
   return next
 }
-
-/** A seed whose first roll in a game is below or above a percent. */
-export function seedFor(game: Game, below: number, hit = true): number {
-  for (let s = 1; s < 10000; s++) {
-    const roll = reseed(game, s).dice.random() * 100
-    if (hit ? roll < below : roll >= below) return s
-  }
-  throw new Error("no seed")
-}

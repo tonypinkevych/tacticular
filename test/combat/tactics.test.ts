@@ -1,16 +1,9 @@
-import type { Game } from "../../src/mission/game"
 import { Illegal } from "../../src/mission/orders"
 import type { Branch } from "../../src/units/profiles"
 import { Unit } from "../../src/units/unit"
-import { enemy, open, reseed, setup, squad } from "../fixture"
+import { enemy, open, setup, squad } from "../fixture"
 
 const rows = (r: string[]) => [...r, ...Array(8 - r.length).fill("........")]
-
-/** The game with a seed whose next roll lands below a percent. */
-function hitting(game: Game, chance: number): Game {
-  for (let s = 1; s < 20000; s++) if (reseed(game, s).dice.random() * 100 < chance) return reseed(game, s)
-  throw new Error("no seed")
-}
 
 describe("tactics", () => {
   test("a tactic reaches the tiles in its range and sight: Taunt 4, Shove only next to the soldier", () => {
@@ -50,7 +43,7 @@ describe("tactics", () => {
       squad("v", "vanguard", { x: 3, y: 5 }),
       enemy("g", "grunt", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "v", target: "g" })
-    expect(g.unit("g").hp).toBe(4)
+    expect(g.unit("g").hp).toBe(5)
   })
   test("a Staggered alien loses its marked attack and has 1 AP in its next turn", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("b", "bomber", { x: 3, y: 5 })])
@@ -87,8 +80,8 @@ describe("combos", () => {
       squad("v", "vanguard", { x: 3, y: 6 }),
       enemy("g", "commander", { x: 3, y: 4 }),
     ]).apply({ type: "tactic", unit: "w", target: "g" })
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).damage).toBe(5)
-    const hit = hitting(g, 95).apply({ type: "shoot", unit: "v", target: "g" })
+    expect(g.combat.hit(g.unit("v"), g.unit("g")).damage).toBe(6)
+    const hit = g.apply({ type: "shoot", unit: "v", target: "g" })
     expect(hit.unit("g").status).toBe("staggered")
     expect(hit.log.some((e) => e.key === "log.combo" && e.params.unit === "v")).toBe(true)
   })
@@ -101,24 +94,20 @@ describe("combos", () => {
     expect(g.unit("g").at).toEqual({ x: 3, y: 2 })
     const at = g.unit("g").at
     g.board.set({ x: at.x, y: at.y + 1 }, "bags")
-    const hit = hitting(g, g.combat.odds(g.unit("w"), g.unit("g")).chance).apply({
-      type: "shoot",
-      unit: "w",
-      target: "g",
-    })
+    const hit = g.apply({ type: "shoot", unit: "w", target: "g" })
     expect(hit.unit("g").status).toBe("exposed")
     expect(hit.board.at({ x: at.x, y: at.y + 1 })).toBe("torn")
   })
-  test("an Exposed alien has no cover, and a Ranger hit on it is a sure crit that marks it", () => {
+  test("an Exposed alien has no cover, and a Ranger hit on it deals 2 more and marks it", () => {
     const g = setup(rows(["........", "........", "...l...."]), [
       squad("c", "cleric", { x: 3, y: 4 }),
       squad("r", "ranger", { x: 3, y: 6 }),
       enemy("g", "commander", { x: 3, y: 1 }),
     ]).apply({ type: "tactic", unit: "c", target: "g" })
-    const odds = g.combat.odds(g.unit("r"), g.unit("g"))
-    expect([odds.cover, odds.crit]).toEqual([0, 100])
-    const hit = hitting(g, odds.chance).apply({ type: "shoot", unit: "r", target: "g" })
-    expect(hit.unit("g")).toMatchObject({ status: "marked", hp: 5 })
+    const h = g.combat.hit(g.unit("r"), g.unit("g"))
+    expect([h.cover, h.damage, h.combo]).toEqual([0, 6, true])
+    const hit = g.apply({ type: "shoot", unit: "r", target: "g" })
+    expect(hit.unit("g")).toMatchObject({ status: "marked", hp: 3 })
   })
   test("a Cleric hit on a Marked alien heals each soldier within 1 tile of the Cleric", () => {
     const g = setup(open(), [
@@ -128,7 +117,7 @@ describe("combos", () => {
     ]).apply({ type: "tactic", unit: "r", target: "g" })
     g.unit("r").hp = 2
     g.unit("c").hp = 3
-    const hit = hitting(g, 95).apply({ type: "shoot", unit: "c", target: "g" })
+    const hit = g.apply({ type: "shoot", unit: "c", target: "g" })
     expect([hit.unit("r").hp, hit.unit("c").hp, hit.unit("g").status]).toEqual([3, 4, null])
   })
   describe("branches", () => {
@@ -137,7 +126,7 @@ describe("combos", () => {
       kind: "vanguard" | "ranger" | "warden" | "cleric",
       at: { x: number; y: number },
       branch: string,
-    ) => Unit.of(id, kind, "squad", at, { hp: 0, aim: 0, upgrades: 0, branch: branch as Branch })
+    ) => Unit.of(id, kind, "squad", at, { hp: 0, upgrades: 0, branch: branch as Branch })
     test("Bulldozer: a Shove pushes 2 tiles", () => {
       const g = setup(open(), [
         trained("v", "vanguard", { x: 3, y: 6 }, "bulldozer"),
@@ -152,8 +141,8 @@ describe("combos", () => {
         enemy("g", "grunt", { x: 3, y: 4 }),
       ])
       const pinned = g.apply({ type: "tactic", unit: "w", target: "g" })
-      expect(pinned.unit("g").hp).toBe(4)
-      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(3)
+      expect(pinned.unit("g").hp).toBe(5)
+      expect(pinned.apply({ type: "tactic", unit: "c", target: "g" }).unit("g").hp).toBe(4)
     })
     test("Chaplain: a Cleric combo heals 2", () => {
       const g = setup(open(), [
@@ -162,7 +151,7 @@ describe("combos", () => {
         enemy("g", "commander", { x: 4, y: 4 }),
       ]).apply({ type: "tactic", unit: "r", target: "g" })
       g.unit("r").hp = 1
-      expect(hitting(g, 95).apply({ type: "shoot", unit: "c", target: "g" }).unit("r").hp).toBe(3)
+      expect(g.apply({ type: "shoot", unit: "c", target: "g" }).unit("r").hp).toBe(3)
     })
   })
   describe("the Blade", () => {

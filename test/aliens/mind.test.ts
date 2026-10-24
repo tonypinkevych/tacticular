@@ -50,16 +50,23 @@ describe("mind", () => {
     for (let i = 0; i < 3 && g.phase === "enemy"; i++) g = g.apply(new Mind(g).next())
     expect(g.marks.map((m) => m.kind)).toEqual(["blast"])
   })
-  test("a Commander with allies roars first", () => {
-    const g = aliens(
+  test("a Commander with many allies roars before they act", () => {
+    let g = aliens(
       setup(open(), [
         squad("r", "ranger", { x: 3, y: 7 }),
         enemy("g", "grunt", { x: 1, y: 0 }),
         enemy("h", "grunt", { x: 5, y: 0 }),
+        enemy("i", "grunt", { x: 0, y: 1 }),
+        enemy("j", "grunt", { x: 6, y: 1 }),
         enemy("k", "commander", { x: 3, y: 0 }),
       ]),
     )
-    expect(new Mind(g).next()).toEqual({ type: "skill", unit: "k" })
+    const done: string[] = []
+    for (let a = new Mind(g).next(); a.type !== "endTurn" && a.unit === "k"; a = new Mind(g).next()) {
+      done.push(a.type)
+      g = g.apply(a)
+    }
+    expect(done).toContain("skill")
   })
   test("a side with nothing to do ends its turn", () => {
     const g = aliens(setup(open(), [squad("r", "ranger", { x: 3, y: 7 }), enemy("g", "grunt", { x: 3, y: 0 })]))
@@ -73,7 +80,13 @@ describe("mind", () => {
       enemy("g", "grunt", { x: 3, y: 0 }),
     ])
     g.unit("v").hp = 2
-    expect(new Mind(g).next()).toEqual({ type: "skill", unit: "c", target: "v" })
+    let now = g
+    const done: unknown[] = []
+    for (let a = new Mind(now).next(); a.type !== "endTurn"; a = new Mind(now).next()) {
+      done.push(a)
+      now = now.apply(a)
+    }
+    expect(done).toContainEqual({ type: "skill", unit: "c", target: "v" })
   })
   test("a squad suppresses an alien first when its Vanguard can then hit it for a combo", () => {
     const g = setup(rows(["........", "........", "...l...."]), [
@@ -97,10 +110,10 @@ describe("mind", () => {
       enemy("g", "commander", { x: 3, y: 3 }),
     ])
     g.marks.push({ kind: "shot", unit: "g", target: "c", tiles: [{ x: 2, y: 6 }] })
-    const chance = (x: typeof g) =>
-      x.combat.canShoot(x.unit("g"), x.unit("c")) ? x.combat.odds(x.unit("g"), x.unit("c"), { aimed: true }).chance : 0
+    const damage = (x: typeof g) =>
+      x.combat.canShoot(x.unit("g"), x.unit("c")) ? x.combat.hit(x.unit("g"), x.unit("c")).damage : 0
     const after = g.apply(new Mind(g).next())
-    expect(chance(after)).toBeLessThan(chance(g))
+    expect(damage(after)).toBeLessThan(damage(g))
   })
   test("a Pod neither moves nor attacks", () => {
     const g = aliens(setup(open(), [squad("r", "ranger", { x: 3, y: 2 }), enemy("p", "pod", { x: 3, y: 1 })]))

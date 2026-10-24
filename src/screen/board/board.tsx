@@ -98,7 +98,7 @@ export function Board(props: { battle: Battle }) {
           if (g.board.at(p) === "forest") overlay.shield(p, null, true)
           for (const d of ORTHOGONAL) {
             const c = coverOf(g.board.at(plus(p, d)))
-            if (c > 0) overlay.shield(p, d, c >= 40)
+            if (c > 0) overlay.shield(p, d, c >= 2)
           }
         }
         if (u) overlay.selected(u.at)
@@ -132,10 +132,9 @@ export function Board(props: { battle: Battle }) {
       for (const m of g.marks) {
         const target = g.units.find((x) => x.id === m.target)
         if (!target) continue
-        const odds = battle.aimed(m)
-        const name = m.kind === "claw" ? `${t("ui.attack.claw").toUpperCase()} ` : ""
-        const text = odds === null ? "—" : `${name}${m.kind === "volley" ? "2×" : ""}${odds}%`
-        overlay.odds(g.unit(m.unit).at, target.at, text, odds !== null)
+        const live = battle.aimed(m) !== null
+        const name = m.kind === "claw" && live ? `${t("ui.attack.claw").toUpperCase()} ` : ""
+        overlay.odds(g.unit(m.unit).at, target.at, `${name}${battle.toll(m)}`, live)
       }
       for (const x of g.units) {
         if (!x.alive()) continue
@@ -172,7 +171,7 @@ export function Board(props: { battle: Battle }) {
   }
 
   const aimed = () => {
-    const o = battle.odds()
+    const o = battle.hit()
     if (!o) return null
     const [x, y] = projection.center(o.target.at)
     return { ...o, left: (x + 34) * zoom(), top: (y - 96) * zoom() }
@@ -203,12 +202,12 @@ export function Board(props: { battle: Battle }) {
                 <span class="hp">
                   {a().target.hp}/{a().target.profile.hp}
                 </span>
-                <b class="big">{a().odds.chance}%</b>
+                <b class="big">{a().hit.damage >= a().target.hp ? t("ui.kill") : `−${a().hit.damage}`}</b>
               </div>
               <span class="muted">
-                {t("ui.cover")} −{a().odds.cover} · {t("ui.crit")} {a().odds.crit}% · {t("ui.damage")} {a().odds.damage}
+                {t("ui.damage")} {a().hit.damage} · {t("ui.cover")} −{a().hit.cover}
               </span>
-              <Show when={a().odds.combo && a().target.status}>
+              <Show when={a().hit.combo && a().target.status}>
                 {(s) => <span class="combo">{t("ui.comboOn", { status: t(`status.${s()}`) })}</span>}
               </Show>
               <Show when={battle.intent(a().target.id)}>{(i) => <span class="plan">{i()}</span>}</Show>

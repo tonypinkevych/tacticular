@@ -106,12 +106,12 @@ export class Run {
     return { goal: kind, threat, biome, foe }
   }
 
-  /** Gives a soldier +1 HP and +5 aim for good. */
+  /** Gives a soldier +2 HP for good. */
   train(id: string): void {
     const s = this.soldier(id)
-    s.extra = { ...s.extra, hp: s.extra.hp + 1, aim: s.extra.aim + 5 }
-    s.max += 1
-    s.hp += 1
+    s.extra = { ...s.extra, hp: s.extra.hp + 2 }
+    s.max += 2
+    s.hp += 2
   }
 
   /** Gives a soldier a branch of its class, or once it has one, a use more or a turn less to wait. */
@@ -231,7 +231,7 @@ export function outcome(game: Game): Result {
 }
 
 function soldier(id: string, kind: ClassId): Soldier {
-  return { id, kind, hp: PROFILES[kind].hp, max: PROFILES[kind].hp, extra: { hp: 0, aim: 0, upgrades: 0 } }
+  return { id, kind, hp: PROFILES[kind].hp, max: PROFILES[kind].hp, extra: { hp: 0, upgrades: 0 } }
 }
 
 function must(ok: boolean, what: string): void {

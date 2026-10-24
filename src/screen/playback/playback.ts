@@ -88,7 +88,7 @@ export class Playback {
       const path = (one.has(to) ? one : before.reach(u, 2)).path(to)
       this.walk(u.id, path, action.type === "skill" ? "skill" : "walk")
     }
-    for (const e of entries) this.entry(e.key, e.params, before, after, action)
+    for (const e of entries) this.entry(e.key, e.params, before, after)
     this.beats.push({ length: 0.05, start: (now) => this.sync(after, now) })
   }
 
@@ -168,13 +168,7 @@ export class Playback {
     })
   }
 
-  private entry(
-    key: string,
-    params: Record<string, string | number | boolean>,
-    before: Game,
-    after: Game,
-    action: Action,
-  ): void {
+  private entry(key: string, params: Record<string, string | number | boolean>, before: Game, after: Game): void {
     const id = String(params.unit ?? ""),
       target = String(params.target ?? "")
     const where = (u: string) => () => {
@@ -184,12 +178,9 @@ export class Playback {
     const alien = (u: string) => after.units.find((x) => x.id === u)?.side === "enemy"
     switch (key) {
       case "log.hit":
-      case "log.crit":
-      case "log.miss": {
+      case "log.block": {
         const victim = after.units.find((x) => x.id === target)
         const shooter = after.units.find((x) => x.id === id)
-        const own = (action.type === "shoot" || action.type === "skill") && action.unit === id && !alien(id)
-        if (!own) this.note(where(id), `${params.chance}%`, "note", 0.5)
         this.beats.push({ length: 0, start: () => this.cue(WEAPON[shooter?.kind ?? "grunt"]) })
         this.pose(
           id,
@@ -197,16 +188,9 @@ export class Playback {
           0.4,
           victim?.at,
         )
-        const dmg = Number(params.dmg ?? 0)
-        const tone = key === "log.miss" ? "miss" : key === "log.crit" ? "crit" : "hit"
-        this.note(
-          where(target),
-          key === "log.miss" ? t("ui.float.miss") : key === "log.crit" ? t("ui.float.crit", { dmg }) : `−${dmg}`,
-          tone,
-          0.05,
-          tone,
-        )
-        if (key !== "log.miss") this.pose(target, "hit", 0.3)
+        const tone = key === "log.block" ? "miss" : "hit"
+        this.note(where(target), tone === "miss" ? t("ui.float.block") : `−${params.dmg}`, tone, 0.05, tone)
+        if (tone === "hit") this.pose(target, "hit", 0.3)
         break
       }
       case "log.dies":
@@ -358,8 +342,8 @@ function rest(game: Game, u: Unit): State {
   const foe = nearest(game, u)
   if (!foe) return "idle"
   const c = cover(game.board, u.at, foe.at)
-  if (c >= 40) return u.side === "squad" ? "high" : "idle"
-  if (c >= 20) return u.side === "squad" ? "low" : "idle"
+  if (c >= 2) return u.side === "squad" ? "high" : "idle"
+  if (c >= 1) return u.side === "squad" ? "low" : "idle"
   return "idle"
 }
 

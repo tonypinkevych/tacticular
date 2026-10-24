@@ -3,12 +3,12 @@ import { distance, type Point } from "./point"
 import { coverOf } from "./tile"
 
 /**
- * The percent the cover of a target takes from a shot fired from a tile; 0 means the target is flanked.
- * A forest under the target gives 40 unless the shooter stands next to it.
+ * The damage the cover of a target cuts from a shot fired from a tile; 0 means the target is flanked.
+ * A forest under the target cuts 2 unless the shooter stands next to it.
  */
 export function cover(board: Board, target: Point, from: Point): number {
   const around = shelter(board, target, from)
-  const forest = board.at(target) === "forest" && distance(target, from) > 1 ? 40 : 0
+  const forest = board.at(target) === "forest" && distance(target, from) > 1 ? 2 : 0
   return Math.max(around ? coverOf(board.at(around)) : 0, forest)
 }
 

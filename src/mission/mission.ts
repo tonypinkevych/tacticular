@@ -69,7 +69,7 @@ export function mission(seed: number, c: Conditions): Game {
 
 /** How many aliens a mission starts with: 4, one more for each 3 threat, and the Commander at the fortress. */
 export function aliens(c: Pick<Conditions, "threat" | "boss">): number {
-  return 4 + Math.floor((c.threat ?? 0) / 3) + (c.boss ? 1 : 0)
+  return 5 + Math.floor((c.threat ?? 0) / 2) + (c.boss ? 1 : 0)
 }
 
 function goal(kind: GoalKind, open: Point[]): Goal {

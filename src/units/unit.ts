@@ -7,17 +7,16 @@ export type Side = "squad" | "enemy"
 /** A state a soldier's tactic puts on an alien until the next squad turn. */
 export type Status = "suppressed" | "staggered" | "exposed" | "marked" | "taunted"
 
-/** What a soldier gained in a run: HP, aim, skill upgrades (a use more, or a turn less to wait), a branch and the Partner trait. */
+/** What a soldier gained in a run: HP, skill upgrades (a use more, or a turn less to wait), a branch and the Partner trait. */
 export interface Training {
   hp: number
-  aim: number
   upgrades: number
   branch?: Branch
-  /** 10 more aim on aliens with the status the class gains from. */
+  /** 1 more damage on aliens with the status the class gains from. */
   partner?: boolean
 }
 
-const UNTRAINED: Training = { hp: 0, aim: 0, upgrades: 0 }
+const UNTRAINED: Training = { hp: 0, upgrades: 0 }
 
 /** One soldier or alien on the board, with what its turn has left. */
 export class Unit {
@@ -38,7 +37,7 @@ export class Unit {
     public status: Status | null = null,
     /** The unit that put the status on. */
     public by: string | null = null,
-    /** Hunkered down until its next turn: cover counts double, the open as low cover, and shots at it cannot crit. */
+    /** Hunkered down until its next turn: cover cuts twice the damage, the open counting as low cover. */
     public hunkered = false,
   ) {}
 
@@ -59,7 +58,6 @@ export class Unit {
     return {
       ...p,
       hp: p.hp + e.hp,
-      aim: p.aim + e.aim,
       cooldown: limited ? p.cooldown : Math.max(1, p.cooldown - e.upgrades),
       uses: limited ? (p.uses ?? 0) + e.upgrades : null,
     }

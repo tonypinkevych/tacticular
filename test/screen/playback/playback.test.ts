@@ -2,7 +2,7 @@ import { locale } from "../../../src/i18n/strings"
 import type { Game } from "../../../src/mission/game"
 import type { Action } from "../../../src/mission/orders"
 import { Playback } from "../../../src/screen/playback/playback"
-import { enemy, open, reseed, setup, squad } from "../../fixture"
+import { enemy, open, setup, squad } from "../../fixture"
 
 function run(before: Game, action: Action) {
   const p = new Playback()
@@ -30,18 +30,18 @@ describe("playback", () => {
   })
   test("a hit shows the damage over the target and plays its hit", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "commander", { x: 3, y: 1 })])
-    let hit = g
-    for (let s = 1; s < 500; s++)
-      if (
-        reseed(g, s).dice.random() * 100 < 95 &&
-        reseed(g, s).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp < 8
-      ) {
-        hit = reseed(g, s)
-        break
-      }
-    const { seen } = run(hit, { type: "shoot", unit: "r", target: "g" })
-    expect(seen.some((x) => /float:(CRIT )?−\d/.test(x))).toBe(true)
-    expect(seen).toContain("g:hit")
+    const { seen } = run(g, { type: "shoot", unit: "r", target: "g" })
+    expect([seen.includes(`float:−${g.combat.hit(g.unit("r"), g.unit("g")).damage}`), seen.includes("g:hit")]).toEqual([
+      true,
+      true,
+    ])
+  })
+  test("a shot the cover blocks shows BLOCKED and no hit", () => {
+    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
+    g.unit("r").moved = true
+    g.unit("g").hunkered = true
+    const { seen } = run(g, { type: "shoot", unit: "r", target: "g" })
+    expect([seen.includes("float:BLOCKED"), seen.includes("g:hit")]).toEqual([true, false])
   })
   test("a grenade shows the damage over each unit it hits and plays its hit", () => {
     const { seen } = run(setup(open(), [squad("w", "warden", { x: 5, y: 6 }), enemy("g", "grunt", { x: 5, y: 3 })]), {
@@ -55,18 +55,8 @@ describe("playback", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
     g.unit("g").hp = 0.5
     const { p, seen } = run(g, { type: "shoot", unit: "r", target: "g" })
-    if (seen.some((x) => x === "float:MISS")) return
     expect(seen).toContain("g:death")
     expect(p.units.has("g")).toBe(false)
-  })
-  test("an alien shot shows its hit chance over the alien first, and a soldier shot does not", () => {
-    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 2 })])
-    g.marks.push({ kind: "shot", unit: "g", target: "r", tiles: [{ x: 3, y: 6 }] })
-    const alien = run(g, { type: "endTurn" })
-    const chance = alien.after.log.find((e) => e.params.unit === "g")?.params.chance
-    expect(alien.seen.find((x) => x.startsWith("float:"))).toBe(`float:${chance}%`)
-    g.marks = []
-    expect(run(g, { type: "shoot", unit: "r", target: "g" }).seen.some((x) => x.endsWith("%"))).toBe(false)
   })
   test("the texts over the board are in the player's language", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 0 })])
@@ -77,13 +67,5 @@ describe("playback", () => {
     const texts = seen.filter((x) => x.startsWith("float:"))
     expect(texts).toContain("float:НАБЛЮДЕНИЕ")
     expect(texts.some((x) => /[A-Z]/.test(x.slice(6)))).toBe(false)
-  })
-  test("a soldier's overwatch shot at a moving alien shows its hit chance", () => {
-    const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 0 })])
-    g.unit("r").overwatch = true
-    g.phase = "enemy"
-    const { seen, after } = run(g, { type: "move", unit: "g", to: { x: 3, y: 1 } })
-    const chance = after.log.find((e) => e.params.unit === "r" && e.params.chance !== undefined)?.params.chance
-    expect(seen).toContain(`float:${chance}%`)
   })
 })

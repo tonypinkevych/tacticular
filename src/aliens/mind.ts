@@ -1,4 +1,4 @@
-import type { Odds } from "../combat/combat"
+import type { Hit } from "../combat/combat"
 import { cover } from "../map/cover"
 import { AROUND, adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
 import { clear } from "../map/sight"
@@ -34,7 +34,7 @@ const OWN: Record<Status, number> = { suppressed: 0.6, staggered: 0.3, exposed: 
  * rules, and gives the first action of the best plan. Either side can be played; the aliens always are.
  */
 export class Mind {
-  private readonly fields = new Map<Side, number[]>()
+  private readonly fields = new Map<Side | "evac", number[]>()
   private readonly from = new Map<string, Point[]>()
 
   constructor(private readonly game: Game) {}
@@ -58,11 +58,14 @@ export class Mind {
     return (plans.find((p) => p.combo) ?? plans[0])?.action ?? { type: "endTurn" }
   }
 
-  /** The best plan of a unit, valued by what it gains over holding still, or none when holding still is best. */
+  /**
+   * The best plan of a unit, valued by what it gains over holding still, or none when holding still is best. Hunker
+   * down is worth less each round after the eighth, so no mission stalls.
+   */
   private plan(u: Unit): Plan | null {
     const game = this.game
     const plans: Plan[] = []
-    const stay = this.ground(u, u.at),
+    const stay = this.ground(u, u.at) + this.closer(u, u.at),
       pin = this.pin(u)
     for (const a of this.attacks(u, u.at)) plans.push({ action: a.action, value: a.value + stay })
     const after = (at: Point) => Math.max(0, ...this.attacks(u, at).map((a) => a.value))
@@ -80,8 +83,11 @@ export class Mind {
             action: { type: "move", unit: u.id, to: t },
             value: this.ground(u, t) + this.closer(u, t) - 0.3 - pin,
           })
-    const idle = stay + this.closer(u, u.at)
-    if (u.side === "squad") plans.push({ action: { type: "hunker", unit: u.id }, value: idle + this.shield(u) })
+    const idle = stay
+    if (u.side === "squad") {
+      const wane = Math.max(0, 1 - 0.1 * Math.max(0, game.round - 8))
+      plans.push({ action: { type: "hunker", unit: u.id }, value: idle + this.shield(u) * wane })
+    }
     const best = plans.sort((a, b) => b.value - a.value)[0]
     if (best && best.value > idle + 0.05) return { ...best, value: best.value - idle }
     if (u.profile.range > 0 && !u.profile.melee && !u.overwatch)
@@ -97,7 +103,7 @@ export class Mind {
       if (m.target !== u.id) continue
       const f = game.unit(m.unit)
       if (!f.alive() || (m.kind === "claw" ? !adjacent(f.at, u.at) : !game.combat.canShoot(f, u))) continue
-      const o = game.combat.odds(f, u, { aimed: true, penalty: m.kind === "volley" ? 15 : 0 })
+      const o = game.combat.hit(f, u, { less: m.kind === "volley" ? 1 : 0 })
       sum += this.worth(o, u) * (m.kind === "volley" ? 2 : 1)
     }
     return sum
@@ -108,7 +114,7 @@ export class Mind {
     const game = this.game
     const threat = () =>
       this.aimed(u) +
-      game.foes(u).reduce((s, f) => s + (game.combat.canShoot(f, u) ? this.worth(game.combat.odds(f, u), u) : 0), 0) *
+      game.foes(u).reduce((s, f) => s + (game.combat.canShoot(f, u) ? this.worth(game.combat.hit(f, u), u) : 0), 0) *
         0.5
     const open = threat()
     u.hunkered = true
@@ -121,7 +127,7 @@ export class Mind {
   private pin(u: Unit): number {
     const by = u.status === "suppressed" ? this.game.units.find((x) => x.id === u.by) : undefined
     if (!by?.alive() || !this.game.combat.canShoot(by, u)) return 0
-    return this.worth(this.game.combat.odds(by, u), u)
+    return this.worth(this.game.combat.hit(by, u), u)
   }
 
   /**
@@ -148,7 +154,7 @@ export class Mind {
         for (const m of game.marks.filter((x) => x.unit === f.id && x.target && x.target !== u.id)) {
           const t = game.unit(m.target as string)
           if (!t.alive() || !game.combat.canShoot(f, t)) continue
-          const at = (x: Unit) => this.worth(game.combat.odds(f, x, { aimed: true }), x)
+          const at = (x: Unit) => this.worth(game.combat.hit(f, x), x)
           value += Math.max(0, at(t) - (game.combat.canShoot(f, u) ? at(u) : 0))
         }
       const combo = game
@@ -158,8 +164,8 @@ export class Mind {
           [a.at, ...(a.ap > 1 ? game.reach(a, 1).tiles() : [])]
             .filter((from) => game.combat.canShoot(a, f, from))
             .map((from) => {
-              const was = this.worth(game.combat.odds(a, f, { from }), f)
-              return this.as(f, status, () => this.worth(game.combat.odds(a, f, { from }), f)) - was + LINK
+              const was = this.worth(game.combat.hit(a, f, { from }), f)
+              return this.as(f, status, () => this.worth(game.combat.hit(a, f, { from }), f)) - was + LINK
             }),
         )
       const gain = Math.max(0, ...combo)
@@ -173,7 +179,7 @@ export class Mind {
     const foes = this.game.foes(u)
     if (!foes.length) return 0
     return this.moved(u, at, () => {
-      const shelter = foes.reduce((s, f) => s + cover(this.game.board, at, f.at) / 40, 0) / foes.length
+      const shelter = foes.reduce((s, f) => s + cover(this.game.board, at, f.at) / 2, 0) / foes.length
       const threat = foes.reduce((s, f) => s + this.reply(f, u), 0)
       const marked = this.game.marks.some(
         (m) => !m.target && m.tiles.some((p) => same(p, at)) && this.game.unit(m.unit).side !== u.side,
@@ -196,7 +202,7 @@ export class Mind {
     for (const q of this.steps(f)) {
       if (same(q, u.at)) continue
       const reach = f.profile.melee ? adjacent(q, u.at) : game.combat.canShoot(f, u, q)
-      if (reach) best = Math.max(best, this.worth(game.combat.odds(f, u, { from: q }), u))
+      if (reach) best = Math.max(best, this.worth(game.combat.hit(f, u, { from: q }), u))
     }
     return best
   }
@@ -229,27 +235,35 @@ export class Mind {
     return value - BUNCH * others.filter((a) => adjacent(a.at, at)).length
   }
 
-  /** A pull toward the nearest foe by walking steps, past the unit's range when it has a shot from the tile, or a soldier's pull toward the evac; it grows each round after the sixth, for soldiers only toward the evac. */
+  /** A pull toward the nearest foe by walking steps, past the unit's range when it has a shot that deals damage from the tile, or a soldier's pull toward the evac; it grows each round after the sixth, for soldiers only toward the evac. */
   private closer(u: Unit, at: Point): number {
     const goal = this.game.goal,
       late = 0.15 * Math.max(0, this.game.round - 6)
     if (goal.kind === "evac" && u.side === "squad")
-      return -Math.min(...goal.tiles.map((p) => distance(p, at))) * (0.8 + late)
+      return -this.walk("evac")[at.y * this.game.board.width + at.x] * (0.8 + late)
     if (!this.game.foes(u).length) return 0
     const gap = this.walk(u.side)[at.y * this.game.board.width + at.x]
-    const pull = u.side === "enemy" ? 0.45 + late : 0.45
-    const sees = this.game.foes(u).some((f) => this.game.combat.canShoot(u, f, at))
+    const pull = 0.45 + late
+    const sees = this.game
+      .foes(u)
+      .some((f) => this.game.combat.canShoot(u, f, at) && this.game.combat.hit(u, f, { from: at }).damage > 0)
     return -(sees ? Math.max(0, gap - u.profile.range) : gap) * pull
   }
 
-  /** Walking steps from every tile to the nearest foe of a side, around anything that blocks a move. */
-  private walk(side: Side): number[] {
+  /** Walking steps from every tile to the nearest foe of a side, or to the evac row, around anything that blocks a move. */
+  private walk(side: Side | "evac"): number[] {
     const known = this.fields.get(side)
     if (known) return known
     const board = this.game.board,
-      width = board.width
+      width = board.width,
+      goal = this.game.goal
     const field = new Array(board.tiles.length).fill(99)
-    const queue = this.game.units.filter((f) => f.alive() && f.side !== side).map((f) => f.at)
+    const queue =
+      side === "evac"
+        ? goal.kind === "evac"
+          ? goal.tiles.filter((p) => !blocksMove(board.at(p)))
+          : []
+        : this.game.units.filter((f) => f.alive() && f.side !== side).map((f) => f.at)
     for (const p of queue) field[p.y * width + p.x] = 0
     while (queue.length) {
       const p = queue.shift() as Point
@@ -276,7 +290,7 @@ export class Mind {
       if (still && combat.canShoot(u, f, at))
         out.push({
           action: { type: "shoot", unit: u.id, target: f.id },
-          value: this.worth(combat.odds(u, f, { from: at }), f),
+          value: this.worth(combat.hit(u, f, { from: at }), f),
         })
     if (u.cooldown > 0 || (u.uses !== null && u.uses <= 0)) return out
     const skill = (value: number, extra: Partial<Extract<Action, { type: "skill" }>> = {}) =>
@@ -285,8 +299,7 @@ export class Mind {
       case "headshot":
         for (const f of foes)
           if (combat.canShoot(u, f, at) && cover(game.board, f.at, at) === 0) {
-            const o = combat.odds(u, f, { from: at })
-            skill(this.worth({ ...o, damage: o.damage + 1, crit: 0 }, f) - 0.4, { target: f.id })
+            skill(this.worth(combat.hit(u, f, { from: at, more: 2 }), f) - 0.4, { target: f.id })
           }
         break
       case "lunge":
@@ -294,14 +307,14 @@ export class Mind {
           for (const t of game.reach(u, 2).tiles())
             for (const f of foes)
               if (adjacent(t, f.at))
-                skill(this.worth(combat.odds(u, f, { from: t }), f) + this.ground(u, t) - 0.5, { to: t, target: f.id })
+                skill(this.worth(combat.hit(u, f, { from: t }), f) + this.ground(u, t) - 0.5, { to: t, target: f.id })
         break
       case "runGun":
         if (u.ap === 2 && same(at, u.at))
           for (const t of game.reach(u, 2).tiles())
             for (const f of foes)
               if (combat.canShoot(u, f, t))
-                skill(this.worth(combat.odds(u, f, { from: t }), f) + this.ground(u, t) - 0.5, { to: t, target: f.id })
+                skill(this.worth(combat.hit(u, f, { from: t }), f) + this.ground(u, t) - 0.5, { to: t, target: f.id })
         break
       case "grenade":
       case "blast": {
@@ -333,7 +346,7 @@ export class Mind {
       case "covering":
         for (const f of foes)
           if (combat.canShoot(u, f, at)) {
-            const o = combat.odds(u, f, { from: at, penalty: 15 })
+            const o = combat.hit(u, f, { from: at, less: 1 })
             skill(this.worth(o, f) * 1.8, { target: f.id })
           }
         break
@@ -354,19 +367,17 @@ export class Mind {
           }
         break
       case "warcry":
-        if (game.allies(u).filter((a) => a !== u && a.ap > 0).length >= 2) skill(1.5)
+        if (game.allies(u).filter((a) => a !== u && a.ap > 0).length >= 2)
+          skill(1.2 * game.allies(u).filter((a) => a !== u && a.ap > 0).length)
         break
     }
     return out
   }
 
-  /** The damage a shot is expected to deal, with a bonus for a likely kill. */
-  private worth(o: Odds, target: Unit): number {
-    const p = o.chance / 100,
-      c = o.crit / 100
-    const dmg = p * (o.damage + c)
-    const kill = target.hp <= o.damage ? p : target.hp <= o.damage + 1 ? p * c : 0
-    return dmg + kill * KILL + p * (target.profile.hp - target.hp) * FOCUS
+  /** The damage an attack deals, with a bonus for a kill and for a wounded target; nothing when it is blocked. */
+  private worth(h: Hit, target: Unit): number {
+    if (h.damage === 0) return 0
+    return h.damage + (target.hp <= h.damage ? KILL : 0) + (target.profile.hp - target.hp) * FOCUS
   }
 
   /** Reads the game as if a unit held a status. */

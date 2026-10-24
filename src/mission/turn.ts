@@ -99,7 +99,7 @@ export class Turn {
         game.log.push({ key: "log.dodge", params: { unit: u.id, target: t.id } })
         return
       }
-      const fire = { penalty: m.kind === "volley" ? 15 : 0, aimed: true }
+      const fire = { less: m.kind === "volley" ? 1 : 0 }
       game.combat.fire(u, t, fire)
       if (m.kind === "volley" && t.alive()) game.combat.fire(u, t, fire)
       return

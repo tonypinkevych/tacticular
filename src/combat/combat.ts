@@ -5,26 +5,22 @@ import { blocksMove } from "../map/tile"
 import type { Game } from "../mission/game"
 import type { Unit } from "../units/unit"
 
-/** What a player sees before a shot: the hit chance, the crit chance, the damage and the cover. */
-export interface Odds {
-  chance: number
-  crit: number
+/** What a player sees before an attack: the damage it deals and what the cover cuts from it. */
+export interface Hit {
   damage: number
   cover: number
-  /** The shot turns the target's status into a combo. */
+  /** The attack turns the target's status into a combo. */
   combo?: boolean
 }
 
-/** A shot's changes to its chance and its crit. */
+/** Changes to one attack: where it comes from and damage taken off or added. */
 export interface Fire {
   from?: Point
-  penalty?: number
-  sureCrit?: boolean
-  /** A shot aimed a turn ahead, with 20 more aim. */
-  aimed?: boolean
+  less?: number
+  more?: number
 }
 
-/** Shots, damage, blasts and pushes in a game. */
+/** Attacks, damage, blasts and pushes in a game. */
 export class Combat {
   constructor(private readonly game: Game) {}
 
@@ -35,74 +31,66 @@ export class Combat {
     )
   }
 
-  odds(shooter: Unit, target: Unit, fire: Fire = {}): Odds {
+  /**
+   * The damage of an attack: the weapon damage less the cover cut (1 low, 2 high, doubled on a hunkered target), 1 more
+   * on a flank, and the statuses and passives; never below 0. A Guard behind cover takes 0 from a shot.
+   */
+  hit(shooter: Unit, target: Unit, fire: Fire = {}): Hit {
     const p = shooter.profile,
       from = fire.from ?? shooter.at
     if (p.melee)
       return this.combo(shooter, target, {
-        chance: target.profile.passive === "parry" ? 50 : 100,
-        crit: 0,
-        damage: p.damage,
+        damage: Math.max(0, p.damage - (target.profile.passive === "parry" ? 1 : 0) - (fire.less ?? 0)),
         cover: 0,
       })
     const base = cover(this.game.board, target.at, from)
-    const c = target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 20) * 2 : base
-    let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
-    if (target.status === "marked") aim += this.spotted(target) ? 20 : 10
-    if (shooter.extra.partner && target.status && p.combo === target.status) aim += 10
-    if (fire.aimed) aim += 20
-    if (shooter.status === "suppressed") aim -= 20
-    if (p.passive === "pointBlank" && adjacent(from, target.at)) aim += 20
-    if (p.passive === "steady" && !shooter.moved) aim += 20
+    const c = target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 1) * 2 : base
+    let dmg = p.damage - c + (c === 0 ? 1 : 0) - (fire.less ?? 0) + (fire.more ?? 0)
+    if (target.status === "marked") dmg += this.spotted(target) ? 2 : 1
+    if (shooter.extra.partner && target.status && p.combo === target.status) dmg += 1
+    if (shooter.status === "suppressed") dmg -= 1
+    if (p.passive === "pointBlank" && adjacent(from, target.at)) dmg += 1
+    if (p.passive === "steady" && !shooter.moved) dmg += 1
     if (this.game.allies(target).some((a) => a.profile.passive === "aid" && a !== target && adjacent(a.at, target.at)))
-      aim -= 10
-    const odds = {
-      chance: Math.max(5, Math.min(95, aim)),
-      crit: c === 0 && !target.hunkered ? 50 : 0,
-      damage: target.profile.passive === "shell" && c > 0 ? 0 : p.damage,
+      dmg -= 1
+    return this.combo(shooter, target, {
+      damage: target.profile.passive === "shell" && c > 0 ? 0 : Math.max(0, dmg),
       cover: c,
-    }
-    return this.combo(shooter, target, odds)
+    })
   }
 
-  /** The odds with the combo the shooter makes of the target's status: more damage or a sure crit. */
-  private combo(shooter: Unit, target: Unit, odds: Odds): Odds {
-    if (!target.status || shooter.profile.combo !== target.status) return odds
-    if (shooter.kind === "blade") return { ...odds, damage: odds.damage + 3, combo: true }
-    if (target.status === "exposed") return { ...odds, crit: 100, combo: true }
-    if (target.status === "marked") return { ...odds, combo: true }
-    return { ...odds, damage: odds.damage + (shooter.extra.branch === "brawler" ? 3 : 2), combo: true }
+  /** The hit with the combo the shooter makes of the target's status: more damage. */
+  private combo(shooter: Unit, target: Unit, hit: Hit): Hit {
+    if (!target.status || shooter.profile.combo !== target.status) return hit
+    if (shooter.kind === "blade") return { ...hit, damage: hit.damage + 3, combo: true }
+    if (target.status === "marked") return { ...hit, combo: true }
+    return { ...hit, damage: hit.damage + (shooter.extra.branch === "brawler" ? 3 : 2), combo: true }
   }
 
-  /** Rolls a shot: a hit takes the damage, a crit 1 more; a melee hit or a point blank hit pushes the target back. */
+  /**
+   * Lands an attack for its damage; one cut to 0 is blocked. A melee hit or a point blank hit pushes the target back,
+   * and claws at a Blade with Riposte cost the alien 2.
+   */
   fire(shooter: Unit, target: Unit, fire: Fire = {}): void {
-    const o = this.odds(shooter, target, fire),
-      dice = this.game.dice
-    const hit = dice.random() * 100 < o.chance
-    const crit = hit && (fire.sureCrit || dice.random() * 100 < o.crit)
-    const params = { unit: shooter.id, target: target.id, chance: o.chance }
-    if (!hit) {
-      this.game.log.push({ key: "log.miss", params })
-      if (target.extra.branch === "riposte" && shooter.profile.melee && adjacent(shooter.at, target.at)) {
-        this.game.log.push({ key: "log.riposte", params: { unit: target.id, target: shooter.id } })
-        this.hurt(shooter, 2)
-      }
-      return
+    const h = this.hit(shooter, target, fire),
+      from = fire.from ?? shooter.at,
+      params = { unit: shooter.id, target: target.id, dmg: h.damage }
+    this.game.log.push({ key: h.damage > 0 ? "log.hit" : "log.block", params })
+    if (target.extra.branch === "riposte" && shooter.profile.melee && adjacent(shooter.at, target.at)) {
+      this.game.log.push({ key: "log.riposte", params: { unit: target.id, target: shooter.id } })
+      this.hurt(shooter, 2)
     }
-    const dmg = o.damage === 0 ? 0 : o.damage + (crit ? 1 : 0)
-    if (crit) this.game.log.push({ key: "log.crit", params: { ...params, dmg } })
-    else this.game.log.push({ key: "log.hit", params: { ...params, dmg } })
-    const guard = shelter(this.game.board, target.at, fire.from ?? shooter.at)
+    if (h.damage === 0) return
+    const guard = shelter(this.game.board, target.at, from)
     if (shooter.profile.passive === "shred" && guard && ["bags", "torn"].includes(this.game.board.at(guard)))
       this.game.board.break(guard)
-    this.hurt(target, dmg)
-    const from = fire.from ?? shooter.at
+    this.hurt(target, h.damage)
     if (
       target.alive() &&
       (shooter.profile.knock || (shooter.profile.passive === "pointBlank" && adjacent(from, target.at)))
     )
       this.push(target, from)
-    if (o.combo) this.game.tactics.follow(shooter, target)
+    if (h.combo) this.game.tactics.follow(shooter, target)
     else if (shooter.extra.branch === "wrecker" && target.alive()) this.game.tactics.wreck(target)
   }
 

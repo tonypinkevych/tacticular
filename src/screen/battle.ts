@@ -1,6 +1,6 @@
 import { type Accessor, createSignal, type Setter } from "solid-js"
 import { Mind } from "../aliens/mind"
-import type { Odds } from "../combat/combat"
+import type { Hit } from "../combat/combat"
 import { t } from "../i18n/strings"
 import { cover } from "../map/cover"
 import { adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
@@ -397,19 +397,28 @@ export class Battle {
     return target ? t("ui.intent", { attack, target: t(`kind.${target.kind}`) }) : t("ui.intent.area", { attack })
   }
 
-  /** The hit chance of an attack an alien aimed, as the board stands now; null when the target is out of its reach. */
+  /** The damage of an attack an alien aimed, as the board stands now; null when the target is out of its reach. */
   aimed(m: Mark): number | null {
     const g = this.game(),
       u = g.unit(m.unit),
       t = g.units.find((x) => x.id === m.target)
     if (!t?.alive() || !u.alive()) return null
-    if (m.kind === "claw") return adjacent(u.at, t.at) ? 100 : null
-    if (!g.combat.canShoot(u, t)) return null
-    return g.combat.odds(u, t, { aimed: true, penalty: m.kind === "volley" ? 15 : 0 }).chance
+    if (m.kind === "claw" ? !adjacent(u.at, t.at) : !g.combat.canShoot(u, t)) return null
+    return g.combat.hit(u, t, { less: m.kind === "volley" ? 1 : 0 }).damage
   }
 
-  /** The odds of the selected soldier against the aimed alien in Shoot, else the hovered one. */
-  odds(): { target: Unit; odds: Odds } | null {
+  /** An aimed attack's damage as the board shows it: "−2", "2×−1", KILL when it would kill, or "—" out of reach. */
+  toll(m: Mark): string {
+    const d = this.aimed(m),
+      target = this.game().units.find((x) => x.id === m.target)
+    if (d === null || !target) return "—"
+    const n = m.kind === "volley" ? 2 : 1
+    if (d > 0 && d * n >= target.hp) return t("ui.kill")
+    return `${n > 1 ? "2×" : ""}−${d}`
+  }
+
+  /** The hit of the selected soldier on the aimed alien in Shoot, else on the hovered one. */
+  hit(): { target: Unit; hit: Hit } | null {
     const g = this.game(),
       u = this.unit(),
       p = (this.mode() === "shoot" && this.planned()) || this.hovered()
@@ -417,9 +426,8 @@ export class Battle {
     if (!u || !target || target.side === u.side) return null
     const from = this.mode() === "skill" && this.runTo ? this.runTo : u.at
     if (!g.combat.canShoot(u, target, from) && !(u.profile.melee && adjacent(from, target.at))) return null
-    const odds = g.combat.odds(u, target, { from })
-    if (this.mode() === "skill" && u.profile.skill === "headshot") return { target, odds: { ...odds, crit: 100 } }
-    return { target, odds }
+    const headshot = this.mode() === "skill" && u.profile.skill === "headshot"
+    return { target, hit: g.combat.hit(u, target, { from, more: headshot ? 2 : 0 }) }
   }
 
   /** Why the mission was lost: the aliens held the beacon, or the squad died. */

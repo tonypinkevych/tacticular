@@ -263,7 +263,7 @@ export class Overlay {
     if (live) this.ink.shape(this.projection.diamond(to, 3), { w: 2, sharp: true, stroke: RED, dash: [6, 4], amp: 0 })
   }
 
-  /** The hit chance of an aimed attack, two thirds along its line. */
+  /** The damage of an aimed attack, two thirds along its line. */
   odds(from: Point, to: Point, text: string, live: boolean): void {
     const [ax, ay] = this.projection.center(from),
       [bx, by] = this.projection.center(to)

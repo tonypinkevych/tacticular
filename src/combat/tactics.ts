@@ -84,6 +84,6 @@ export class Tactics {
     u.by = null
     if (!by?.alive() || !this.game.combat.canShoot(by, u)) return
     this.game.log.push({ key: "log.pinned", params: { unit: by.id, target: u.id } })
-    this.game.combat.fire(by, u)
+    this.game.combat.fire(by, u, { less: 1 })
   }
 }

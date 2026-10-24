@@ -48,6 +48,6 @@ describe("orders", () => {
       squad("v", "vanguard", { x: 3, y: 6 }),
       enemy("g", "grunt", { x: 7, y: 0 }),
     ])
-    expect(g.apply({ type: "move", unit: "v", to: { x: 3, y: 5 } }).unit("v").hp).toBe(8)
+    expect(g.apply({ type: "move", unit: "v", to: { x: 3, y: 5 } }).unit("v").hp).toBe(6)
   })
 })
