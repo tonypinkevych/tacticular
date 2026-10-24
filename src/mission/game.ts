@@ -1,3 +1,4 @@
+import { Reinforcements } from "../aliens/reinforcements"
 import { Abilities } from "../combat/abilities"
 import { Combat } from "../combat/combat"
 import { Dice } from "../combat/dice"
@@ -31,6 +32,10 @@ export interface GameData {
   board: Board
   units: Unit[]
   marks: Mark[]
+  /** Tiles where the next alien drop lands. */
+  landing: Point[]
+  /** Alien drops left in the mission. */
+  drops: number
   log: Entry[]
 }
 
@@ -39,6 +44,7 @@ export interface Setup {
   seed: number
   board: Board
   units: Unit[]
+  drops?: number
 }
 
 /**
@@ -53,11 +59,14 @@ export class Game implements GameData {
   board!: Board
   units!: Unit[]
   marks!: Mark[]
+  landing!: Point[]
+  drops!: number
   log!: Entry[]
   readonly dice = new Dice(this)
   readonly combat = new Combat(this)
   readonly abilities = new Abilities(this)
   readonly turn = new Turn(this)
+  readonly reinforcements = new Reinforcements(this)
   readonly orders = new Orders(this)
 
   constructor(data: GameData) {
@@ -65,8 +74,8 @@ export class Game implements GameData {
   }
 
   /** A new game in the squad's first turn. */
-  static start({ seed, board, units }: Setup): Game {
-    return new Game({ seed, rng: seed, round: 1, phase: "squad", board, units, marks: [], log: [] })
+  static start({ seed, board, units, drops = 2 }: Setup): Game {
+    return new Game({ seed, rng: seed, round: 1, phase: "squad", board, units, marks: [], landing: [], drops, log: [] })
   }
 
   /** Applies one action and returns the next game; this game is not changed. */
@@ -83,6 +92,8 @@ export class Game implements GameData {
       round: this.round,
       phase: this.phase,
       marks: this.marks,
+      landing: this.landing,
+      drops: this.drops,
       log: this.log,
     })
     return new Game({ ...plain, board: this.board.clone(), units: this.units.map((u) => u.clone()) })

@@ -23,7 +23,7 @@ export class Turn {
     game.settle()
   }
 
-  /** The end of a round: units in fire burn, and fire spreads to the next forest. */
+  /** The end of a round: units in fire burn, fire spreads to the next forest, and the next drop is marked. */
   private close(): void {
     const game = this.game
     for (const u of game.units) if (u.alive() && game.board.at(u.at) === "fire") game.combat.burn(u)
@@ -32,9 +32,10 @@ export class Turn {
     )
     for (const f of fires)
       for (const d of ORTHOGONAL) if (game.board.at(plus(f, d)) === "forest") game.board.set(plus(f, d), "fire")
+    game.reinforcements.mark()
   }
 
-  /** A side's turn starts: 2 AP, cooldowns count down, overwatch ends, and its marked attacks land. */
+  /** A side's turn starts: 2 AP, cooldowns count down, overwatch ends, then a drop and marked attacks land. */
   private begin(side: Side): void {
     const game = this.game
     for (const u of game.units.filter((x) => x.side === side && x.alive())) {
@@ -43,6 +44,7 @@ export class Turn {
       u.overwatch = false
       u.cooldown = Math.max(0, u.cooldown - 1)
     }
+    if (side === "enemy") game.reinforcements.land()
     const marks = game.marks.filter((m) => game.unit(m.unit).side === side)
     game.marks = game.marks.filter((m) => !marks.includes(m))
     for (const m of marks) if (game.unit(m.unit).alive()) this.land(m)

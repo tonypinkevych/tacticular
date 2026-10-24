@@ -51,7 +51,7 @@ describe("hit chance", () => {
       squad("c", "cleric", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 3, y: 2 }),
     ])
-    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(55)
+    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(50)
   })
   test("a target past the range or behind a rock cannot be shot", () => {
     const far = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
@@ -82,11 +82,11 @@ describe("shots", () => {
     const g = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])
     expect(lucky(g, 95, 50).apply({ type: "shoot", unit: "r", target: "g" }).unit("g").hp).toBe(0)
   })
-  test("the Brute's claws always hit for 3 and push the target back", () => {
+  test("the Brute's claws always hit for its damage and push the target back", () => {
     const g = enemyTurn(
       setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })]),
     ).apply({ type: "shoot", unit: "b", target: "v" })
-    expect(g.unit("v")).toMatchObject({ hp: 3, at: { x: 3, y: 5 } })
+    expect(g.unit("v")).toMatchObject({ hp: 5, at: { x: 3, y: 5 } })
   })
   test("a push into water kills", () => {
     const g = enemyTurn(

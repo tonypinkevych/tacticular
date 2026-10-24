@@ -20,7 +20,7 @@ describe("turns", () => {
       squad("v", "vanguard", { x: 3, y: 3 }),
       enemy("g", "grunt", { x: 7, y: 0 }),
     ])
-    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).unit("v").hp).toBe(5)
+    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).unit("v").hp).toBe(6)
   })
   test("fire spreads to the next forest at the end of the round", () => {
     const g = setup(rows(["........", "........", "........", "...fT..."]), [
@@ -42,7 +42,7 @@ describe("turns", () => {
   })
   test("the squad loses when no soldier stands", () => {
     const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })])
-    g.unit("v").hp = 3
+    g.unit("v").hp = 2
     expect(g.apply({ type: "endTurn" }).apply({ type: "shoot", unit: "b", target: "v" }).phase).toBe("lost")
   })
 })

@@ -31,7 +31,7 @@ const ALL = 99
 
 export const PROFILES: Record<Kind, Profile> = {
   vanguard: {
-    hp: 6,
+    hp: 7,
     aim: 70,
     move: 2,
     damage: 3,
@@ -42,7 +42,7 @@ export const PROFILES: Record<Kind, Profile> = {
     passive: "pointBlank",
   },
   ranger: {
-    hp: 4,
+    hp: 5,
     aim: 80,
     move: 1,
     damage: 2,
@@ -52,14 +52,14 @@ export const PROFILES: Record<Kind, Profile> = {
     uses: null,
     passive: "steady",
   },
-  warden: { hp: 6, aim: 65, move: 1, damage: 2, range: 4, skill: "grenade", cooldown: 0, uses: 1, passive: "shred" },
-  cleric: { hp: 5, aim: 65, move: 2, damage: 2, range: 3, skill: "medkit", cooldown: 0, uses: 2, passive: "aid" },
-  grunt: { hp: 3, aim: 65, move: 1, damage: 2, range: 4, skill: "covering", cooldown: 3, uses: null },
+  warden: { hp: 7, aim: 65, move: 1, damage: 2, range: 4, skill: "grenade", cooldown: 0, uses: 1, passive: "shred" },
+  cleric: { hp: 6, aim: 65, move: 2, damage: 2, range: 3, skill: "medkit", cooldown: 0, uses: 2, passive: "aid" },
+  grunt: { hp: 3, aim: 60, move: 1, damage: 2, range: 4, skill: "covering", cooldown: 3, uses: null },
   brute: {
     hp: 5,
     aim: 100,
     move: 3,
-    damage: 3,
+    damage: 2,
     range: 1,
     melee: true,
     rough: true,

@@ -51,8 +51,8 @@ describe("squad skills", () => {
       squad("v", "vanguard", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 0, y: 0 }),
     ])
-    g.unit("v").hp = 5
-    expect(g.apply({ type: "skill", unit: "c", target: "v" }).unit("v").hp).toBe(6)
+    g.unit("v").hp = 6
+    expect(g.apply({ type: "skill", unit: "c", target: "v" }).unit("v").hp).toBe(7)
   })
   test("a Medkit needs the ally next to the Cleric", () => {
     const g = setup(open(), [
@@ -90,7 +90,7 @@ describe("alien skills", () => {
       },
     ])
     const run = end(marked, 2)
-    expect([run.unit("b").at, run.unit("v").hp, run.unit("v").at]).toEqual([{ x: 3, y: 3 }, 3, { x: 3, y: 5 }])
+    expect([run.unit("b").at, run.unit("v").hp, run.unit("v").at]).toEqual([{ x: 3, y: 3 }, 5, { x: 3, y: 5 }])
   })
   test("a Bomber marks a plus, then blows it next turn for 2", () => {
     const g = end(
@@ -101,7 +101,7 @@ describe("alien skills", () => {
       ]),
     ).apply({ type: "skill", unit: "m", at: { x: 3, y: 4 } })
     const run = end(g, 2)
-    expect([run.unit("r").hp, run.unit("c").hp]).toEqual([2, 3])
+    expect([run.unit("r").hp, run.unit("c").hp]).toEqual([3, 4])
   })
   test("killing the Bomber removes its mark", () => {
     const g = end(setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("m", "bomber", { x: 3, y: 1 })])).apply({

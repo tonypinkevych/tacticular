@@ -14,7 +14,7 @@ The folders name what the game is made of.
 - **`src/map/`**: the board, its tiles, the map generator, sight, cover, walking reach and fire.
 - **`src/units/`**: units and the profiles of the classes and the aliens.
 - **`src/combat/`**: dice, weapons, attacks and abilities.
-- **`src/aliens/`**: the alien AI, stealth (alerts, noise, the alarm) and reinforcements.
+- **`src/aliens/`**: the mind that plays a side (always the aliens) and the alien drops.
 - **`src/mission/`**: the game, its turns and orders, the mission generator, and the match that plays the
   alien side.
 - **`src/campaign/`**: the campaign: the world's regions, weeks, both economies, operations, infiltration, research
