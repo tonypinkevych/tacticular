@@ -54,8 +54,8 @@ have.
 ## The run
 
 Pick 3 of the 5 classes. Cross a chart of 4 layers of missions to the Commander's fortress. Each mission raises the
-threat, and each 3 threat adds an alien. Soldiers keep their HP between missions and heal 3. After a win the fallen
-come back with 1 HP; after a loss they are dead. Each mission on the chart shows its reward and its special alien.
+threat, and each 3 threat adds an alien. Soldiers keep their HP between missions and heal 3. A soldier who falls in a
+mission is dead. Each mission on the chart shows its reward and its special alien.
 The reward is heal all, a recruit, training (+1 HP, +5 aim) or an upgrade; an Elite always gives an upgrade. A win
 gives that reward. A soldier's first upgrade picks one of 2 branches of its class:
 

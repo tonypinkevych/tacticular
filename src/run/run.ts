@@ -141,8 +141,8 @@ export class Run {
   }
 
   /**
-   * Soldiers keep the HP they left with and heal 3, those who stayed out heal 5; after a win the fallen come back
-   * with 1 HP, after a loss they are dead. A soldier with 2 combos becomes a Partner.
+   * Soldiers keep the HP they left with and heal 3, those who stayed out heal 5; the fallen are dead. A soldier
+   * with 2 combos becomes a Partner.
    */
   private finish(result: Result): void {
     must(this.stage === "mission", "finish")
@@ -151,7 +151,6 @@ export class Run {
       if ((result.combos?.[s.id] ?? 0) >= 2) s.extra = { ...s.extra, partner: true }
       const out = !this.deployed.includes(s.id)
       if (!out) s.hp = result.hp[s.id] ?? 0
-      if (!out && result.won && s.hp <= 0) s.hp = 1
       if (s.hp > 0) s.hp = Math.min(s.max, s.hp + (out ? 5 : 3))
     }
     this.roster = this.roster.filter((s) => s.hp > 0)

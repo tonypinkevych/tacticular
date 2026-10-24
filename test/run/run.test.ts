@@ -35,14 +35,19 @@ describe("run", () => {
     expect([r.stage, r.threat]).toEqual(["mission", 1])
     expect(r.conditions().squad).toHaveLength(3)
   })
-  test("soldiers keep the HP they leave with and heal 3; after a win the fallen come back with 1 HP", () => {
+  test("soldiers keep the HP they leave with and heal 3", () => {
     const r = drafted()
     go(r)
-    const [a, b, c] = r.roster
-    r.play({ type: "finish", result: { won: true, hp: { [a.id]: 2, [b.id]: 0, [c.id]: c.max } } })
-    expect(r.roster.map((s) => s.hp)).toEqual([5, 4, c.max])
+    const [a, b] = r.roster
+    r.play({ type: "finish", result: { won: true, hp: { [a.id]: 2, [b.id]: b.max } } })
+    expect(r.roster.slice(0, 2).map((s) => s.hp)).toEqual([5, b.max])
   })
-  test("after a loss the fallen are dead", () => {
+  test("the fallen are dead after a win and after a loss", () => {
+    const w = drafted()
+    go(w)
+    const [x, y] = w.roster
+    w.play({ type: "finish", result: { won: true, hp: { [x.id]: 0, [y.id]: y.max } } })
+    expect(w.roster.map((s) => s.id)).not.toContain(x.id)
     const r = drafted()
     go(r)
     const [a, b, c] = r.roster
@@ -95,7 +100,10 @@ describe("run", () => {
       const n = r.options().find((x) => x.prize === "upgrade")
       if (!n) continue
       r.play({ type: "go", node: n.id, deploy: r.roster.map((x) => x.id) })
-      r.play({ type: "finish", result: { won: true, hp: {}, combos: {} } })
+      r.play({
+        type: "finish",
+        result: { won: true, hp: Object.fromEntries(r.roster.map((x) => [x.id, x.max])), combos: {} },
+      })
       const first = r.offers[0]
       if (first.kind !== "upgrade") throw new Error("not an upgrade")
       const s = r.roster.find((x) => x.id === first.id)
