@@ -1,4 +1,5 @@
 import { Dice } from "../combat/dice"
+import { BIOMES, type Biome } from "../map/terrain"
 
 /** What a mission on the chart is: a goal, an elite fight, or the fortress at the end. */
 export type Task = "kill" | "evac" | "defend" | "elite" | "fortress"
@@ -13,6 +14,7 @@ export interface Node {
   kind: Task
   next: number[]
   prize?: Prize
+  biome: Biome
 }
 
 const PRIZES: Prize[] = ["heal", "recruit", "train", "upgrade"]
@@ -35,11 +37,11 @@ export class Chart {
     const layers: Node[][] = []
     for (let layer = 0; layer < LAYERS; layer++) {
       const kinds = r.shuffle(KINDS).slice(0, r.between(2, 3))
-      const row = kinds.map((kind, i): Node => ({ id: nodes.length + i, layer, kind, next: [] }))
+      const row = kinds.map((kind, i): Node => ({ id: nodes.length + i, layer, kind, next: [], biome: "field" }))
       nodes.push(...row)
       layers.push(row)
     }
-    const fortress: Node = { id: nodes.length, layer: LAYERS, kind: "fortress", next: [] }
+    const fortress: Node = { id: nodes.length, layer: LAYERS, kind: "fortress", next: [], biome: "ruins" }
     nodes.push(fortress)
     layers.push([fortress])
     for (let layer = 0; layer < LAYERS; layer++) {
@@ -57,6 +59,7 @@ export class Chart {
       }
     }
     for (const n of nodes) if (n.kind !== "fortress") n.prize = n.kind === "elite" ? "upgrade" : r.pick(PRIZES)
+    for (const n of nodes) n.biome = n.kind === "fortress" ? "ruins" : r.pick(BIOMES)
     return new Chart(seed, nodes)
   }
 

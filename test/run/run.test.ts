@@ -19,7 +19,13 @@ describe("run", () => {
     const n = r.options()[0]
     go(r)
     const c = r.conditions()
-    expect(drafted().preview(n.id)).toEqual({ goal: c.goal, threat: c.threat, boss: c.boss, aliens: aliens(c) })
+    expect(drafted().preview(n.id)).toEqual({
+      goal: c.goal,
+      threat: c.threat,
+      boss: c.boss,
+      biome: c.biome,
+      aliens: aliens(c),
+    })
   })
   test("going to a mission raises the threat and builds it", () => {
     const r = drafted()

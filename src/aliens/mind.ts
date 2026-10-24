@@ -82,14 +82,15 @@ export class Mind {
     })
   }
 
-  /** A pull toward the nearest foe past the unit's range by walking steps, or a soldier's pull toward the evac; for aliens it grows each round after the sixth. */
+  /** A pull toward the nearest foe by walking steps, past the unit's range when it has a shot from the tile, or a soldier's pull toward the evac; for aliens it grows each round after the sixth. */
   private closer(u: Unit, at: Point): number {
     const goal = this.game.goal
     if (goal.kind === "evac" && u.side === "squad") return -Math.min(...goal.tiles.map((p) => distance(p, at))) * 0.8
     if (!this.game.foes(u).length) return 0
     const gap = this.walk(u.side)[at.y * this.game.board.width + at.x]
     const pull = u.side === "enemy" ? 0.45 + 0.15 * Math.max(0, this.game.round - 6) : 0.45
-    return -Math.max(0, gap - u.profile.range) * pull
+    const sees = this.game.foes(u).some((f) => this.game.combat.canShoot(u, f, at))
+    return -(sees ? Math.max(0, gap - u.profile.range) : gap) * pull
   }
 
   /** Walking steps from every tile to the nearest foe of a side, around anything that blocks a move. */

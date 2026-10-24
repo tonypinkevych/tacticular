@@ -1,6 +1,6 @@
 import { Dice } from "../combat/dice"
 import type { Point } from "../map/point"
-import { terrain } from "../map/terrain"
+import { BIOMES, type Biome, terrain } from "../map/terrain"
 import { blocksMove } from "../map/tile"
 import type { AlienId, ClassId } from "../units/profiles"
 import { type Training, Unit } from "../units/unit"
@@ -24,13 +24,15 @@ export interface Conditions {
   threat?: number
   /** The fortress: the Commander joins the aliens. */
   boss?: boolean
+  /** The land of the map; the seed picks one when unset. */
+  biome?: Biome
 }
 
 const ALIENS: AlienId[] = ["grunt", "grunt", "brute", "bomber"]
 
 /** A new mission from a seed: its map, the squad on the bottom row, 3 aliens and more with threat on the top two, one drop, and its goal. */
 export function mission(seed: number, c: Conditions): Game {
-  const board = terrain(seed),
+  const board = terrain(seed, c.biome ?? BIOMES[seed % BIOMES.length]),
     dice = new Dice({ rng: seed * 31 + 7 })
   const free = (rows: number[]) =>
     dice.shuffle(

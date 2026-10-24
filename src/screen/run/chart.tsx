@@ -62,7 +62,9 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
         <Show when={brief()} fallback={<span class="muted">{t("ui.brief.pick")}</span>}>
           {(b) => (
             <>
-              <h2>{t(`ui.task.${b().kind}`)}</h2>
+              <h2>
+                {t(`ui.task.${b().kind}`)} · {t(`ui.biome.${b().biome}`)}
+              </h2>
               <p>{t(`ui.brief.${b().kind}`)}</p>
               <p>
                 <b>{t(`ui.goal.${b().goal}`, { left: 5 })}</b>

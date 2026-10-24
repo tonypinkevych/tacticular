@@ -20,6 +20,9 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
   and spreads to the next forest. A push into water drowns.
 - 2 aliens drop once a mission, on tiles marked a round before.
 - Missions: kill all aliens, take every soldier out by the top row, or hold the beacon for 5 rounds.
+- Maps come in 4 biomes: a village with crossing roads and houses, a forest cut by a river with 2 fords, ruins
+  of rock and rubble, and a field with 2 lines of sandbag trenches.
+- Full cover blocks a shot unless the unit beside it can step out to an open side.
 
 ## The run
 
