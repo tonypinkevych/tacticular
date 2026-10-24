@@ -28,7 +28,7 @@ export class Tactics {
     u.ap -= 1
   }
 
-  /** Whether the soldier's tactic reaches a tile: Shove next to it, Taunt 4 tiles, the others its range, all in sight. */
+  /** Whether the soldier's tactic reaches a tile: Shove next to it, Taunt 4 tiles in sight, the others its range in sight. */
   reaches(u: Unit, p: Point): boolean {
     if (u.profile.tactic === "staggered") return adjacent(u.at, p)
     const range = u.profile.tactic === "taunted" ? TAUNT : u.profile.range
