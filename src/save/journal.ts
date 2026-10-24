@@ -5,6 +5,9 @@ import type { Action } from "../mission/orders"
 /** Nostr event kind of the game log: one start event, then one event per player action. */
 export const KIND = 7350
 
+/** Nostr event kind of the run log: one start event, then one event per choice in the run. */
+export const RUN = 7351
+
 const TAG = ["t", "tacticular"]
 
 const KEY = "tacticular.key"

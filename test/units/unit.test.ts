@@ -10,4 +10,9 @@ describe("unit", () => {
     u.rallied = true
     expect(u.steps()).toBe(2)
   })
+  test("training adds HP and aim; an upgrade adds a use or takes a turn off the wait", () => {
+    const w = Unit.of("w", "warden", "squad", { x: 0, y: 0 }, { hp: 1, aim: 5, upgrades: 1 })
+    const r = Unit.of("r", "ranger", "squad", { x: 0, y: 0 }, { hp: 0, aim: 0, upgrades: 1 })
+    expect([w.hp, w.profile.aim, w.uses, r.profile.cooldown]).toEqual([8, 70, 2, 2])
+  })
 })

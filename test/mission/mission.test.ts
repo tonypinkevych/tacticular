@@ -1,7 +1,7 @@
 import { mission } from "../../src/mission/mission"
 
 describe("mission", () => {
-  test("the squad starts on the bottom row and 4 aliens on the top two", () => {
+  test("the squad starts on the bottom row and 3 aliens on the top two", () => {
     const g = mission(3, {
       goal: "kill",
       squad: [
@@ -12,7 +12,7 @@ describe("mission", () => {
     })
     expect(g.units.filter((u) => u.side === "squad").map((u) => u.at.y)).toEqual([7, 7, 7])
     const aliens = g.units.filter((u) => u.side === "enemy")
-    expect(aliens).toHaveLength(4)
+    expect(aliens).toHaveLength(3)
     expect(aliens.every((u) => u.at.y <= 1)).toBe(true)
   })
   test("a soldier keeps the HP it carries in", () => {
@@ -24,13 +24,13 @@ describe("mission", () => {
     expect(g.units.some((u) => u.kind === "commander")).toBe(true)
   })
   test("threat adds aliens", () => {
-    const g = mission(3, { goal: "kill", squad: [{ id: "a", kind: "vanguard" }], threat: 2 })
-    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(5)
+    const g = mission(3, { goal: "kill", squad: [{ id: "a", kind: "vanguard" }], threat: 3 })
+    expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(4)
   })
-  test("Evac marks the top row; Defend marks a beacon in the middle", () => {
+  test("Evac marks the top row; Defend marks a beacon near the squad", () => {
     const evac = mission(4, { goal: "evac", squad: [{ id: "a", kind: "vanguard" }] })
     expect(evac.goal.kind === "evac" && evac.goal.tiles.every((p) => p.y === 0)).toBe(true)
     const defend = mission(4, { goal: "defend", squad: [{ id: "a", kind: "vanguard" }] })
-    expect(defend.goal.kind === "defend" && defend.goal.at.y >= 3 && defend.goal.at.y <= 4).toBe(true)
+    expect(defend.goal.kind === "defend" && defend.goal.at.y === 5).toBe(true)
   })
 })

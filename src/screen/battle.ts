@@ -41,7 +41,10 @@ export class Battle {
   private runTo: Point | null = null
   private thinking = false
 
-  constructor(start: Game) {
+  constructor(
+    start: Game,
+    private readonly record: (action: Action, after: Game) => void = () => {},
+  ) {
     ;[this.game, this.setGame] = createSignal(start, { equals: false })
     ;[this.selected, this.select] = createSignal<string | null>(null)
     ;[this.armed, this.arm] = createSignal(false)
@@ -228,6 +231,7 @@ export class Battle {
     const before = this.game()
     try {
       const after = before.apply(action)
+      this.record(action, after)
       this.playback.play(before, action, after)
       this.disarm()
       this.setGame(after)

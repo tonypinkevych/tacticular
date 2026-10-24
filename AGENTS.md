@@ -16,11 +16,10 @@ The folders name what the game is made of.
 - **`src/combat/`**: dice, weapons, attacks and abilities.
 - **`src/aliens/`**: the mind that plays a side (always the aliens) and the alien drops.
 - **`src/mission/`**: the game, its goals, turns and orders, and the mission generator.
-- **`src/campaign/`**: the campaign: the world's regions, weeks, both economies, operations, infiltration, research
-  and soldier levels.
+- **`src/run/`**: the roguelike run: the draft, the chart of the act, carried HP, rewards and training.
 - **`src/save/`**: the signed event logs of the run and the mission, and their saved copies.
 - **`src/i18n/`**: every string the player reads, in English and Russian, with the same keys.
-- **`src/screen/`**: the canvas board, the HUD, playback and the run screens. It never changes a `Game` except through an action.
+- **`src/screen/`**: the ink board, the HUD, playback and the run screens. It never changes a `Game` except through an action.
 
 Everything outside `src/screen/` and `src/main.tsx` has no DOM, no canvas and no clock. Random numbers come from
 the seeded stream only, so one seed and one action log always give the same game. The alien AI decides through

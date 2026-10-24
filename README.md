@@ -1,91 +1,73 @@
 # Tacticular
 
-A chess-like, turn-based tactics game in the browser, played as a campaign to free the Earth. You lead squads of up to 4
-against alien war bands on random maps with fog of war. Position, information and timing win; brute force
-loses.
+A chess-like, turn-based tactics game in the browser, played as a short roguelike run. You lead a squad of 3 on an
+8×8 board that you see whole, like Into the Breach, drawn in hand-drawn ink. Position and timing win.
 
 ## Core rules
 
-- Each soldier has 2 action points (AP). A move costs 1 AP. An attack, Overwatch or Hunker ends the turn.
-- An attack is d20 + Aim against Defense; cover adds Defense. A flank or an unaware target is an advantage.
-  More advantages than disadvantages give a sure critical hit; otherwise each disadvantage left costs 3. Melee
-  aliens and hunkered units never take a sure hit: the flank gives an edge instead.
-- A unit at half HP or less is wounded: it attacks shaken and cannot dash.
-- Aliens show whom they will shoot next and the tile they will fire from. Hover an alien to see where it can go
-  next turn; plan a move to see which aliens could flank that tile next turn. Aliens avoid known overwatch.
-- Soldiers start concealed. Enemies patrol, hear noise and investigate; a group that calms down stays wary. The
-  alarm rises every second round and after each round with a loud shot or blast; at 4, 7 and 10 the aliens get
-  help. A "?" marks where the squad heard an alien it cannot see.
-- Missions: kill the Warchief, or bomb a relay, and then leave or kill the rest; take the intel and leave; free a
-  captive; or hold a beacon for 8 rounds against growing waves. A downed soldier left outside the evac zone is
-  lost.
+- Each soldier has 2 action points (AP). A move costs 1 AP and a dash costs 2. A shot, Overwatch or a skill ends
+  the turn.
+- The class sets how far one move goes: 2 tiles for the Vanguard and the Cleric, 1 for the Ranger and the
+  Warden. Forest and rubble end a move. Cover, buildings, water and barrels block it.
+- A shot hits by percent: the shooter's aim, −20 behind low cover, −40 behind high cover. A flank removes the
+  cover and gives a 50% crit, which does 1 more damage.
+- Each class has one skill and one passive: Run & Gun, Headshot, Grenade and Medkit. Each alien has one skill:
+  covering fire, a charge, a marked blast or a war cry. The Bomber's blast and the Brute's charge show on the
+  board a turn before they land.
+- Blasts tear sandbags and crack rocks, then leave rubble. Barrels blow up and set their tile on fire. Fire burns
+  and spreads to the next forest. A push into water drowns.
+- 2 aliens drop once a mission, on tiles marked a round before.
+- Missions: kill all aliens, take every soldier out by the top row, or hold the beacon for 5 rounds.
 
-## Skills and levels
+## The run
 
-Each class has 3 skills and an ultimate. A soldier gets 1 rank point at each of 11 levels. A skill takes 3 ranks,
-each with a higher number or a shorter cooldown; a skill at rank n needs level 2n−1. The ultimate opens at level 6
-and takes rank 2 at level 11. The alien AI and the bot squad try each ready skill on copies of the game and use
-the best one.
+Pick 3 of the 4 classes. Cross a chart of 4 layers of missions to the Commander's fortress. Each mission raises the
+threat, and each 3 threat adds an alien. Soldiers keep their HP between missions and heal 2. After a win the fallen
+come back with 1 HP; after a loss they are dead. A won mission offers a reward: heal all, a recruit, training
+(+1 HP, +5 aim) or a skill upgrade.
 
-## The campaign
-
-Pick the goal: free 1, 3 or all 8 regions. Each week you contact regions with Intel, recruit and research with
-Supplies and Materials, rank up soldiers and send squads of 3 or 4 to operations. A short squad or a long prep
-infiltrates better: fewer aliens, or groups marked. Won operations raise a region's Resistance and cut its alien
-Strength; at full Resistance and low Strength, a Liberation frees the region and turns on its bonus.
-
-The aliens get income from the regions they hold. They spend it on Strength where you are active, on Dark Events
-that make every mission harder until you end them, and on the Project. Their Force Level rises with time and
-brings new kinds, skill ranks and HP. When the Project ends, the war is lost.
-
-## Run
+## Run the game
 
 You need Node.js 20 or later and pnpm.
 
 ```sh
 pnpm install
 pnpm dev        # play at the address that Vite shows
-pnpm test       # run the rule, AI, mission, save and string tests
+pnpm test       # run the rule, AI, mission, run, save and string tests
 pnpm build      # type-check and build to dist/
 ```
 
 ## Controls
 
-- Click a soldier, then click a tile to move, or click an enemy to see the hit chance. Click the enemy again to attack.
-- Use the panel for abilities, items, Overwatch, Hunker, Reload, Door and End turn. Door (`0` or `O`) opens or
-  closes a door next to the soldier for 1 AP.
-- Point at a tile to see where the soldier can move, the path, its cover and who flanks it there. Point at an
-  alien to see the hit chance.
-- `Tab` selects the next soldier, or with an attack or a skill armed, its next target. `Esc` or a right click cancels. `Z` shows where aliens spot or fire. While the selected soldier is concealed, a red fill always shows where seen aliens would spot it.
-- Drag or use the arrow keys to move the camera; the wheel zooms.
-- The EN/RU switch changes the language. The game remembers your choice.
+- Click a soldier to select it. Click a tile to move, or click an alien or a barrel to shoot.
+- `3` arms the skill, `4` sets Overwatch, `Enter` ends the turn, `Tab` selects the next soldier with AP, `Esc` or a
+  right click cancels.
+- Point at an alien to see the hit chance, the cover, the damage and the crit chance.
 
 ## Save and action log
 
-The game keeps two logs in `localStorage`: the campaign's seed, goal and choices (kind 7352), and the current mission's
-seed, conditions and actions (kind 7350). When you open the page again, the game replays both through the
-rules. Each entry is a signed Nostr event (NIP-01) with a local key, so the logs can go to relays later. If
-an event is changed, the game refuses the save.
+The game keeps two logs in `localStorage`: the run's seed and choices (kind 7351), and the current mission's seed,
+conditions and actions (kind 7350). When you open the page again, the game replays both through the rules. Each
+entry is a signed Nostr event (NIP-01) with a local key. If an event is changed, the game refuses the save.
 
 ## Layout
 
 ```
-src/map/       Board, tiles, the map generator (Terrain), Sight, Cover, Reach, Fire
+src/map/       Board, tiles, the map generator (terrain), line of fire, cover, Reach
 src/units/     Unit and the profiles of the classes and the aliens
-src/combat/    Dice, weapons, Combat (odds and attacks), Abilities
-src/aliens/    Mind (the AI), Foresight (its look-ahead at skills), Stealth (alerts, noise, the alarm), Reinforcements
-src/mission/   Game, Turn, Orders, the mission generator, Match (the alien side and AI balance runs)
-src/campaign/  Campaign (weeks, both economies, operations, infiltration), the world's regions, soldier levels
-src/save/      Journal (signed Nostr event logs), the saved Session (a mission) and Chronicle (the campaign)
+src/combat/    Dice, Combat (odds, shots, blasts, pushes), Abilities
+src/aliens/    Mind (the AI that plays a side), Reinforcements (the drops)
+src/mission/   Game, its goals, Turn, Orders, the mission generator
+src/run/       Run (draft, chart, rewards, training) and Chart
+src/save/      Journal (signed Nostr event logs) and Chronicle (the saved run and mission)
 src/i18n/      Locale: English and Russian strings
-src/screen/    the glyph board (board/), the HUD (hud/), playback with sound (playback/), campaign screens (run/)
+src/screen/    the ink board (board/), the HUD (hud/), Playback (playback/), the run screens (run/)
 test/          Vitest specs, one folder per source folder; test/play/ holds cases that cross modules
 ```
 
-Only `src/screen/` has rendering code. The rest uses a seeded random stream, so the same seed and actions always
-give the same game.
+Only `src/screen/` has drawing code. The rest uses a seeded random stream, so the same seed and actions always give
+the same game.
 
 ## Credits
 
-All glyphs, tiles and icons are drawn for this game as 1-bit bitmaps in `src/screen/board/glyphs.ts`. The time of day
-comes from the mission seed and changes only the look.
+Every tile, unit and effect is drawn in code in `src/screen/board/` and baked into sprite frames.

@@ -3,6 +3,15 @@ import { type Kind, PROFILES, type Profile } from "./profiles"
 
 export type Side = "squad" | "enemy"
 
+/** What a soldier gained in a run: HP, aim, and skill upgrades (a use more, or a turn less to wait). */
+export interface Training {
+  hp: number
+  aim: number
+  upgrades: number
+}
+
+const UNTRAINED: Training = { hp: 0, aim: 0, upgrades: 0 }
+
 /** One soldier or alien on the board, with what its turn has left. */
 export class Unit {
   constructor(
@@ -18,16 +27,30 @@ export class Unit {
     public overwatch = false,
     public rallied = false,
     public out = false,
+    readonly extra: Training = UNTRAINED,
   ) {}
 
   /** A fresh unit of a kind with full HP and its skill uses. */
-  static of(id: string, kind: Kind, side: Side, at: Point): Unit {
-    const p = PROFILES[kind]
-    return new Unit(id, kind, side, { ...at }, p.hp, 2, false, 0, p.uses)
+  static of(id: string, kind: Kind, side: Side, at: Point, extra: Training = UNTRAINED): Unit {
+    const u = new Unit(id, kind, side, { ...at }, 0, 2, false, 0, null, false, false, false, extra)
+    u.hp = u.profile.hp
+    u.uses = u.profile.uses
+    return u
   }
 
+  /** The profile of the unit's kind with its training. */
   get profile(): Profile {
-    return PROFILES[this.kind]
+    const p = PROFILES[this.kind],
+      e = this.extra
+    if (e === UNTRAINED) return p
+    const limited = p.uses !== null
+    return {
+      ...p,
+      hp: p.hp + e.hp,
+      aim: p.aim + e.aim,
+      cooldown: limited ? p.cooldown : Math.max(1, p.cooldown - e.upgrades),
+      uses: limited ? (p.uses ?? 0) + e.upgrades : null,
+    }
   }
 
   /** Standing on the board: not dead and not gone by the evac. */
@@ -54,6 +77,7 @@ export class Unit {
       this.overwatch,
       this.rallied,
       this.out,
+      this.extra,
     )
   }
 }

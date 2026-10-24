@@ -235,3 +235,80 @@ kbd {
   background: var(--panel);
   color: var(--ink);
 }
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 16px;
+  min-height: 100vh;
+}
+.screen h1 {
+  margin: 0;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.offers,
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.roster .card {
+  width: 220px;
+}
+.offer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 200px;
+  padding: 12px;
+  text-transform: none;
+}
+.offer .portrait {
+  width: 64px;
+  height: 64px;
+}
+.offer.on {
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.go {
+  padding: 8px 24px;
+}
+.go:disabled,
+.node:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chart {
+  position: relative;
+}
+.chart svg {
+  position: absolute;
+  inset: 0;
+}
+.chart line {
+  stroke: var(--line-hi);
+  stroke-dasharray: 4 4;
+}
+.node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.node.open {
+  border-color: var(--ink);
+}
+.node.on {
+  background: var(--yellow);
+}
+.node.here {
+  box-shadow: inset 0 0 0 2px var(--red);
+}
