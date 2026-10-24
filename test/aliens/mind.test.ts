@@ -39,15 +39,16 @@ describe("mind", () => {
     const g = aliens(setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })]))
     expect(new Mind(g).next()).toEqual({ type: "shoot", unit: "b", target: "v" })
   })
-  test("a Bomber marks a blast on the squad", () => {
-    const g = aliens(
+  test("a Bomber marks a blast on the squad in its turn", () => {
+    let g = aliens(
       setup(open(), [
         squad("r", "ranger", { x: 3, y: 4 }),
         squad("c", "cleric", { x: 3, y: 5 }),
         enemy("m", "bomber", { x: 3, y: 1 }),
       ]),
     )
-    expect(new Mind(g).next()).toMatchObject({ type: "skill", unit: "m" })
+    for (let i = 0; i < 3 && g.phase === "enemy"; i++) g = g.apply(new Mind(g).next())
+    expect(g.marks.map((m) => m.kind)).toEqual(["blast"])
   })
   test("a Commander with allies roars first", () => {
     const g = aliens(
@@ -90,18 +91,32 @@ describe("mind", () => {
     g.unit("c").ap = 1
     expect(new Mind(g).next()).toEqual({ type: "hunker", unit: "c" })
   })
-  test("a soldier an alien aims at steps out of its sight", () => {
+  test("a soldier an alien aims at moves where the aimed shot is less likely to hit", () => {
     const g = setup(rows(["........", "........", "........", "........", "........", "........", "...hhh.."]), [
       squad("c", "cleric", { x: 2, y: 6 }),
       enemy("g", "commander", { x: 3, y: 3 }),
     ])
     g.marks.push({ kind: "shot", unit: "g", target: "c", tiles: [{ x: 2, y: 6 }] })
+    const chance = (x: typeof g) =>
+      x.combat.canShoot(x.unit("g"), x.unit("c")) ? x.combat.odds(x.unit("g"), x.unit("c"), { aimed: true }).chance : 0
     const after = g.apply(new Mind(g).next())
-    expect(after.combat.canShoot(after.unit("g"), after.unit("c"))).toBe(false)
+    expect(chance(after)).toBeLessThan(chance(g))
   })
   test("a Pod neither moves nor attacks", () => {
     const g = aliens(setup(open(), [squad("r", "ranger", { x: 3, y: 2 }), enemy("p", "pod", { x: 3, y: 1 })]))
     expect(new Mind(g).next()).toEqual({ type: "endTurn" })
     expect(() => g.apply({ type: "move", unit: "p", to: { x: 3, y: 0 } })).toThrow()
+  })
+  test("a soldier stays out of the reach aliens get with one move", () => {
+    const g = setup(rows(["........", "........", "........", "........", "...l.l.."]), [
+      squad("c", "cleric", { x: 3, y: 7 }),
+      enemy("g", "grunt", { x: 3, y: 0 }),
+      enemy("h", "grunt", { x: 6, y: 0 }),
+    ])
+    g.unit("c").ap = 1
+    const after = g.apply(new Mind(g).next())
+    const c = after.unit("c")
+    for (const f of after.foes(c))
+      for (const q of [f.at, ...after.reach(f, 1).tiles()]) expect(after.combat.canShoot(f, c, q)).toBe(false)
   })
 })

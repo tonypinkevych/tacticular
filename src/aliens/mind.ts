@@ -16,7 +16,9 @@ interface Plan {
 }
 
 const KILL = 3
-const FLANK = 3
+const FLANK = 4
+/** How much a side minds the damage the foes' best replies can deal: aliens take more risk than soldiers. */
+const RISK: Record<Side, number> = { squad: 0.5, enemy: 0.3 }
 const NEAR = 0.5
 const SIDE = 0.3
 const BUNCH = 0.4
@@ -33,6 +35,7 @@ const OWN: Record<Status, number> = { suppressed: 0.6, staggered: 0.3, exposed: 
  */
 export class Mind {
   private readonly fields = new Map<Side, number[]>()
+  private readonly from = new Map<string, Point[]>()
 
   constructor(private readonly game: Game) {}
 
@@ -157,24 +160,46 @@ export class Mind {
     return out
   }
 
-  /** What standing on a tile is worth: its cover against each foe, less the damage foes can deal there. */
+  /** What standing on a tile is worth: its cover against each foe, less the damage each foe's best reply deals there. */
   private ground(u: Unit, at: Point): number {
     const foes = this.game.foes(u)
     if (!foes.length) return 0
     return this.moved(u, at, () => {
       const shelter = foes.reduce((s, f) => s + cover(this.game.board, at, f.at) / 40, 0) / foes.length
-      const threat = foes.reduce(
-        (s, f) => s + (this.game.combat.canShoot(f, u) ? this.worth(this.game.combat.odds(f, u), u) : 0),
-        0,
-      )
+      const threat = foes.reduce((s, f) => s + this.reply(f, u), 0)
       const marked = this.game.marks.some(
         (m) => !m.target && m.tiles.some((p) => same(p, at)) && this.game.unit(m.unit).side !== u.side,
       )
       const goal = this.game.goal
       const beacon = goal.kind === "defend" && adjacent(at, goal.at, true) ? (u.side === "enemy" ? 1.2 : 0.8) : 0
       const fire = this.game.board.at(at) === "fire" ? 1 : 0
-      return shelter * 0.8 - threat * 0.5 - this.aimed(u) - (marked ? 3 : 0) - fire + beacon + this.team(u, at)
+      return shelter * 0.8 - threat * RISK[u.side] - this.aimed(u) - (marked ? 3 : 0) - fire + beacon + this.team(u, at)
     })
+  }
+
+  /**
+   * The damage a foe is expected to deal to a unit where it stands now with its best reply: a shot, or claws, from
+   * its tile or from a tile one move away; a Staggered foe cannot move first.
+   */
+  private reply(f: Unit, u: Unit): number {
+    const game = this.game
+    if (f.profile.range === 0) return 0
+    let best = 0
+    for (const q of this.steps(f)) {
+      if (same(q, u.at)) continue
+      const reach = f.profile.melee ? adjacent(q, u.at) : game.combat.canShoot(f, u, q)
+      if (reach) best = Math.max(best, this.worth(game.combat.odds(f, u, { from: q }), u))
+    }
+    return best
+  }
+
+  /** The tiles a unit can act from in its next turn: its own, and those one move away unless it is Staggered. */
+  private steps(f: Unit): Point[] {
+    const known = this.from.get(f.id)
+    if (known) return known
+    const tiles = [f.at, ...(f.status === "staggered" ? [] : this.game.reach(f, 1).tiles())]
+    this.from.set(f.id, tiles)
+    return tiles
   }
 
   /** For an alien, what a tile adds to the pack: a flank on a soldier (more with a shot from cover), sides the other aliens leave open, and room from them. */
