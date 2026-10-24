@@ -264,8 +264,16 @@ export class Battle {
     this.next()
   }
 
-  /** The tiles to mark for the selected soldier and the chosen action. */
+  /** The tiles to mark for the selected soldier and the chosen action, and the blast of a pointed or aimed barrel. */
   zones(): Zones {
+    const g = this.game(),
+      zones = this.base(),
+      p = (this.mode() === "shoot" && this.planned()) || this.hovered()
+    if (this.mode() === "skill" || !p || g.board.at(p) !== "barrel") return zones
+    return { ...zones, area: blast(g, p) }
+  }
+
+  private base(): Zones {
     const g = this.game(),
       u = this.unit(),
       none: Zones = { move: [], dash: [], reach: [], targets: [], area: [], foeMove: [], foeShot: [] }
@@ -382,6 +390,18 @@ export class Battle {
       requestAnimationFrame(wait)
     })
   }
+}
+
+/** The tiles a barrel's blast hits, with the blasts of the barrels it sets off. */
+function blast(g: Game, at: Point): Point[] {
+  const hit: Point[] = [],
+    blown: Point[] = [at]
+  for (let i = 0; i < blown.length; i++)
+    for (const p of [blown[i], ...ORTHOGONAL.map((d) => plus(blown[i], d))].filter((q) => g.board.inside(q))) {
+      if (!hit.some((q) => same(p, q))) hit.push(p)
+      if (g.board.at(p) === "barrel" && !blown.some((q) => same(p, q))) blown.push(p)
+    }
+  return hit
 }
 
 function all(g: Game): Point[] {

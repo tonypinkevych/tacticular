@@ -140,4 +140,16 @@ describe("battle", () => {
     b.choose("overwatch")
     expect(b.game().unit("r").overwatch).toBe(true)
   })
+  test("the cursor on a barrel shows its blast, and the blast of the barrel next to it", () => {
+    const b = new Battle(
+      setup(
+        ["........", "........", "...bb...", "........", "........", "........", "........", "........"],
+        [squad("r", "ranger", { x: 3, y: 6 }), squad("w", "warden", { x: 5, y: 6 })],
+      ),
+    )
+    b.begin(0)
+    b.point({ x: 3, y: 2 })
+    const key = (p: { x: number; y: number }) => `${p.x},${p.y}`
+    expect(b.zones().area.map(key).sort()).toEqual(["3,2", "4,2", "2,2", "5,2", "3,1", "3,3", "4,1", "4,3"].sort())
+  })
 })
