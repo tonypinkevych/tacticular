@@ -9,9 +9,11 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
   the turn.
 - The class sets how far one move goes: 2 tiles for the Vanguard and the Cleric, 1 for the Ranger and the
   Warden. Forest and rubble end a move. Cover, buildings, water and barrels block it.
-- A shot hits by percent: the shooter's aim, −20 behind low cover, −40 behind high cover. A flank removes the
-  cover and gives a 50% crit, which does 1 more damage.
-- Each class has one skill and one passive: Run & Gun, Headshot, Grenade and Medkit. Each alien has one skill:
+- A shot hits by percent: the shooter's aim, −20 behind low cover, −40 behind high cover or in a forest. Cover on
+  a side counts only against a shooter 2 or more tiles away on that axis, so a foe next to you or diagonal past
+  your cover flanks you. A flank gives +10 aim and a 50% crit, which does 1 more damage.
+- Each class has one skill and one passive: Run & Gun, Headshot, Grenade and Medkit. A Vanguard hit next to its
+  target pushes it back, into water or fire too. A Medkit gives an ally with no AP 1 AP back. Each alien has one skill:
   covering fire, a charge, a marked blast or a war cry. The Bomber's blast and the Brute's charge show on the
   board a turn before they land.
 - Blasts tear sandbags and crack rocks, then leave rubble. Barrels blow up and set their tile on fire. Fire burns
@@ -39,8 +41,10 @@ pnpm build      # type-check and build to dist/
 
 ## Controls
 
-- Click a soldier to select it. Click a tile to move, or click an alien or a barrel to shoot.
-- `3` arms the skill, `4` sets Overwatch, `Enter` ends the turn, `Tab` selects the next soldier with AP, `Esc` or a
+- Click a soldier to select it. Click a tile, an alien or a barrel to plan a move or a shot, and click it again to
+  do it. The planned path marks fire and overwatch on the way.
+- Point at an alien to see where it can walk and what it can hit. The turn ends on its own when no soldier has AP.
+- `3` arms the skill, `4` sets Overwatch, `Enter` or the End turn button ends the turn, `Tab` selects the next soldier with AP, `Esc` or a
   right click cancels.
 - Point at an alien to see the hit chance, the cover, the damage and the crit chance.
 

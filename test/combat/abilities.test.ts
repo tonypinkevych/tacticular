@@ -54,6 +54,15 @@ describe("squad skills", () => {
     g.unit("v").hp = 6
     expect(g.apply({ type: "skill", unit: "c", target: "v" }).unit("v").hp).toBe(7)
   })
+  test("a Medkit gives an ally with no AP 1 AP back", () => {
+    const g = setup(open(), [
+      squad("c", "cleric", { x: 3, y: 6 }),
+      squad("v", "vanguard", { x: 4, y: 6 }),
+      enemy("g", "grunt", { x: 0, y: 0 }),
+    ])
+    g.unit("v").ap = 0
+    expect(g.apply({ type: "skill", unit: "c", target: "v" }).unit("v").ap).toBe(1)
+  })
   test("a Medkit needs the ally next to the Cleric", () => {
     const g = setup(open(), [
       squad("c", "cleric", { x: 3, y: 6 }),

@@ -30,9 +30,9 @@ describe("hit chance", () => {
     const g = sniper(true)
     expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 60, crit: 0, damage: 2 })
   })
-  test("a flank removes the cover and gives a 50% crit", () => {
+  test("a flank removes the cover, adds 10 to the aim and gives a 50% crit", () => {
     const g = sniper(false)
-    expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 80, crit: 50 })
+    expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 90, crit: 50 })
   })
   test("Steady gives the Ranger 20 when it did not move, up to 95", () => {
     const g = sniper(true, false)
@@ -42,8 +42,17 @@ describe("hit chance", () => {
     ).toBe(95)
   })
   test("Point blank gives the Vanguard 20 next to its target", () => {
-    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 2 }), enemy("g", "grunt", { x: 3, y: 1 })])
-    expect(g.combat.odds(g.unit("v"), g.unit("g")).chance).toBe(90)
+    const g = setup(rows(["........", "........", "........", "........", "........", "...l...."]), [
+      squad("v", "vanguard", { x: 3, y: 4 }),
+      enemy("g", "grunt", { x: 3, y: 3 }),
+      enemy("h", "grunt", { x: 3, y: 6 }),
+    ])
+    expect(g.combat.odds(g.unit("v"), g.unit("g")).chance).toBe(95)
+    expect(g.combat.odds(g.unit("v"), g.unit("h")).chance).toBe(50)
+  })
+  test("a Vanguard hit next to its target pushes it back", () => {
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 2 }), enemy("g", "brute", { x: 3, y: 1 })])
+    expect(lucky(g, 95, 100).apply({ type: "shoot", unit: "v", target: "g" }).unit("g").at).toEqual({ x: 3, y: 0 })
   })
   test("Aid takes 10 from shots at an ally next to the Cleric", () => {
     const g = setup(open(), [
@@ -51,7 +60,7 @@ describe("hit chance", () => {
       squad("c", "cleric", { x: 4, y: 6 }),
       enemy("g", "grunt", { x: 3, y: 2 }),
     ])
-    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(55)
+    expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(80)
   })
   test("a target past the range or behind a rock cannot be shot", () => {
     const far = setup(open(), [squad("r", "ranger", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 1 })])

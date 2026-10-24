@@ -36,7 +36,7 @@ export class Combat {
       from = fire.from ?? shooter.at
     if (p.melee) return { chance: 100, crit: 0, damage: p.damage, cover: 0 }
     const c = cover(this.game.board, target.at, from)
-    let aim = p.aim - c - (fire.penalty ?? 0)
+    let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
     if (p.passive === "pointBlank" && adjacent(from, target.at)) aim += 20
     if (p.passive === "steady" && !shooter.moved) aim += 20
     if (this.game.allies(target).some((a) => a.profile.passive === "aid" && a !== target && adjacent(a.at, target.at)))
@@ -44,7 +44,7 @@ export class Combat {
     return { chance: Math.max(5, Math.min(95, aim)), crit: c === 0 ? 50 : 0, damage: p.damage, cover: c }
   }
 
-  /** Rolls a shot: a hit takes the damage, a crit 1 more; a melee hit pushes the target back. */
+  /** Rolls a shot: a hit takes the damage, a crit 1 more; a melee hit or a point blank hit pushes the target back. */
   fire(shooter: Unit, target: Unit, fire: Fire = {}): void {
     const o = this.odds(shooter, target, fire),
       dice = this.game.dice
@@ -62,7 +62,12 @@ export class Combat {
     if (shooter.profile.passive === "shred" && guard && ["bags", "torn"].includes(this.game.board.at(guard)))
       this.game.board.break(guard)
     this.hurt(target, dmg)
-    if (shooter.profile.melee && target.alive()) this.push(target, shooter.at)
+    const from = fire.from ?? shooter.at
+    if (
+      target.alive() &&
+      (shooter.profile.melee || (shooter.profile.passive === "pointBlank" && adjacent(from, target.at)))
+    )
+      this.push(target, from)
   }
 
   hurt(target: Unit, dmg: number): void {

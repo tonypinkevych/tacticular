@@ -49,6 +49,7 @@ export class Abilities {
         check(t.alive() && t.side === u.side && (t === u || adjacent(t.at, u.at)), "range")
         const amount = Math.min(2, t.profile.hp - t.hp)
         t.hp += amount
+        if (t !== u) t.ap = Math.max(t.ap, 1)
         game.log.push({ key: "log.heal", params: { unit: u.id, target: t.id, amount } })
         break
       }

@@ -14,7 +14,13 @@ describe("cover", () => {
   test("cover on another side does not count", () => {
     expect(cover(board(["........", "...h...."]), { x: 3, y: 2 }, { x: 7, y: 2 })).toBe(0)
   })
-  test("a forest under the target gives 20", () => {
-    expect(cover(board(["........", "........", "...T...."]), { x: 3, y: 2 }, { x: 7, y: 2 })).toBe(20)
+  test("a foe diagonal to the target beside its cover flanks it", () => {
+    expect(cover(board(["........", "........", "....h..."]), { x: 3, y: 2 }, { x: 4, y: 1 })).toBe(0)
+  })
+  test("a forest under the target gives 40", () => {
+    expect(cover(board(["........", "........", "...T...."]), { x: 3, y: 2 }, { x: 7, y: 2 })).toBe(40)
+  })
+  test("a foe next to a target in a forest flanks it", () => {
+    expect(cover(board(["........", "........", "...T...."]), { x: 3, y: 2 }, { x: 4, y: 3 })).toBe(0)
   })
 })

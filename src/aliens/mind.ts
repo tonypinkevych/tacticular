@@ -167,7 +167,9 @@ export class Mind {
       case "medkit":
         for (const a of game.allies(u)) {
           const missing = a.profile.hp - a.hp
-          if (missing >= 2 && (a === u || adjacent(a.at, at))) skill(Math.min(2, missing) * 0.9, { target: a.id })
+          const shot = a !== u && a.ap === 0 && foes.some((f) => combat.canShoot(a, f)) ? 1.5 : 0
+          if ((missing >= 2 || shot) && (a === u || adjacent(a.at, at)))
+            skill(Math.min(2, missing) * 0.9 + shot, { target: a.id })
         }
         break
       case "covering":
