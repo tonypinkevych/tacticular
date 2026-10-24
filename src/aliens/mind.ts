@@ -13,6 +13,12 @@ interface Plan {
 }
 
 const KILL = 3
+const FLANK = 3
+const NEAR = 0.5
+const SIDE = 0.3
+const BUNCH = 0.4
+/** What a hurt target adds to a shot at it, for each HP it lost: the side focuses fire. */
+const FOCUS = 0.15
 
 /**
  * The player of a side: for each unit with AP it weighs where to stand and what to do there, through the
@@ -78,8 +84,27 @@ export class Mind {
       )
       const goal = this.game.goal
       const beacon = goal.kind === "defend" && adjacent(at, goal.at, true) ? (u.side === "enemy" ? 1.2 : 0.8) : 0
-      return shelter * 0.8 - threat * 0.5 - (marked ? 3 : 0) - (this.game.board.at(at) === "fire" ? 1 : 0) + beacon
+      const fire = this.game.board.at(at) === "fire" ? 1 : 0
+      return shelter * 0.8 - threat * 0.5 - (marked ? 3 : 0) - fire + beacon + this.team(u, at)
     })
+  }
+
+  /** For an alien, what a tile adds to the pack: a flank on a soldier (more with a shot from cover), sides the other aliens leave open, and room from them. */
+  private team(u: Unit, at: Point): number {
+    if (u.side !== "enemy") return 0
+    const game = this.game,
+      others = game.allies(u).filter((a) => a !== u)
+    let value = 0
+    for (const f of game.foes(u)) {
+      const shot = game.combat.canShoot(u, f, at),
+        flank = cover(game.board, f.at, at) === 0 && distance(f.at, at) <= u.profile.range + 2
+      const safe = cover(game.board, at, f.at) > 0
+      if (flank) value += shot ? (safe ? FLANK : FLANK / 2) : NEAR
+      if (!shot) continue
+      const side = toward(f.at, at)
+      if (!others.some((a) => same(toward(f.at, a.at), side) && game.combat.canShoot(a, f))) value += SIDE
+    }
+    return value - BUNCH * others.filter((a) => adjacent(a.at, at)).length
   }
 
   /** A pull toward the nearest foe by walking steps, past the unit's range when it has a shot from the tile, or a soldier's pull toward the evac; for aliens it grows each round after the sixth. */
@@ -209,7 +234,7 @@ export class Mind {
       c = o.crit / 100
     const dmg = p * (o.damage + c)
     const kill = target.hp <= o.damage ? p : target.hp <= o.damage + 1 ? p * c : 0
-    return dmg + kill * KILL
+    return dmg + kill * KILL + p * (target.profile.hp - target.hp) * FOCUS
   }
 
   /** Reads the game as if a unit stood on another tile. */
@@ -223,3 +248,6 @@ export class Mind {
     }
   }
 }
+
+/** The direction from one tile to another, each axis as -1, 0 or 1. */
+const toward = (from: Point, to: Point): Point => ({ x: Math.sign(to.x - from.x), y: Math.sign(to.y - from.y) })

@@ -1,4 +1,5 @@
 import { Mind } from "../../src/aliens/mind"
+import { cover } from "../../src/map/cover"
 import { distance } from "../../src/map/point"
 import type { Game } from "../../src/mission/game"
 import { type GoalKind, mission } from "../../src/mission/mission"
@@ -44,5 +45,30 @@ describe("tactics", () => {
     console.log(`kill: careful ${careful}, greedy ${rush} of 100`)
     expect(rush).toBeLessThanOrEqual(35)
     expect(careful - rush).toBeGreaterThanOrEqual(40)
+  }, 120000)
+})
+
+describe("alien tactics", () => {
+  test("aliens fire at least 40% of their shots from a flank", () => {
+    let shots = 0,
+      flanks = 0
+    for (let seed = 1; seed <= 100; seed++) {
+      const kinds = CLASSES.filter((_, i) => i !== seed % 4)
+      let g = mission(seed, { goal: "kill", squad: kinds.map((kind, i) => ({ id: `s${i}`, kind })) })
+      for (let i = 0; i < 3000 && (g.phase === "squad" || g.phase === "enemy"); i++) {
+        const a = new Mind(g).next()
+        if (g.phase === "enemy" && (a.type === "shoot" || a.type === "skill") && a.target) {
+          const u = g.unit(a.unit),
+            t = g.unit(a.target)
+          if (!u.profile.melee) {
+            shots++
+            if (cover(g.board, t.at, u.at) === 0) flanks++
+          }
+        }
+        g = g.apply(a)
+      }
+    }
+    console.log(`alien shots ${shots}, flanks ${flanks}`)
+    expect(flanks / shots).toBeGreaterThanOrEqual(0.4)
   }, 120000)
 })

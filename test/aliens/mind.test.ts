@@ -25,6 +25,16 @@ describe("mind", () => {
     const a = new Mind(g).next()
     expect(a.type === "move" && cover(g.board, a.to, { x: 3, y: 6 })).toBeGreaterThan(0)
   })
+  test("a Grunt facing a soldier behind cover moves to flank it", () => {
+    const g = aliens(
+      setup(rows(["........", "........", "........", "........", "...ll..."]), [
+        squad("r", "ranger", { x: 3, y: 5 }),
+        enemy("g", "grunt", { x: 5, y: 3 }),
+      ]),
+    )
+    const a = new Mind(g).next()
+    expect(a.type === "move" && cover(g.board, { x: 3, y: 5 }, a.to)).toBe(0)
+  })
   test("a Brute next to a soldier claws it", () => {
     const g = aliens(setup(open(), [squad("v", "vanguard", { x: 3, y: 4 }), enemy("b", "brute", { x: 3, y: 3 })]))
     expect(new Mind(g).next()).toEqual({ type: "shoot", unit: "b", target: "v" })

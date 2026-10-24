@@ -33,12 +33,12 @@ describe("run", () => {
     expect([r.stage, r.threat]).toEqual(["mission", 1])
     expect(r.conditions().squad).toHaveLength(3)
   })
-  test("soldiers keep the HP they leave with and heal 2; after a win the fallen come back with 1 HP", () => {
+  test("soldiers keep the HP they leave with and heal 3; after a win the fallen come back with 1 HP", () => {
     const r = drafted()
     go(r)
     const [a, b, c] = r.roster
     r.play({ type: "finish", result: { won: true, hp: { [a.id]: 2, [b.id]: 0, [c.id]: c.max } } })
-    expect(r.roster.map((s) => s.hp)).toEqual([4, 3, c.max])
+    expect(r.roster.map((s) => s.hp)).toEqual([5, 4, c.max])
   })
   test("after a loss the fallen are dead", () => {
     const r = drafted()
