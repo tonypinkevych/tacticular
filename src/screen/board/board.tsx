@@ -205,7 +205,7 @@ export function Board(props: { battle: Battle }) {
                 <b class="big">{a().hit.damage >= a().target.hp ? t("ui.kill") : `−${a().hit.damage}`}</b>
               </div>
               <span class="muted">
-                {t("ui.damage")} {a().hit.damage} · {t("ui.cover")} −{a().hit.cover}
+                {t("ui.cover")} −{a().hit.cover}
               </span>
               <Show when={a().hit.combo && a().target.status}>
                 {(s) => <span class="combo">{t("ui.comboOn", { status: t(`status.${s()}`) })}</span>}

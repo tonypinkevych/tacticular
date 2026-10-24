@@ -32,7 +32,7 @@ export interface Conditions {
 
 const ALIENS: AlienId[] = ["grunt", "grunt", "brute", "bomber"]
 
-/** A new mission from a seed: its map, the squad on the bottom row, 4 aliens and more with threat on the top two, its drops, and its goal. */
+/** A new mission from a seed: its map, the squad on the bottom row, 5 aliens and more with threat on the top two, its drops, and its goal. */
 export function mission(seed: number, c: Conditions): Game {
   const board = terrain(seed, c.biome ?? BIOMES[seed % BIOMES.length]),
     dice = new Dice({ rng: seed * 31 + 7 })
@@ -67,7 +67,7 @@ export function mission(seed: number, c: Conditions): Game {
   })
 }
 
-/** How many aliens a mission starts with: 4, one more for each 3 threat, and the Commander at the fortress. */
+/** How many aliens a mission starts with: 5, one more for each 2 threat, and the Commander at the fortress. */
 export function aliens(c: Pick<Conditions, "threat" | "boss">): number {
   return 5 + Math.floor((c.threat ?? 0) / 2) + (c.boss ? 1 : 0)
 }

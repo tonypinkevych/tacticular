@@ -32,23 +32,24 @@ export class Combat {
   }
 
   /**
-   * The damage of an attack: the weapon damage less the cover cut (1 low, 2 high, doubled on a hunkered target), 1 more
-   * on a flank, and the statuses and passives; never below 0. A Guard behind cover takes 0 from a shot.
+   * The damage of an attack: the weapon damage with the statuses, and for a shot less the cover cut (1 low, 2 high,
+   * doubled on a hunkered target), 1 more on a flank, and the passives; never below 0. A Guard behind cover takes 0.
    */
   hit(shooter: Unit, target: Unit, fire: Fire = {}): Hit {
     const p = shooter.profile,
       from = fire.from ?? shooter.at
+    let status = (fire.more ?? 0) - (fire.less ?? 0)
+    if (target.status === "marked") status += this.spotted(target) ? 2 : 1
+    if (shooter.extra.partner && target.status && p.combo === target.status) status += 1
+    if (shooter.status === "suppressed") status -= 1
     if (p.melee)
       return this.combo(shooter, target, {
-        damage: Math.max(0, p.damage - (target.profile.passive === "parry" ? 1 : 0) - (fire.less ?? 0)),
+        damage: Math.max(0, p.damage - (target.profile.passive === "parry" ? 1 : 0) + status),
         cover: 0,
       })
     const base = cover(this.game.board, target.at, from)
     const c = target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 1) * 2 : base
-    let dmg = p.damage - c + (c === 0 ? 1 : 0) - (fire.less ?? 0) + (fire.more ?? 0)
-    if (target.status === "marked") dmg += this.spotted(target) ? 2 : 1
-    if (shooter.extra.partner && target.status && p.combo === target.status) dmg += 1
-    if (shooter.status === "suppressed") dmg -= 1
+    let dmg = p.damage - c + (c === 0 ? 1 : 0) + status
     if (p.passive === "pointBlank" && adjacent(from, target.at)) dmg += 1
     if (p.passive === "steady" && !shooter.moved) dmg += 1
     if (this.game.allies(target).some((a) => a.profile.passive === "aid" && a !== target && adjacent(a.at, target.at)))

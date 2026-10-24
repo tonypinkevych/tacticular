@@ -221,6 +221,13 @@ describe("branches and traits", () => {
       const hit = g.apply({ type: "shoot", unit: "b", target: "q" })
       expect(hit.unit("q")).toMatchObject({ hp: 6, at: { x: 3, y: 3 } })
     })
+    test("Marked and Suppressed change melee hits too", () => {
+      const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("x", "brute", { x: 3, y: 3 })])
+      g.unit("x").status = "marked"
+      const struck = g.combat.hit(g.unit("b"), g.unit("x")).damage
+      g.unit("x").status = "suppressed"
+      expect([struck, g.combat.hit(g.unit("x"), g.unit("b")).damage]).toEqual([4, 1])
+    })
     test("Parry: claws at the Blade deal 1 less", () => {
       const g = setup(open(), [squad("b", "blade", { x: 3, y: 4 }), enemy("x", "brute", { x: 3, y: 3 })])
       expect(g.combat.hit(g.unit("x"), g.unit("b")).damage).toBe(2)
