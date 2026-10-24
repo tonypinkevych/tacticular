@@ -3,6 +3,7 @@ import { t } from "../../i18n/strings"
 import type { Unit } from "../../units/unit"
 import type { Battle, Mode } from "../battle"
 import { Board } from "../board/board"
+import { Restart } from "../run/restart"
 import { charge } from "./card"
 import { Portrait } from "./portrait"
 
@@ -11,7 +12,7 @@ import { Portrait } from "./portrait"
  * top centre, the alien plans top right, the selected soldier and the squad bottom left, the actions bottom
  * centre and End turn bottom right.
  */
-export function Hud(props: { battle: Battle; onNext: () => void }) {
+export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () => void }) {
   const b = props.battle
   const [muted, setMuted] = createSignal(b.sound.muted)
   const [log, setLog] = createSignal(false)
@@ -225,22 +226,25 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
 
       <Show when={b.notice()}>{(n) => <div class="notice">{t(`illegal.${n()}`)}</div>}</Show>
 
-      <button
-        type="button"
-        class="end-turn"
-        classList={{ wait: busy() }}
-        disabled={busy()}
-        onClick={() => void b.endTurn()}
-      >
-        <svg viewBox="0 0 24 32" aria-hidden="true">
-          <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" />
-          <path class="sand" d="M8 7h8l-4 5zM7 28c1-4 9-4 10 0z" />
-        </svg>
-        <span>{busy() ? t("ui.phase.enemy") : t("ui.endTurn")}</span>
-        <Show when={!busy()}>
-          <kbd>⌫</kbd>
-        </Show>
-      </button>
+      <div class="corner">
+        <Restart onRestart={props.onRestart} />
+        <button
+          type="button"
+          class="end-turn"
+          classList={{ wait: busy() }}
+          disabled={busy()}
+          onClick={() => void b.endTurn()}
+        >
+          <svg viewBox="0 0 24 32" aria-hidden="true">
+            <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" />
+            <path class="sand" d="M8 7h8l-4 5zM7 28c1-4 9-4 10 0z" />
+          </svg>
+          <span>{busy() ? t("ui.phase.enemy") : t("ui.endTurn")}</span>
+          <Show when={!busy()}>
+            <kbd>⌫</kbd>
+          </Show>
+        </button>
+      </div>
 
       <Show when={g().phase === "won" || g().phase === "lost"}>
         <div class="end">

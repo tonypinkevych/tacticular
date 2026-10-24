@@ -301,11 +301,16 @@ kbd {
 .node.here {
   box-shadow: inset 0 0 0 2px var(--red);
 }
-button.end-turn {
-  position: absolute;
+.corner {
+  position: fixed;
   top: 16px;
   right: 16px;
   z-index: 3;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+button.end-turn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -424,6 +429,7 @@ button.link {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  justify-content: space-between;
   pointer-events: none;
 }
 .left > .float {
@@ -800,4 +806,13 @@ button.link {
 }
 .tip small {
   color: var(--muted);
+}
+.restart {
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font-size: 12px;
+}
+.restart.armed {
+  background: var(--red);
+  color: var(--paper);
 }
