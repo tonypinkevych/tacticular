@@ -1,3 +1,4 @@
+import { t } from "../../i18n/strings"
 import { cover } from "../../map/cover"
 import { distance, type Point, same } from "../../map/point"
 import type { Game } from "../../mission/game"
@@ -179,16 +180,21 @@ export class Playback {
       case "log.hit":
       case "log.crit":
       case "log.miss": {
-        const t = after.units.find((x) => x.id === target)
+        const victim = after.units.find((x) => x.id === target)
         const shooter = after.units.find((x) => x.id === id)
         if (alien(id)) this.note(where(id), `${params.chance}%`, "note", 0.5)
         this.beats.push({ length: 0, start: () => this.cue(WEAPON[shooter?.kind ?? "grunt"]) })
-        this.pose(id, alien(id) ? "attack" : this.units.get(id)?.state === "low" ? "lowShoot" : "shoot", 0.4, t?.at)
+        this.pose(
+          id,
+          alien(id) ? "attack" : this.units.get(id)?.state === "low" ? "lowShoot" : "shoot",
+          0.4,
+          victim?.at,
+        )
         const dmg = Number(params.dmg ?? 0)
         const tone = key === "log.miss" ? "miss" : key === "log.crit" ? "crit" : "hit"
         this.note(
           where(target),
-          key === "log.miss" ? "MISS" : key === "log.crit" ? `CRIT −${dmg}` : `−${dmg}`,
+          key === "log.miss" ? t("ui.float.miss") : key === "log.crit" ? t("ui.float.crit", { dmg }) : `−${dmg}`,
           tone,
           0.05,
           tone,
@@ -201,7 +207,7 @@ export class Playback {
         this.pose(id, "death", 0.6)
         break
       case "log.overwatch":
-        this.note(where(id), "OVERWATCH", "note")
+        this.note(where(id), t("ui.overwatch").toUpperCase(), "note")
         break
       case "log.fire":
         this.note(where(target), "−1", "hit")
@@ -213,7 +219,7 @@ export class Playback {
       case "log.warcry":
       case "log.mark":
       case "log.run":
-        this.note(where(id), NAMES[key], "note", 0.05, "skill")
+        this.note(where(id), t(NAMES[key]).toUpperCase(), "note", 0.05, "skill")
         if (key !== "log.run") this.pose(id, "skill", 0.5)
         if (key === "log.grenade") this.blasts(before, after)
         break
@@ -297,13 +303,13 @@ const WEAPON: Record<Kind, Cue> = {
 }
 
 const NAMES: Record<string, string> = {
-  "log.headshot": "HEADSHOT",
-  "log.grenade": "GRENADE",
-  "log.covering": "COVERING FIRE",
-  "log.heal": "MEDKIT",
-  "log.warcry": "WAR CRY",
-  "log.mark": "MARKED",
-  "log.run": "RUN & GUN",
+  "log.headshot": "skill.headshot",
+  "log.grenade": "skill.grenade",
+  "log.covering": "skill.covering",
+  "log.heal": "skill.medkit",
+  "log.warcry": "skill.warcry",
+  "log.mark": "ui.float.mark",
+  "log.run": "skill.runGun",
 }
 
 const screen = (p: { x: number; y: number }): number => p.x - p.y

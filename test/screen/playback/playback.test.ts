@@ -1,3 +1,4 @@
+import { locale } from "../../../src/i18n/strings"
 import type { Game } from "../../../src/mission/game"
 import type { Action } from "../../../src/mission/orders"
 import { Playback } from "../../../src/screen/playback/playback"
@@ -58,5 +59,15 @@ describe("playback", () => {
     expect(alien.seen.find((x) => x.startsWith("float:"))).toBe(`float:${chance}%`)
     g.phase = "squad"
     expect(run(g, { type: "shoot", unit: "r", target: "g" }).seen.some((x) => x.endsWith("%"))).toBe(false)
+  })
+  test("the texts over the board are in the player's language", () => {
+    const g = setup(open(), [squad("v", "vanguard", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 0 })])
+    g.unit("g").overwatch = true
+    locale.use("ru")
+    const { seen } = run(g, { type: "move", unit: "v", to: { x: 3, y: 4 } })
+    locale.use("en")
+    const texts = seen.filter((x) => x.startsWith("float:"))
+    expect(texts).toContain("float:НАБЛЮДЕНИЕ")
+    expect(texts.some((x) => /[A-Z]/.test(x.slice(6)))).toBe(false)
   })
 })

@@ -1,3 +1,4 @@
+import { t } from "../../i18n/strings"
 import type { Point } from "../../map/point"
 import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
 import { circle, type Pt, star } from "./outline"
@@ -54,7 +55,7 @@ export class Overlay {
   peril(p: Point, kind: "fire" | "watch"): void {
     const [x, y] = this.projection.center(p)
     this.sign([x, y - 18], RED)
-    this.float([x, y - 36], kind === "fire" ? "FIRE −1" : "OVERWATCH", RED)
+    this.float([x, y - 36], kind === "fire" ? t("ui.float.fire") : t("ui.overwatch").toUpperCase(), RED)
   }
 
   /** A cover mark on a tile's edge toward a side, or in its middle for a forest: filled when full. */
