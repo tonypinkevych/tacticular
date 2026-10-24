@@ -247,6 +247,10 @@ export class Playback {
         })
         break
       }
+      case "log.ultimate":
+        this.note(where(id), t(`ult.${params.name}`).toUpperCase(), "crit", 0.05, "crit")
+        this.pose(id, "skill", 0.5)
+        break
       case "log.barrel":
         this.blasts(before, after)
         break

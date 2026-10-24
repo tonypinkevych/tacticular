@@ -48,8 +48,23 @@ the next link of the chain.
 | Blade | Taunt (4 tiles): Taunted | its aimed attack turns to the Blade, and it attacks only the Blade | Exposed: +3 damage, it is Staggered |
 
 The chain is Suppress → Vanguard → Warden → Ranger → Cleric, and each tactic starts it at its own link. The Blade
-shares Exposed with the Ranger and sends the chain back to the Warden. The squad you draft decides which links you
-have.
+shares Exposed with the Ranger and sends the chain back to the Warden. Any other soldier deals 1 more to an alien
+with a status a teammate put on, so every squad can combo. With a soldier selected, the board names the teammate its
+tactic sets up on each alien, and over each status the soldier who turns it into a combo; the squad list marks a
+soldier with a combo ready.
+
+## Ultimates
+
+Each combo, landed or set up, charges both soldiers. After 2 combos in a mission, a soldier's ultimate is ready (key
+`6`); it ends the turn and empties the charge.
+
+| Class | Ultimate |
+|---|---|
+| Vanguard | Breach: dash up to 3 tiles in a line; every alien beside the line is shoved away and Staggered |
+| Ranger | Killshot: a shot that ignores cover with 3 more damage; a kill gives 1 AP back |
+| Warden | Lockdown: Suppress every alien in range and sight |
+| Cleric | Flare barrage: Expose every alien within 2 tiles and heal every soldier 2 |
+| Blade | Whirlwind: strike every alien next to it |
 
 ## The run
 
@@ -65,8 +80,7 @@ gives that reward. A soldier's first upgrade picks one of 2 branches of its clas
 - Cleric: Chaplain (a combo heals 2) or Searing flare (Flare deals 1).
 - Blade: Riposte (every claw at it costs the alien 2) or Reaper (a kill with a strike gives 1 AP back).
 
-Later upgrades give a skill use more or a turn less to wait. A soldier who lands 2 combos in a mission becomes a
-Partner: 1 more damage on aliens with the status its class gains from.
+Later upgrades give a skill use more or a turn less to wait.
 
 ## Run the game
 
@@ -84,7 +98,7 @@ pnpm build      # type-check and build to dist/
 - Click a soldier to select it, and click a tile to move there. The path under the cursor marks fire and overwatch
   on the way. Click an alien or a barrel to aim at it, and click it again to fire.
 - Point at an alien to see where it can walk and what it can hit. The turn ends on its own when no soldier has AP.
-- `1` Shoot, `2` the skill, `3` the tactic, `4` Overwatch and `5` Hunker down choose an action, as in XCOM. Shoot, the
+- `1` Shoot, `2` the skill, `3` the tactic, `4` Overwatch, `5` Hunker down and `6` the ultimate choose an action, as in XCOM. Shoot, the
   skill and the tactic aim at the first target and `Tab` moves the aim; Overwatch shows what it watches. A click on a
   target fires at once. The same key again, or `Enter`, carries out what is aimed. `Backspace` or the End turn button
   ends the turn. `Tab` selects the next soldier when no target is aimed, and `Esc` or a right click cancels.
@@ -101,7 +115,7 @@ entry is a signed Nostr event (NIP-01) with a local key. If an event is changed,
 ```
 src/map/       Board, tiles, the map generator (terrain), line of fire, cover, Reach
 src/units/     Unit and the profiles of the classes and the aliens
-src/combat/    Dice, Combat (odds, shots, blasts, pushes), Abilities, Tactics (statuses and combos)
+src/combat/    Dice, Combat (odds, shots, blasts, pushes), Abilities, Tactics (statuses and combos), Ultimates
 src/aliens/    Mind (the AI that plays a side), Reinforcements (the drops)
 src/mission/   Game, its goals, Turn, Orders, the mission generator
 src/run/       Run (draft, chart, rewards, training) and Chart

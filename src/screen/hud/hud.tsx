@@ -1,8 +1,10 @@
 import { createSignal, For, type JSX, Show } from "solid-js"
+import { READY } from "../../combat/ultimates"
 import { t } from "../../i18n/strings"
 import type { Unit } from "../../units/unit"
 import type { Battle, Mode } from "../battle"
 import { Board } from "../board/board"
+import { Combos } from "../combos"
 import { Restart } from "../run/restart"
 import { charge } from "./card"
 import { Portrait } from "./portrait"
@@ -132,6 +134,12 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
                     <span class="status watching">{t("ui.overwatch")}</span>
                   </Show>
                   <Show when={aimedAt(u)}>{(n) => <span class="threat">{t("ui.aimedAt", { count: n() })}</span>}</Show>
+                  <Show when={new Combos(g()).primed(u)}>
+                    <span class="status combo">{t("ui.comboReady")}</span>
+                  </Show>
+                  <Show when={u.charge >= READY}>
+                    <span class="status ult">{t("ui.ultimate")}</span>
+                  </Show>
                   <Show when={b.selected() === u.id && u.profile.combo}>
                     {(c) => <span class="muted">{t("ui.gains", { status: t(`status.${c()}`) })}</span>}
                   </Show>
@@ -216,6 +224,14 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
             !b.unit() || b.unit()?.profile.melee || !b.unit()?.profile.range,
           )}
           {action("hunker", "5", t("ui.hunker"), <Icon d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z" />)}
+          {action(
+            "ultimate",
+            "6",
+            b.unit()?.profile.ultimate ? t(`ult.${b.unit()?.profile.ultimate}`) : "—",
+            <Icon d="M13 2L4 14h7l-1 8 9-12h-7z" />,
+            b.unit() ? t("ui.charge", { charge: b.unit()?.charge ?? 0 }) : undefined,
+            !b.unit()?.profile.ultimate || (b.unit()?.charge ?? 0) < READY,
+          )}
         </div>
         <span class="hint">{hint()}</span>
       </section>

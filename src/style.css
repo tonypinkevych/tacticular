@@ -813,3 +813,10 @@ button.link {
   background: var(--red);
   color: var(--paper);
 }
+.status.combo {
+  background: #2c7a69;
+}
+.status.ult {
+  background: var(--yellow);
+  color: var(--ink);
+}

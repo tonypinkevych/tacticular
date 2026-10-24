@@ -3,6 +3,7 @@ import { t } from "../../i18n/strings"
 import { ORTHOGONAL, type Point, plus } from "../../map/point"
 import { coverOf } from "../../map/tile"
 import type { Battle } from "../battle"
+import { Combos } from "../combos"
 import { INK, Ink, RED, YELLOW } from "./ink"
 import { Overlay } from "./overlay"
 import { Projection } from "./projection"
@@ -10,6 +11,7 @@ import { Scenery } from "./scenery"
 import { FEET, SH, Sprites, SW } from "./sprites"
 
 const TONE = { hit: RED, crit: YELLOW, miss: "#6f6b62", note: INK }
+const COMBO = "#2c7a69"
 
 /**
  * The whole ink board of a battle on one canvas: ground, overlays, props and units in depth order, and texts,
@@ -136,12 +138,14 @@ export function Board(props: { battle: Battle }) {
         const name = m.kind === "claw" && live ? `${t("ui.attack.claw").toUpperCase()} ` : ""
         overlay.odds(g.unit(m.unit).at, target.at, `${name}${battle.toll(m)}`, live)
       }
+      const combos = new Combos(g)
       for (const x of g.units) {
         if (!x.alive()) continue
         const tags = [
           ...(x.status ? [overlay.status(x.status)] : []),
           ...(x.hunkered ? [{ text: t("ui.hunker").toUpperCase(), color: INK }] : []),
           ...(x.overwatch ? [{ text: t("ui.overwatch").toUpperCase(), color: x.side === "enemy" ? RED : INK }] : []),
+          ...combos.hints(x.id, battle.unit()).map((text) => ({ text, color: COMBO })),
         ]
         overlay.tags(x.at, tags)
       }

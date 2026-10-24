@@ -68,4 +68,9 @@ describe("playback", () => {
     expect(texts).toContain("float:НАБЛЮДЕНИЕ")
     expect(texts.some((x) => /[A-Z]/.test(x.slice(6)))).toBe(false)
   })
+  test("an ultimate shows its name over the soldier", () => {
+    const g = setup(open(), [squad("w", "warden", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 3 })])
+    g.unit("w").charge = 2
+    expect(run(g, { type: "ultimate", unit: "w" }).seen).toContain("float:LOCKDOWN")
+  })
 })

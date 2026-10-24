@@ -1,6 +1,7 @@
 import { type Accessor, createSignal, type Setter } from "solid-js"
 import { Mind } from "../aliens/mind"
 import type { Hit } from "../combat/combat"
+import { READY } from "../combat/ultimates"
 import { t } from "../i18n/strings"
 import { cover } from "../map/cover"
 import { adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
@@ -10,6 +11,7 @@ import { type Action, Illegal } from "../mission/orders"
 import type { Unit } from "../units/unit"
 import { Playback } from "./playback/playback"
 import { Sound } from "./playback/sound"
+import { Sweep } from "./sweep"
 
 /** The tiles the board marks for the selected soldier. */
 export interface Zones {
@@ -39,8 +41,8 @@ export interface Help {
   how: string
 }
 
-/** What a click does now: move, shoot, use the skill or the tactic, set Overwatch, or Hunker down. */
-export type Mode = "move" | "shoot" | "skill" | "tactic" | "overwatch" | "hunker"
+/** What a click does now: move, shoot, use the skill, the tactic or the ultimate, set Overwatch, or Hunker down. */
+export type Mode = "move" | "shoot" | "skill" | "tactic" | "overwatch" | "hunker" | "ultimate"
 
 /** Seconds the alien turn banner stays at least. */
 const BANNER = 1.5
@@ -133,6 +135,10 @@ export class Battle {
       this.refuse(u.cooldown > 0 ? "cooldown" : "uses")
       return
     }
+    if (mode === "ultimate" && (!u.profile.ultimate || u.charge < READY)) {
+      this.refuse("charge")
+      return
+    }
     if (this.mode() === mode) {
       if (this.planned()) this.confirm()
       else this.cancel()
@@ -141,7 +147,8 @@ export class Battle {
     this.cancel()
     this.setMode(mode)
     if (mode === "shoot" || mode === "skill" || mode === "tactic") this.plan(this.zones().targets[0] ?? null)
-    if (mode === "overwatch" || mode === "hunker") this.plan(u.at)
+    if (mode === "overwatch" || mode === "hunker" || (mode === "ultimate" && Sweep.self(u))) this.plan(u.at)
+    else if (mode === "ultimate" && u.profile.ultimate === "killshot") this.plan(this.zones().targets[0] ?? null)
   }
 
   /** Back to moving, with nothing planned. */
@@ -157,7 +164,8 @@ export class Battle {
       p = this.planned()
     if (!u || !p || !this.ready()) return
     const mode = this.mode()
-    const action = mode === "overwatch" || mode === "hunker" ? ({ type: mode, unit: u.id } as const) : this.action(u, p)
+    const still = mode === "overwatch" || mode === "hunker" || (mode === "ultimate" && Sweep.self(u))
+    const action = still ? ({ type: mode, unit: u.id } as Action) : this.action(u, p)
     if (action) this.act(action)
   }
 
@@ -189,7 +197,9 @@ export class Battle {
     }
     if (!u) return
     const mark = (!!there && there.side !== u.side) || g.board.at(p) === "barrel"
-    if (this.mode() === "overwatch" || this.mode() === "hunker" || (this.mode() === "shoot" && !mark)) this.cancel()
+    const still =
+      this.mode() === "overwatch" || this.mode() === "hunker" || (this.mode() === "ultimate" && Sweep.self(u))
+    if (still || (this.mode() === "shoot" && !mark)) this.cancel()
     const action = this.action(u, p)
     if (!action) return
     if (this.mode() !== "move" || !mark) {
@@ -211,6 +221,10 @@ export class Battle {
     const g = this.game(),
       there = g.unitAt(p)
     if (this.mode() === "skill") return this.aim(u, p, there)
+    if (this.mode() === "ultimate") {
+      if (u.profile.ultimate === "breach") return { type: "ultimate", unit: u.id, to: p }
+      return there && there.side !== u.side ? { type: "ultimate", unit: u.id, target: there.id } : null
+    }
     if (this.mode() === "tactic")
       return there && there.side !== u.side ? { type: "tactic", unit: u.id, target: there.id } : null
     if (there && there.side !== u.side) return { type: "shoot", unit: u.id, target: there.id }
@@ -288,7 +302,7 @@ export class Battle {
       zones = this.base(),
       p = (this.mode() === "shoot" && this.planned()) || this.hovered()
     if (this.mode() === "skill" || !p || g.board.at(p) !== "barrel") return zones
-    return { ...zones, area: blast(g, p) }
+    return { ...zones, area: new Sweep(g).blast(p) }
   }
 
   private base(): Zones {
@@ -300,11 +314,11 @@ export class Battle {
     if (!u || g.phase !== "squad" || u.ap === 0) return none
     const foes = g.foes(u),
       targets = foes.filter((f) => g.combat.canShoot(u, f)).map((f) => f.at)
-    if (this.mode() === "shoot") return { ...none, reach: fire(g, u, u.at), targets }
+    if (this.mode() === "shoot") return { ...none, reach: new Sweep(g).fire(u, u.at), targets }
     if (this.mode() === "tactic")
       return {
         ...none,
-        reach: all(g).filter((p) => g.tactics.reaches(u, p)),
+        reach: new Sweep(g).all().filter((p) => g.tactics.reaches(u, p)),
         targets: foes
           .filter((f) => {
             try {
@@ -317,7 +331,8 @@ export class Battle {
           })
           .map((f) => f.at),
       }
-    if (this.mode() === "overwatch") return { ...none, reach: fire(g, u, u.at) }
+    if (this.mode() === "overwatch") return { ...none, reach: new Sweep(g).fire(u, u.at) }
+    if (this.mode() === "ultimate") return { ...none, ...new Sweep(g).ultimate(u, this.hovered()) }
     if (this.mode() === "move") {
       const one = g.reach(u, 1).tiles(),
         two = u.ap > 1 ? g.reach(u, 2).tiles() : []
@@ -330,12 +345,12 @@ export class Battle {
         if (!this.runTo) return { ...none, reach: g.reach(u, 2).tiles() }
         return {
           ...none,
-          reach: fire(g, u, this.runTo),
+          reach: new Sweep(g).fire(u, this.runTo),
           area: [this.runTo],
           targets: foes.filter((f) => g.combat.canShoot(u, f, this.runTo as Point)).map((f) => f.at),
         }
       case "grenade": {
-        const reach = all(g).filter((p) => distance(p, u.at) <= 4)
+        const reach = new Sweep(g).all().filter((p) => distance(p, u.at) <= 4)
         const area =
           hover && distance(hover, u.at) <= 4
             ? [hover, ...ORTHOGONAL.map((d) => plus(hover, d))].filter((p) => g.board.inside(p))
@@ -345,7 +360,7 @@ export class Battle {
       case "headshot":
         return {
           ...none,
-          reach: fire(g, u, u.at),
+          reach: new Sweep(g).fire(u, u.at),
           targets: foes.filter((f) => g.combat.canShoot(u, f) && cover(g.board, f.at, u.at) === 0).map((f) => f.at),
         }
       case "medkit":
@@ -369,7 +384,7 @@ export class Battle {
       p.melee || p.range === 0 ? adjacent(q, t) : distance(q, t) <= p.range && clear(g.board, q, t)
     return {
       foeMove: g.reach(foe, 2).tiles(),
-      foeShot: all(g).filter((t) => from.some((q) => hits(q, t))),
+      foeShot: new Sweep(g).all().filter((t) => from.some((q) => hits(q, t))),
     }
   }
 
@@ -379,6 +394,12 @@ export class Battle {
     if (!p || mode === "move") return null
     if (mode === "skill")
       return { name: t(`skill.${p.skill}`), about: t(`skill.about.${p.skill}`), how: t(`skill.how.${p.skill}`) }
+    if (mode === "ultimate") {
+      const k = p.ultimate
+      if (!k) return null
+      const how = k === "breach" || k === "killshot" ? t(`ult.how.${k}`) : t("ult.how.self")
+      return { name: t(`ult.${k}`), about: t(`ult.about.${k}`), how: `${how} ${t("help.ultimate")}` }
+    }
     if (mode === "tactic")
       return p.tactic
         ? { name: t(`tactic.${p.tactic}`), about: t(`tactic.about.${p.tactic}`), how: t(`tactic.how.${p.tactic}`) }
@@ -473,27 +494,4 @@ export class Battle {
       requestAnimationFrame(wait)
     })
   }
-}
-
-/** The tiles a barrel's blast hits, with the blasts of the barrels it sets off. */
-function blast(g: Game, at: Point): Point[] {
-  const hit: Point[] = [],
-    blown: Point[] = [at]
-  for (let i = 0; i < blown.length; i++)
-    for (const p of [blown[i], ...ORTHOGONAL.map((d) => plus(blown[i], d))].filter((q) => g.board.inside(q))) {
-      if (!hit.some((q) => same(p, q))) hit.push(p)
-      if (g.board.at(p) === "barrel" && !blown.some((q) => same(p, q))) blown.push(p)
-    }
-  return hit
-}
-
-/** The tiles a unit can fire at from a tile: next to it in melee, else in its range and sight. */
-function fire(g: Game, u: Unit, from: Point): Point[] {
-  return all(g).filter((p) =>
-    u.profile.melee ? adjacent(p, from) : distance(p, from) <= u.profile.range && clear(g.board, from, p),
-  )
-}
-
-function all(g: Game): Point[] {
-  return g.board.tiles.map((_, i) => ({ x: i % g.board.width, y: Math.floor(i / g.board.width) }))
 }

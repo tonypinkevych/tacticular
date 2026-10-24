@@ -21,6 +21,7 @@ addEventListener("keydown", (e) => {
   else if (e.key === "3") b.choose("tactic")
   else if (e.key === "4") b.choose("overwatch")
   else if (e.key === "5") b.choose("hunker")
+  else if (e.key === "6") b.choose("ultimate")
   else if (e.key === "Escape") b.cancel()
 })
 
