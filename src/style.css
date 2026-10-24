@@ -119,6 +119,9 @@ h2 {
 .status.marked {
   background: var(--teal);
 }
+.status.hunkered {
+  background: var(--ink);
+}
 .row.combo {
   color: var(--red);
   font-weight: bold;

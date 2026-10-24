@@ -37,7 +37,7 @@ export class Combat {
     const p = shooter.profile,
       from = fire.from ?? shooter.at
     if (p.melee) return { chance: 100, crit: 0, damage: p.damage, cover: 0 }
-    const c = target.status === "exposed" ? 0 : cover(this.game.board, target.at, from)
+    const c = (target.status === "exposed" ? 0 : cover(this.game.board, target.at, from)) * (target.hunkered ? 2 : 1)
     let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
     if (target.status === "marked") aim += 10
     if (shooter.status === "suppressed") aim -= 20
@@ -45,7 +45,12 @@ export class Combat {
     if (p.passive === "steady" && !shooter.moved) aim += 20
     if (this.game.allies(target).some((a) => a.profile.passive === "aid" && a !== target && adjacent(a.at, target.at)))
       aim -= 10
-    const odds = { chance: Math.max(5, Math.min(95, aim)), crit: c === 0 ? 50 : 0, damage: p.damage, cover: c }
+    const odds = {
+      chance: Math.max(5, Math.min(95, aim)),
+      crit: c === 0 && !target.hunkered ? 50 : 0,
+      damage: p.damage,
+      cover: c,
+    }
     if (!target.status || p.combo !== target.status) return odds
     if (target.status === "exposed") return { ...odds, crit: 100, combo: true }
     if (target.status === "marked") return { ...odds, combo: true }

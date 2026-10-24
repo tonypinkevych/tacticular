@@ -82,4 +82,12 @@ describe("mind", () => {
     ])
     expect(new Mind(g).next()).toEqual({ type: "tactic", unit: "w", target: "g" })
   })
+  test("a boxed-in soldier under fire with nothing to shoot hunkers down", () => {
+    const g = setup(
+      rows(["........", "........", "........", "........", "........", "..hlh...", "..h.h...", "..hhh..."]),
+      [squad("c", "cleric", { x: 3, y: 6 }), enemy("g", "commander", { x: 3, y: 1 })],
+    )
+    g.unit("c").ap = 1
+    expect(new Mind(g).next()).toEqual({ type: "hunker", unit: "c" })
+  })
 })

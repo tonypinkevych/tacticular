@@ -134,6 +134,9 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <button type="button" classList={{ on: b.mode() === "overwatch" }} onClick={() => b.choose("overwatch")}>
           <kbd>4</kbd> {t("ui.overwatch")}
         </button>
+        <button type="button" classList={{ on: b.mode() === "hunker" }} onClick={() => b.choose("hunker")}>
+          <kbd>5</kbd> {t("ui.hunker")}
+        </button>
         <button type="button" class="confirm" disabled={!b.planned()} onClick={() => b.confirm()}>
           <kbd>⏎</kbd> {t("ui.confirm")}
         </button>

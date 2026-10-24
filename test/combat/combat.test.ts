@@ -37,6 +37,14 @@ describe("hit chance", () => {
     g.unit("g").status = "suppressed"
     expect(g.combat.odds(g.unit("g"), g.unit("r")).chance).toBe(75)
   })
+  test("a Hunkered target has its cover doubled and cannot be crit", () => {
+    const covered = sniper(true)
+    covered.unit("g").hunkered = true
+    expect(covered.combat.odds(covered.unit("r"), covered.unit("g"))).toMatchObject({ chance: 40, cover: 40, crit: 0 })
+    const open = sniper(false)
+    open.unit("g").hunkered = true
+    expect(open.combat.odds(open.unit("r"), open.unit("g")).crit).toBe(0)
+  })
   test("a flank removes the cover, adds 10 to the aim and gives a 50% crit", () => {
     const g = sniper(false)
     expect(g.combat.odds(g.unit("r"), g.unit("g"))).toMatchObject({ chance: 90, crit: 50 })

@@ -77,13 +77,25 @@ export class Mind {
             action: { type: "move", unit: u.id, to: t },
             value: this.ground(u, t) + this.closer(u, t) - 0.3 - pin,
           })
-    plans.sort((a, b) => b.value - a.value)
-    const best = plans[0]
     const idle = stay + this.closer(u, u.at)
+    if (u.side === "squad") plans.push({ action: { type: "hunker", unit: u.id }, value: idle + this.shield(u) })
+    const best = plans.sort((a, b) => b.value - a.value)[0]
     if (best && best.value > idle + 0.05) return { ...best, value: best.value - idle }
     if (u.profile.range > 0 && !u.profile.melee && !u.overwatch)
       return { action: { type: "overwatch", unit: u.id }, value: 0 }
     return null
+  }
+
+  /** What hunkering down saves a unit of the damage the foes that can shoot it are expected to deal. */
+  private shield(u: Unit): number {
+    const game = this.game
+    const threat = () =>
+      game.foes(u).reduce((s, f) => s + (game.combat.canShoot(f, u) ? this.worth(game.combat.odds(f, u), u) : 0), 0)
+    const open = threat()
+    u.hunkered = true
+    const hunkered = threat()
+    u.hunkered = false
+    return (open - hunkered) * 0.5
   }
 
   /** What a Suppressed unit loses when it moves: the shot it draws from its suppressor. */

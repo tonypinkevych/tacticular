@@ -9,6 +9,7 @@ export type Action =
   | { type: "overwatch"; unit: string }
   | { type: "skill"; unit: string; target?: string; at?: Point; to?: Point }
   | { type: "tactic"; unit: string; target: string }
+  | { type: "hunker"; unit: string }
   | { type: "endTurn" }
 
 /** An action the rules refuse. */
@@ -43,6 +44,10 @@ export class Orders {
     }
     if (action.type === "skill") game.abilities.use(u, action)
     if (action.type === "tactic") game.tactics.use(u, game.unit(action.target))
+    if (action.type === "hunker") {
+      u.hunkered = true
+      u.ap = 0
+    }
     game.settle()
   }
 

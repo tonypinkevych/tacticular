@@ -29,8 +29,8 @@ export interface Peril {
   kind: "fire" | "watch"
 }
 
-/** What a click does now: move, shoot, use the skill or the tactic, or set Overwatch. */
-export type Mode = "move" | "shoot" | "skill" | "tactic" | "overwatch"
+/** What a click does now: move, shoot, use the skill or the tactic, set Overwatch, or Hunker down. */
+export type Mode = "move" | "shoot" | "skill" | "tactic" | "overwatch" | "hunker"
 
 /** Seconds the alien turn banner stays at least. */
 const BANNER = 1.5
@@ -127,7 +127,7 @@ export class Battle {
     this.cancel()
     this.setMode(mode)
     if (mode === "shoot" || mode === "skill" || mode === "tactic") this.plan(this.zones().targets[0] ?? null)
-    if (mode === "overwatch") this.plan(u.at)
+    if (mode === "overwatch" || mode === "hunker") this.plan(u.at)
   }
 
   /** Back to moving, with nothing planned. */
@@ -142,13 +142,14 @@ export class Battle {
     const u = this.unit(),
       p = this.planned()
     if (!u || !p || !this.ready()) return
-    const action = this.mode() === "overwatch" ? ({ type: "overwatch", unit: u.id } as const) : this.action(u, p)
+    const mode = this.mode()
+    const action = mode === "overwatch" || mode === "hunker" ? ({ type: mode, unit: u.id } as const) : this.action(u, p)
     if (action) this.act(action)
   }
 
   /** In Shoot, the skill or the tactic, moves the aim to the next target; else selects the next soldier with AP. */
   tab(back = false): void {
-    if (this.mode() === "move" || this.mode() === "overwatch") {
+    if (this.mode() === "move" || this.mode() === "overwatch" || this.mode() === "hunker") {
       this.cycle(back)
       return
     }
@@ -174,7 +175,7 @@ export class Battle {
     }
     if (!u) return
     const mark = (!!there && there.side !== u.side) || g.board.at(p) === "barrel"
-    if (this.mode() === "overwatch" || (this.mode() === "shoot" && !mark)) this.cancel()
+    if (this.mode() === "overwatch" || this.mode() === "hunker" || (this.mode() === "shoot" && !mark)) this.cancel()
     const action = this.action(u, p)
     if (!action) return
     if (this.mode() !== "move" || !mark) {

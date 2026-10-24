@@ -111,7 +111,10 @@ export function Board(props: { battle: Battle }) {
         })
       things.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y)
       for (const t of things) t.draw()
-      for (const x of g.units) if (x.alive() && x.status) overlay.status(x.at, x.status)
+      for (const x of g.units) {
+        if (x.alive() && x.status) overlay.status(x.at, x.status)
+        if (x.alive() && x.hunkered) overlay.hunkered(x.at)
+      }
       if (ready) for (const p of zones.targets) overlay.target(p, frame)
       if (route && u) overlay.path([u.at, ...route.path])
       for (const peril of route?.perils ?? []) overlay.peril(peril.at, peril.kind)

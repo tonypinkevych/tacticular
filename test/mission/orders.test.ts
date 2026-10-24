@@ -27,6 +27,11 @@ describe("orders", () => {
     expect(g.unit("r").ap).toBe(0)
     expect(() => g.apply({ type: "move", unit: "r", to: { x: 3, y: 2 } })).toThrow(Illegal)
   })
+  test("Hunker down ends the turn and lasts until the unit's next turn", () => {
+    const g = duel().apply({ type: "hunker", unit: "r" })
+    expect([g.unit("r").ap, g.unit("r").hunkered]).toEqual([0, true])
+    expect(g.apply({ type: "endTurn" }).apply({ type: "endTurn" }).unit("r").hunkered).toBe(false)
+  })
   test("a unit acts only in its side's turn", () => {
     expect(() => duel().apply({ type: "move", unit: "g", to: { x: 6, y: 0 } })).toThrow(Illegal)
   })

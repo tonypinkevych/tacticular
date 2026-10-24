@@ -186,4 +186,11 @@ describe("battle", () => {
     b.choose("tactic")
     expect([b.game().unit("g").status, b.game().unit("w").ap]).toEqual(["suppressed", 1])
   })
+  test("Hunker down waits for its key again", () => {
+    const b = start()
+    b.choose("hunker")
+    expect(b.game().unit("r").hunkered).toBe(false)
+    b.choose("hunker")
+    expect(b.game().unit("r").hunkered).toBe(true)
+  })
 })

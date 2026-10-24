@@ -238,6 +238,12 @@ export class Overlay {
     this.float([x, y - 62], t(`status.${status}`).toUpperCase(), STATUS[status])
   }
 
+  /** The tag of a hunkered unit over its head. */
+  hunkered(p: Point): void {
+    const [x, y] = this.projection.center(p)
+    this.float([x, y - 62], t("ui.hunker").toUpperCase(), INK)
+  }
+
   /** A short text over a point, in the paper look: damage, MISS, a skill name. */
   float(at: Pt, text: string, color: string): void {
     const ctx = this.ink.ctx

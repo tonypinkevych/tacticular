@@ -34,6 +34,8 @@ export class Unit {
     public status: Status | null = null,
     /** The unit that put the status on. */
     public by: string | null = null,
+    /** Hunkered down until its next turn: cover counts double and shots at it cannot crit. */
+    public hunkered = false,
   ) {}
 
   /** A fresh unit of a kind with full HP and its skill uses. */
@@ -86,6 +88,7 @@ export class Unit {
       this.extra,
       this.status,
       this.by,
+      this.hunkered,
     )
   }
 }

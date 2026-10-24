@@ -74,6 +74,7 @@ export class Turn {
       u.ap = 2
       u.moved = false
       u.overwatch = false
+      u.hunkered = false
       u.cooldown = Math.max(0, u.cooldown - 1)
       if (u.status === "staggered") u.ap = 1
     }
