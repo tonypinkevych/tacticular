@@ -779,3 +779,26 @@ button.link {
 .pips.alien i.off {
   background: var(--line);
 }
+.tip {
+  position: static;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-transform: none;
+}
+.float.tip b {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.tip p {
+  margin: 0;
+}
+.tip p::first-letter {
+  text-transform: uppercase;
+}
+.tip small {
+  color: var(--muted);
+}

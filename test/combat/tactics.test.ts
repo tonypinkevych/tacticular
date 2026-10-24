@@ -13,6 +13,11 @@ function hitting(game: Game, chance: number): Game {
 }
 
 describe("tactics", () => {
+  test("a tactic reaches the tiles in its range and sight: Taunt 4, Shove only next to the soldier", () => {
+    const g = setup(open(), [squad("b", "blade", { x: 3, y: 6 }), squad("v", "vanguard", { x: 0, y: 6 })])
+    const reach = (id: string, x: number, y: number) => g.tactics.reaches(g.unit(id), { x, y })
+    expect([reach("b", 3, 2), reach("b", 3, 1), reach("v", 1, 5), reach("v", 2, 6)]).toEqual([true, false, true, false])
+  })
   test("Suppress puts Suppressed on an alien in range for 1 AP and the turn goes on", () => {
     const g = setup(open(), [squad("w", "warden", { x: 3, y: 6 }), enemy("g", "grunt", { x: 3, y: 3 })]).apply({
       type: "tactic",

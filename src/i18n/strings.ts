@@ -201,6 +201,31 @@ const en = {
   "log.covering": "{unit} gives covering fire on {target}",
   "illegal.uses": "No uses left this mission.",
   "illegal.flank": "Needs an Exposed or flanked target, or concealment.",
+  "skill.how.runGun": "Click a tile up to a dash away, then an alien in sight from there.",
+  "skill.how.headshot": "Click a flanked alien: one with no cover against you.",
+  "skill.how.grenade": "Click a tile up to 4 away. The plus around it is hit.",
+  "skill.how.medkit": "Click yourself or an ally next to you.",
+  "skill.how.lunge": "Click a tile up to a dash away, then an alien next to it.",
+  "tactic.about.suppressed": "the alien gets −20 aim and its first move draws your shot, until your next turn",
+  "tactic.about.staggered": "push an alien next to you 1 tile; it loses its aimed attack and has 1 AP next turn",
+  "tactic.about.exposed": "the alien's cover counts as 0 until your next turn",
+  "tactic.about.marked": "shots at the alien get +10 aim until your next turn",
+  "tactic.about.taunted": "the alien turns its aimed attack to the Blade and attacks only the Blade",
+  "tactic.how.suppressed": "Click an alien in the zone, or press 3 again. Costs 1 AP; the turn goes on.",
+  "tactic.how.staggered": "Click an alien next to you, or press 3 again. Costs 1 AP; the turn goes on.",
+  "tactic.how.exposed": "Click an alien in the zone, or press 3 again. Costs 1 AP; the turn goes on.",
+  "tactic.how.marked": "Click an alien in the zone, or press 3 again. Costs 1 AP; the turn goes on.",
+  "tactic.how.taunted": "Click an alien up to 4 tiles away, or press 3 again. Costs 1 AP; the turn goes on.",
+  "help.shoot.about":
+    "fire at an alien in range and sight; cover lowers the chance, a flank gives +10 aim and a crit chance",
+  "help.shoot.how": "Click an alien in the zone, or press 1 again to fire at the aimed one. Ends the turn.",
+  "help.strike.about": "strike an alien next to you; the strike always hits",
+  "help.strike.how": "Click an alien next to you, or press 1 again. Ends the turn.",
+  "help.overwatch.about": "fire at the first alien that moves in the zone during the alien turn",
+  "help.overwatch.how": "Press 4 again or Enter to set it. Ends the turn.",
+  "help.hunker.about":
+    "cover counts double, the open counts as low cover, and shots at you cannot crit until your next turn",
+  "help.hunker.how": "Press 5 again or Enter. Ends the turn.",
 }
 
 export type Key = keyof typeof en
@@ -408,6 +433,31 @@ const ru: Record<Key, string> = {
   "log.covering": "{unit} ведёт огонь прикрытия по {target}",
   "illegal.uses": "В этой миссии использований не осталось.",
   "illegal.flank": "Нужна открытая или фланкированная цель, или скрытность.",
+  "skill.how.runGun": "Нажмите клетку в пределах рывка, затем пришельца в поле зрения оттуда.",
+  "skill.how.headshot": "Нажмите пришельца с фланга: без укрытия от вас.",
+  "skill.how.grenade": "Нажмите клетку не дальше 4. Удар приходится крестом вокруг неё.",
+  "skill.how.medkit": "Нажмите на себя или на соседа.",
+  "skill.how.lunge": "Нажмите клетку в пределах рывка, затем пришельца рядом с ней.",
+  "tactic.about.suppressed": "у пришельца −20 к точности, а его первый шаг вызывает ваш выстрел, до вашего хода",
+  "tactic.about.staggered":
+    "толкает соседнего пришельца на 1 клетку; он теряет нацеленную атаку и в след. ход имеет 1 ОД",
+  "tactic.about.exposed": "укрытие пришельца не считается до вашего хода",
+  "tactic.about.marked": "выстрелы по пришельцу получают +10 к точности до вашего хода",
+  "tactic.about.taunted": "пришелец переводит нацеленную атаку на Клинка и атакует только его",
+  "tactic.how.suppressed": "Нажмите пришельца в зоне или снова 3. Стоит 1 ОД, ход продолжается.",
+  "tactic.how.staggered": "Нажмите соседнего пришельца или снова 3. Стоит 1 ОД, ход продолжается.",
+  "tactic.how.exposed": "Нажмите пришельца в зоне или снова 3. Стоит 1 ОД, ход продолжается.",
+  "tactic.how.marked": "Нажмите пришельца в зоне или снова 3. Стоит 1 ОД, ход продолжается.",
+  "tactic.how.taunted": "Нажмите пришельца не дальше 4 клеток или снова 3. Стоит 1 ОД, ход продолжается.",
+  "help.shoot.about":
+    "выстрел по пришельцу в дальности и в поле зрения; укрытие снижает шанс, фланг даёт +10 и шанс крита",
+  "help.shoot.how": "Нажмите пришельца в зоне или снова 1, чтобы выстрелить по цели. Ход кончается.",
+  "help.strike.about": "удар по соседнему пришельцу; удар попадает всегда",
+  "help.strike.how": "Нажмите соседнего пришельца или снова 1. Ход кончается.",
+  "help.overwatch.about": "выстрел по первому пришельцу, который двинется в зоне в ход пришельцев",
+  "help.overwatch.how": "Нажмите 4 ещё раз или Enter. Ход кончается.",
+  "help.hunker.about": "укрытие вдвое сильнее, открытое место — низкое укрытие, по вам нет критов до вашего хода",
+  "help.hunker.how": "Нажмите 5 ещё раз или Enter. Ход кончается.",
 }
 
 export const DICTIONARIES: Record<Lang, Record<Key, string>> = { en, ru }

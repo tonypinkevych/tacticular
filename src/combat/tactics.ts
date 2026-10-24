@@ -1,4 +1,4 @@
-import { adjacent, distance, ORTHOGONAL, plus } from "../map/point"
+import { adjacent, distance, ORTHOGONAL, type Point, plus } from "../map/point"
 import { clear } from "../map/sight"
 import { coverOf } from "../map/tile"
 import type { Game } from "../mission/game"
@@ -17,9 +17,7 @@ export class Tactics {
     const status = u.profile.tactic
     check(!!status, "ability")
     check(target.alive() && target.side !== u.side, "target")
-    const range = status === "taunted" ? TAUNT : u.profile.range
-    if (status === "staggered") check(adjacent(u.at, target.at), "range")
-    else check(distance(u.at, target.at) <= range && clear(this.game.board, u.at, target.at), "range")
+    check(this.reaches(u, target.at), "range")
     this.game.log.push({ key: `log.${status}`, params: { unit: u.id, target: target.id } })
     if (status === "staggered") {
       this.game.combat.push(target, u.at)
@@ -28,6 +26,13 @@ export class Tactics {
     if (u.extra.branch === "pinning" || u.extra.branch === "searing") this.game.combat.hurt(target, 1)
     if (target.alive()) this.put(target, status, u)
     u.ap -= 1
+  }
+
+  /** Whether the soldier's tactic reaches a tile: Shove next to it, Taunt 4 tiles, the others its range, all in sight. */
+  reaches(u: Unit, p: Point): boolean {
+    if (u.profile.tactic === "staggered") return adjacent(u.at, p)
+    const range = u.profile.tactic === "taunted" ? TAUNT : u.profile.range
+    return distance(u.at, p) <= range && clear(this.game.board, u.at, p)
   }
 
   /** A status on a unit in place of the one it had; a Staggered unit loses its marked attack, a Taunted one aims it at the taunter. */

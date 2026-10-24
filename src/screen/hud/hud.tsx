@@ -15,6 +15,7 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
   const b = props.battle
   const [muted, setMuted] = createSignal(b.sound.muted)
   const [log, setLog] = createSignal(false)
+  const [tipped, setTipped] = createSignal<Mode | null>(null)
   const g = () => b.game()
   const goal = () => {
     const x = g().goal
@@ -54,6 +55,8 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
       classList={{ on: b.mode() === mode }}
       disabled={off}
       onClick={() => b.choose(mode)}
+      onMouseEnter={() => setTipped(mode)}
+      onMouseLeave={() => setTipped(null)}
     >
       <span class="ring">
         {icon}
@@ -177,6 +180,15 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
       </section>
 
       <section class="abilities">
+        <Show when={b.help(tipped() ?? b.mode())}>
+          {(h) => (
+            <div class="float tip">
+              <b>{h().name}</b>
+              <p>{h().about}</p>
+              <small>{h().how}</small>
+            </div>
+          )}
+        </Show>
         <div class="row">
           {action(
             "shoot",

@@ -32,6 +32,13 @@ export interface Peril {
   by?: string
 }
 
+/** What an ability is, what it does and how to use it, as the player reads it. */
+export interface Help {
+  name: string
+  about: string
+  how: string
+}
+
 /** What a click does now: move, shoot, use the skill or the tactic, set Overwatch, or Hunker down. */
 export type Mode = "move" | "shoot" | "skill" | "tactic" | "overwatch" | "hunker"
 
@@ -293,10 +300,11 @@ export class Battle {
     if (!u || g.phase !== "squad" || u.ap === 0) return none
     const foes = g.foes(u),
       targets = foes.filter((f) => g.combat.canShoot(u, f)).map((f) => f.at)
-    if (this.mode() === "shoot") return { ...none, targets }
+    if (this.mode() === "shoot") return { ...none, reach: fire(g, u, u.at), targets }
     if (this.mode() === "tactic")
       return {
         ...none,
+        reach: all(g).filter((p) => g.tactics.reaches(u, p)),
         targets: foes
           .filter((f) => {
             try {
@@ -309,11 +317,7 @@ export class Battle {
           })
           .map((f) => f.at),
       }
-    if (this.mode() === "overwatch")
-      return {
-        ...none,
-        reach: all(g).filter((p) => distance(p, u.at) <= u.profile.range && clear(g.board, u.at, p)),
-      }
+    if (this.mode() === "overwatch") return { ...none, reach: fire(g, u, u.at) }
     if (this.mode() === "move") {
       const one = g.reach(u, 1).tiles(),
         two = u.ap > 1 ? g.reach(u, 2).tiles() : []
@@ -326,6 +330,7 @@ export class Battle {
         if (!this.runTo) return { ...none, reach: g.reach(u, 2).tiles() }
         return {
           ...none,
+          reach: fire(g, u, this.runTo),
           area: [this.runTo],
           targets: foes.filter((f) => g.combat.canShoot(u, f, this.runTo as Point)).map((f) => f.at),
         }
@@ -340,6 +345,7 @@ export class Battle {
       case "headshot":
         return {
           ...none,
+          reach: fire(g, u, u.at),
           targets: foes.filter((f) => g.combat.canShoot(u, f) && cover(g.board, f.at, u.at) === 0).map((f) => f.at),
         }
       case "medkit":
@@ -365,6 +371,20 @@ export class Battle {
       foeMove: g.reach(foe, 2).tiles(),
       foeShot: all(g).filter((t) => from.some((q) => hits(q, t))),
     }
+  }
+
+  /** The help of an ability of the selected soldier; null for moving or an ability it does not have. */
+  help(mode: Mode): Help | null {
+    const p = this.unit()?.profile
+    if (!p || mode === "move") return null
+    if (mode === "skill")
+      return { name: t(`skill.${p.skill}`), about: t(`skill.about.${p.skill}`), how: t(`skill.how.${p.skill}`) }
+    if (mode === "tactic")
+      return p.tactic
+        ? { name: t(`tactic.${p.tactic}`), about: t(`tactic.about.${p.tactic}`), how: t(`tactic.how.${p.tactic}`) }
+        : null
+    const key = mode === "shoot" && p.melee ? "strike" : mode
+    return { name: t(`ui.${mode}`), about: t(`help.${key}.about`), how: t(`help.${key}.how`) }
   }
 
   /** What an alien plans for its next turn and at whom, as the player reads it; null when it plans nothing. */
@@ -457,6 +477,13 @@ function blast(g: Game, at: Point): Point[] {
       if (g.board.at(p) === "barrel" && !blown.some((q) => same(p, q))) blown.push(p)
     }
   return hit
+}
+
+/** The tiles a unit can fire at from a tile: next to it in melee, else in its range and sight. */
+function fire(g: Game, u: Unit, from: Point): Point[] {
+  return all(g).filter((p) =>
+    u.profile.melee ? adjacent(p, from) : distance(p, from) <= u.profile.range && clear(g.board, from, p),
+  )
 }
 
 function all(g: Game): Point[] {
