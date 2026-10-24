@@ -2,7 +2,7 @@ import { createSignal, For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Battle } from "../battle"
 import { Board } from "../board/board"
-import { Card } from "./card"
+import { Card, charge } from "./card"
 
 /** The battle screen: the board in the middle, the squad left, the target and aliens right, actions below. */
 export function Hud(props: { battle: Battle; onNext: () => void }) {
@@ -122,8 +122,14 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
         <button type="button" classList={{ on: b.mode() === "shoot" }} onClick={() => b.choose("shoot")}>
           <kbd>1</kbd> {t("ui.shoot")}
         </button>
-        <button type="button" classList={{ on: b.mode() === "skill" }} onClick={() => b.choose("skill")}>
+        <button
+          type="button"
+          classList={{ on: b.mode() === "skill" }}
+          disabled={!b.unit() || (b.unit()?.cooldown ?? 0) > 0 || b.unit()?.uses === 0}
+          onClick={() => b.choose("skill")}
+        >
           <kbd>2</kbd> {skill()}
+          <Show when={b.unit()}>{(u) => <small class="charge">{charge(u())}</small>}</Show>
         </button>
         <button
           type="button"

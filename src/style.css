@@ -440,6 +440,15 @@ button.end-turn.wait svg {
     transform: rotate(180deg);
   }
 }
+.bar .charge {
+  margin-left: 6px;
+  color: var(--muted);
+  text-transform: none;
+}
+.bar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .confirm:disabled {
   opacity: 0.45;
   cursor: default;

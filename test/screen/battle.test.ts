@@ -216,4 +216,10 @@ describe("battle", () => {
     const b = new Battle(g)
     expect([b.intent("b"), b.intent("g")]).toEqual(["Claws → Vanguard", null])
   })
+  test("a skill that waits for its cooldown cannot be chosen, and says why", () => {
+    const b = start()
+    b.game().unit("r").cooldown = 2
+    b.choose("skill")
+    expect([b.mode(), b.notice()]).toEqual(["move", "cooldown"])
+  })
 })

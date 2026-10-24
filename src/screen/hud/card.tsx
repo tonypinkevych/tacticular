@@ -3,14 +3,16 @@ import { t } from "../../i18n/strings"
 import type { Unit } from "../../units/unit"
 import { Portrait } from "./portrait"
 
+/** How a unit's skill stands: the uses left, the turns to wait, or ready. */
+export function charge(u: Unit): string {
+  if (u.uses !== null) return t("ui.uses", { left: u.uses })
+  return u.cooldown > 0 ? t("ui.cooldown", { left: u.cooldown }) : t("ui.ready")
+}
+
 /** A unit's card: its portrait, name, HP, AP and skill. */
 export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => void; intent?: string | null }) {
   const u = () => props.unit
-  const skill = () => {
-    const x = u()
-    if (x.uses !== null) return t("ui.uses", { left: x.uses })
-    return x.cooldown > 0 ? t("ui.cooldown", { left: x.cooldown }) : t("ui.ready")
-  }
+  const skill = () => charge(u())
   return (
     <button
       type="button"

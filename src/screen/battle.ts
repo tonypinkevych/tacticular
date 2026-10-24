@@ -122,6 +122,10 @@ export class Battle {
   choose(mode: Mode): void {
     const u = this.unit()
     if (!u || !this.ready() || (mode === "tactic" && !u.profile.tactic)) return
+    if (mode === "skill" && (u.cooldown > 0 || u.uses === 0)) {
+      this.refuse(u.cooldown > 0 ? "cooldown" : "uses")
+      return
+    }
     if (this.mode() === mode) {
       if (this.planned()) this.confirm()
       else this.cancel()
