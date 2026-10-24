@@ -1,6 +1,7 @@
 import { type Accessor, createSignal, type Setter } from "solid-js"
 import { Mind } from "../aliens/mind"
 import type { Odds } from "../combat/combat"
+import { t } from "../i18n/strings"
 import { cover } from "../map/cover"
 import { adjacent, distance, ORTHOGONAL, type Point, plus, same } from "../map/point"
 import { clear } from "../map/sight"
@@ -27,6 +28,8 @@ export interface Zones {
 export interface Peril {
   at: Point
   kind: "fire" | "watch"
+  /** The alien on overwatch that fires there. */
+  by?: string
 }
 
 /** What a click does now: move, shoot, use the skill or the tactic, set Overwatch, or Hunker down. */
@@ -240,8 +243,8 @@ export class Battle {
       if (g.board.at(at) === "fire") perils.push({ at, kind: "fire" })
       const w = watchers.findIndex((f) => g.combat.canShoot(f, ghost))
       if (w >= 0) {
+        perils.push({ at, kind: "watch", by: watchers[w].id })
         watchers.splice(w, 1)
-        perils.push({ at, kind: "watch" })
       }
     }
     return { path, perils }
@@ -356,6 +359,16 @@ export class Battle {
       foeMove: g.reach(foe, 2).tiles(),
       foeShot: all(g).filter((t) => from.some((q) => hits(q, t))),
     }
+  }
+
+  /** What an alien plans for its next turn and at whom, as the player reads it; null when it plans nothing. */
+  intent(id: string): string | null {
+    const g = this.game(),
+      m = g.marks.find((x) => x.unit === id)
+    if (!m) return null
+    const target = g.units.find((x) => x.id === m.target),
+      attack = t(`ui.attack.${m.kind}`)
+    return target ? t("ui.intent", { attack, target: t(`kind.${target.kind}`) }) : t("ui.intent.area", { attack })
   }
 
   /** The hit chance of an attack an alien aimed, as the board stands now; null when the target is out of its reach. */

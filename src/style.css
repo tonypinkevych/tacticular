@@ -122,6 +122,13 @@ h2 {
 .status.hunkered {
   background: var(--ink);
 }
+.card .intent {
+  grid-column: 2;
+  color: var(--red);
+}
+.status.watching {
+  background: var(--muted);
+}
 .row.combo {
   color: var(--red);
   font-weight: bold;
@@ -235,7 +242,7 @@ h2 {
   gap: 6px;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 8px 270px 8px 16px;
   border-top: 1px solid var(--line);
 }
 button {
@@ -256,8 +263,12 @@ kbd {
   color: var(--muted);
 }
 .hint {
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
   margin-left: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .card.on,
 .card.on:hover {

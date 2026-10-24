@@ -54,9 +54,19 @@ export class Overlay {
       if (i > 0) this.ink.shape(circle(x, y, 7, 4.5, 12), { fill: i === pts.length - 1 ? INK : PAPER, key: 1081, w: 2 })
   }
 
-  /** A danger on a planned way: fire burns 1, or an alien on overwatch fires. */
-  peril(p: Point, kind: "fire" | "watch"): void {
+  /** A danger on a planned way: fire burns 1, or an alien on overwatch fires, with a line from it. */
+  peril(p: Point, kind: "fire" | "watch", by?: Point): void {
     const [x, y] = this.projection.center(p)
+    if (by) {
+      const [bx, by2] = this.projection.center(by)
+      this.ink.shape(
+        [
+          [bx, by2 - 30],
+          [x, y - 18],
+        ],
+        { closed: false, key: 1091, w: 1.6, amp: 0, stroke: RED, dash: [3, 4] },
+      )
+    }
     this.sign([x, y - 18], RED)
     this.float([x, y - 36], kind === "fire" ? t("ui.float.fire") : t("ui.overwatch").toUpperCase(), RED)
   }
@@ -254,16 +264,15 @@ export class Overlay {
     this.float([ax + (bx - ax) * 0.66, ay + (by - ay) * 0.66 - 30], text, live ? RED : "#8f8b80")
   }
 
-  /** The tag of a unit's status over its head. */
-  status(p: Point, status: Status): void {
+  /** The tags over a unit's head, one above another: its status, Hunker down, Overwatch. */
+  tags(p: Point, tags: { text: string; color: string }[]): void {
     const [x, y] = this.projection.center(p)
-    this.float([x, y - 62], t(`status.${status}`).toUpperCase(), STATUS[status])
+    for (const [i, tag] of tags.entries()) this.float([x, y - 62 - i * 14], tag.text, tag.color)
   }
 
-  /** The tag of a hunkered unit over its head. */
-  hunkered(p: Point): void {
-    const [x, y] = this.projection.center(p)
-    this.float([x, y - 62], t("ui.hunker").toUpperCase(), INK)
+  /** The tag of a status. */
+  status(status: Status): { text: string; color: string } {
+    return { text: t(`status.${status}`).toUpperCase(), color: STATUS[status] }
   }
 
   /** A short text over a point, in the paper look: damage, MISS, a skill name. */

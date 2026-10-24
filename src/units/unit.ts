@@ -38,7 +38,7 @@ export class Unit {
     public status: Status | null = null,
     /** The unit that put the status on. */
     public by: string | null = null,
-    /** Hunkered down until its next turn: cover counts double and shots at it cannot crit. */
+    /** Hunkered down until its next turn: cover counts double, the open as low cover, and shots at it cannot crit. */
     public hunkered = false,
   ) {}
 

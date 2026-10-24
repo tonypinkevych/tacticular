@@ -4,7 +4,7 @@ import type { Unit } from "../../units/unit"
 import { Portrait } from "./portrait"
 
 /** A unit's card: its portrait, name, HP, AP and skill. */
-export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => void }) {
+export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => void; intent?: string | null }) {
   const u = () => props.unit
   const skill = () => {
     const x = u()
@@ -47,8 +47,12 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
             .join(" · ")}
         </div>
       </Show>
+      <Show when={props.intent}>{(i) => <div class="meta intent">{i()}</div>}</Show>
       <Show when={u().hunkered}>
         <div class="status hunkered">{t("ui.hunker")}</div>
+      </Show>
+      <Show when={u().overwatch}>
+        <div class="status watching">{t("ui.overwatch")}</div>
       </Show>
     </button>
   )

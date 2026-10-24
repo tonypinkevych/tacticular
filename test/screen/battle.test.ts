@@ -72,7 +72,7 @@ describe("battle", () => {
       ],
       perils: [
         { at: { x: 3, y: 5 }, kind: "fire" },
-        { at: { x: 3, y: 4 }, kind: "watch" },
+        { at: { x: 3, y: 4 }, kind: "watch", by: "g" },
       ],
     })
   })
@@ -204,5 +204,16 @@ describe("battle", () => {
     expect(b.aimed(g.marks[0])).toBe(95)
     b.click({ x: 4, y: 7 })
     expect(b.aimed(b.game().marks[0])).toBe(null)
+  })
+  test("an alien's card says what it plans and at whom", () => {
+    const g = setup(open(), [
+      squad("v", "vanguard", { x: 3, y: 4 }),
+      squad("r", "ranger", { x: 0, y: 7 }),
+      enemy("b", "brute", { x: 3, y: 3 }),
+      enemy("g", "grunt", { x: 7, y: 0 }),
+    ])
+    g.marks.push({ kind: "claw", unit: "b", target: "v", tiles: [{ x: 3, y: 4 }] })
+    const b = new Battle(g)
+    expect([b.intent("b"), b.intent("g")]).toEqual(["Claws → Vanguard", null])
   })
 })

@@ -1,4 +1,5 @@
 import { onCleanup, onMount } from "solid-js"
+import { t } from "../../i18n/strings"
 import { ORTHOGONAL, type Point, plus } from "../../map/point"
 import { coverOf } from "../../map/tile"
 import type { Battle } from "../battle"
@@ -70,6 +71,11 @@ export function Board(props: { battle: Battle }) {
         for (const [i, p] of m.tiles.entries())
           overlay.danger(p, frame, i === (m.kind === "blast" ? 0 : m.tiles.length - 1))
       }
+      for (const m of g.marks)
+        if (!m.target) {
+          const [x, y] = projection.center(m.kind === "blast" ? m.tiles[0] : m.tiles[m.tiles.length - 1])
+          overlay.float([x, y - 34], t(`ui.attack.${m.kind}`).toUpperCase(), RED)
+        }
       for (const p of g.landing) overlay.drop(p, frame)
       const ready = battle.ready(),
         zones = battle.zones(),
@@ -122,16 +128,23 @@ export function Board(props: { battle: Battle }) {
         const target = g.units.find((x) => x.id === m.target)
         if (!target) continue
         const odds = battle.aimed(m)
-        const text = odds === null ? "—" : `${m.kind === "volley" ? "2×" : ""}${odds}%`
+        const name = m.kind === "claw" ? `${t("ui.attack.claw").toUpperCase()} ` : ""
+        const text = odds === null ? "—" : `${name}${m.kind === "volley" ? "2×" : ""}${odds}%`
         overlay.odds(g.unit(m.unit).at, target.at, text, odds !== null)
       }
       for (const x of g.units) {
-        if (x.alive() && x.status) overlay.status(x.at, x.status)
-        if (x.alive() && x.hunkered) overlay.hunkered(x.at)
+        if (!x.alive()) continue
+        const tags = [
+          ...(x.status ? [overlay.status(x.status)] : []),
+          ...(x.hunkered ? [{ text: t("ui.hunker").toUpperCase(), color: INK }] : []),
+          ...(x.overwatch ? [{ text: t("ui.overwatch").toUpperCase(), color: x.side === "enemy" ? RED : INK }] : []),
+        ]
+        overlay.tags(x.at, tags)
       }
       if (ready) for (const p of zones.targets) overlay.target(p, frame)
       if (route && u) overlay.path([u.at, ...route.path])
-      for (const peril of route?.perils ?? []) overlay.peril(peril.at, peril.kind)
+      for (const peril of route?.perils ?? [])
+        overlay.peril(peril.at, peril.kind, peril.by ? g.unit(peril.by).at : undefined)
       for (const b of battle.playback.bursts) overlay.blast(b.at, Math.min(3, Math.floor((now - b.since) * 7)))
       for (const f of battle.playback.floats) {
         const [x, y] = projection.center(f.at)

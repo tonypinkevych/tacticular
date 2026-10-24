@@ -19,7 +19,8 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
 - Aliens aim their shots, volleys and claws a turn ahead. The board shows each line with its hit chance now. It
   fires at the start of the next alien turn with +20 aim, if the target is still in sight (claws: still next to
   it). Overwatch stays a reaction.
-- Hunker down: cover counts double and shots at the soldier cannot crit until its next turn.
+- Hunker down: cover counts double, the open counts as low cover, and shots at the soldier cannot crit until its
+  next turn.
 - Blasts tear sandbags and crack rocks, then leave rubble. Barrels blow up and set their tile on fire. Fire burns
   and spreads to the next forest. A push into water drowns.
 - A mission starts with 5 aliens. 2 more drop once a mission, on tiles marked a round before.

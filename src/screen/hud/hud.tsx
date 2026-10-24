@@ -108,7 +108,9 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
           </Show>
         </div>
         <h2>{t("ui.aliens")}</h2>
-        <For each={g().units.filter((u) => u.side === "enemy" && u.alive())}>{(u) => <Card unit={u} />}</For>
+        <For each={g().units.filter((u) => u.side === "enemy" && u.alive())}>
+          {(u) => <Card unit={u} intent={b.intent(u.id)} />}
+        </For>
         <h2>{t("ui.log")}</h2>
         <ol class="log">
           <For each={log()}>

@@ -39,7 +39,8 @@ export class Combat {
     const p = shooter.profile,
       from = fire.from ?? shooter.at
     if (p.melee) return { chance: 100, crit: 0, damage: p.damage, cover: 0 }
-    const c = (target.status === "exposed" ? 0 : cover(this.game.board, target.at, from)) * (target.hunkered ? 2 : 1)
+    const base = cover(this.game.board, target.at, from)
+    const c = target.status === "exposed" ? 0 : target.hunkered ? Math.max(base, 20) * 2 : base
     let aim = p.aim - c - (fire.penalty ?? 0) + (c === 0 ? 10 : 0)
     if (target.status === "marked") aim += this.spotted(target) ? 20 : 10
     if (shooter.extra.partner && target.status && p.combo === target.status) aim += 10
