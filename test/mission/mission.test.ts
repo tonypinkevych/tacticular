@@ -34,4 +34,8 @@ describe("mission", () => {
     const defend = mission(4, { goal: "defend", squad: [{ id: "a", kind: "vanguard" }] })
     expect(defend.goal.kind === "defend" && defend.goal.at.y === 5).toBe(true)
   })
+  test("a mission with a foe holds one alien of that kind", () => {
+    const g = mission(3, { goal: "kill", squad: [{ id: "a", kind: "ranger" }], foe: "sniper" })
+    expect(g.units.filter((u) => u.kind === "sniper")).toHaveLength(1)
+  })
 })

@@ -317,6 +317,9 @@ const WEAPON: Record<Kind, Cue> = {
   commander: "plasma",
   brute: "melee",
   bomber: "blast",
+  guard: "plasma",
+  sniper: "rifle",
+  pod: "blast",
 }
 
 const NAMES: Record<string, string> = {

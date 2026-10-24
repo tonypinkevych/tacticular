@@ -11,6 +11,7 @@ export class Abilities {
 
   use(u: Unit, a: Skill): void {
     const p = u.profile
+    check(!!p.skill, "ability")
     check(u.cooldown === 0, "cooldown")
     check(u.uses === null || u.uses > 0, "uses")
     const game = this.game,

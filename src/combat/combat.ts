@@ -51,7 +51,7 @@ export class Combat {
     const odds = {
       chance: Math.max(5, Math.min(95, aim)),
       crit: c === 0 && !target.hunkered ? 50 : 0,
-      damage: p.damage,
+      damage: target.profile.passive === "shell" && c > 0 ? 0 : p.damage,
       cover: c,
     }
     if (!target.status || p.combo !== target.status) return odds
@@ -71,7 +71,7 @@ export class Combat {
       this.game.log.push({ key: "log.miss", params })
       return
     }
-    const dmg = o.damage + (crit ? 1 : 0)
+    const dmg = o.damage === 0 ? 0 : o.damage + (crit ? 1 : 0)
     if (crit) this.game.log.push({ key: "log.crit", params: { ...params, dmg } })
     else this.game.log.push({ key: "log.hit", params: { ...params, dmg } })
     const guard = shelter(this.game.board, target.at, fire.from ?? shooter.at)

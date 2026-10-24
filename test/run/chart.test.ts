@@ -20,4 +20,8 @@ describe("chart", () => {
       for (const n of c.nodes.filter((x) => x.kind === "elite")) expect(n.prize).toBe("upgrade")
     }
   })
+  test("every mission past the first layer but the fortress names a special alien", () => {
+    for (let s = 1; s <= 30; s++)
+      for (const n of Chart.of(s).nodes) expect(n.foe === undefined).toBe(n.layer === 0 || n.kind === "fortress")
+  })
 })

@@ -1,5 +1,4 @@
 import { createSignal, For, Show } from "solid-js"
-import { EVERY } from "../../aliens/reinforcements"
 import { t } from "../../i18n/strings"
 import type { Battle } from "../battle"
 import { Board } from "../board/board"
@@ -18,8 +17,9 @@ export function Hud(props: { battle: Battle; onNext: () => void }) {
   }
   const drop = () => {
     if (g().landing.length) return t("ui.dropNow")
-    if (g().drops <= 0) return t("ui.dropNone")
-    return t("ui.drop", { rounds: EVERY - (g().round % EVERY) })
+    if (!g().reinforcements.left()) return t("ui.dropNone")
+    const every = g().reinforcements.every()
+    return t("ui.drop", { rounds: every - (g().round % every) })
   }
   const skill = () => {
     const u = b.unit()

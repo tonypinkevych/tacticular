@@ -138,4 +138,24 @@ describe("shots", () => {
     ])
     expect(lucky(g, 45, 101).apply({ type: "shoot", unit: "w", target: "g" }).board.at({ x: 3, y: 2 })).toBe("torn")
   })
+  describe("new aliens", () => {
+    test("a Guard takes no damage from a shot its cover faces, but a flank or Exposed hurts it", () => {
+      const g = setup(rows(["........", "........", "...l...."]), [
+        squad("r", "ranger", { x: 3, y: 6 }),
+        squad("v", "vanguard", { x: 5, y: 1 }),
+        enemy("q", "guard", { x: 3, y: 1 }),
+      ])
+      expect(g.combat.odds(g.unit("r"), g.unit("q")).damage).toBe(0)
+      expect(g.combat.odds(g.unit("v"), g.unit("q")).damage).toBe(3)
+      g.unit("q").status = "exposed"
+      expect(g.combat.odds(g.unit("r"), g.unit("q")).damage).toBe(2)
+    })
+    test("a Sniper on overwatch fires without the aim penalty", () => {
+      const g = setup(open(), [squad("r", "ranger", { x: 3, y: 7 }), enemy("s", "sniper", { x: 3, y: 0 })])
+      g.unit("s").overwatch = true
+      const moved = g.apply({ type: "move", unit: "r", to: { x: 3, y: 6 } })
+      const shot = moved.log.find((e) => e.params.unit === "s" && e.params.chance !== undefined)
+      expect(shot?.params.chance).toBe(g.combat.odds(g.unit("s"), moved.unit("r")).chance)
+    })
+  })
 })

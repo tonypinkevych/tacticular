@@ -1,5 +1,6 @@
 import { Dice } from "../combat/dice"
 import { BIOMES, type Biome } from "../map/terrain"
+import type { FoeId } from "../units/profiles"
 
 /** What a mission on the chart is: a goal, an elite fight, or the fortress at the end. */
 export type Task = "kill" | "evac" | "defend" | "elite" | "fortress"
@@ -15,6 +16,8 @@ export interface Node {
   next: number[]
   prize?: Prize
   biome: Biome
+  /** The special alien of the mission; none on the first layer and at the fortress. */
+  foe?: FoeId
 }
 
 const PRIZES: Prize[] = ["heal", "recruit", "train", "upgrade"]
@@ -22,6 +25,8 @@ const PRIZES: Prize[] = ["heal", "recruit", "train", "upgrade"]
 const KINDS: Task[] = ["kill", "evac", "defend", "elite"]
 
 const LAYERS = 4
+
+const FOES: FoeId[] = ["guard", "sniper", "pod"]
 
 /** The map of one act: 4 layers of 2-3 missions, each leading to 1-2 of the next and holding a prize, then the fortress. */
 export class Chart {
@@ -60,6 +65,7 @@ export class Chart {
     }
     for (const n of nodes) if (n.kind !== "fortress") n.prize = n.kind === "elite" ? "upgrade" : r.pick(PRIZES)
     for (const n of nodes) n.biome = n.kind === "fortress" ? "ruins" : r.pick(BIOMES)
+    for (const n of nodes) if (n.layer > 0 && n.kind !== "fortress") n.foe = r.pick(FOES)
     return new Chart(seed, nodes)
   }
 

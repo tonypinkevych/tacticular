@@ -7,14 +7,27 @@ import { Unit } from "../units/unit"
 /** Rounds between alien drops. */
 export const EVERY = 3
 
-/** Alien drops: 2 aliens every 3 rounds on tiles marked a round before, as long as drops are left. */
+/**
+ * Alien drops: 2 aliens every 3 rounds on tiles marked a round before, as long as drops are left. While a Pod
+ * stands, a drop comes every 2 rounds and drops never run out.
+ */
 export class Reinforcements {
   constructor(private readonly game: Game) {}
+
+  /** Rounds between drops now. */
+  every(): number {
+    return this.nest() ? 2 : EVERY
+  }
+
+  /** Whether another drop will come. */
+  left(): boolean {
+    return this.game.drops > 0 || this.nest()
+  }
 
   /** Marks the 2 free tiles farthest from the squad when the next round brings a drop. */
   mark(): void {
     const game = this.game
-    if (game.drops <= 0 || (game.round + 1) % EVERY !== 0) return
+    if (!this.left() || (game.round + 1) % this.every() !== 0) return
     const squad = game.units.filter((u) => u.side === "squad" && u.alive())
     const free: Point[] = []
     for (let y = 0; y < game.board.height; y++)
@@ -45,5 +58,9 @@ export class Reinforcements {
     game.drops -= 1
     game.landing = []
     game.log.push({ key: "log.drop", params: { count: landed.length } })
+  }
+
+  private nest(): boolean {
+    return this.game.units.some((u) => u.alive() && u.side === "enemy" && u.profile.passive === "nest")
   }
 }

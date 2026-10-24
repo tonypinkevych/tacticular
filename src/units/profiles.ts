@@ -2,13 +2,16 @@ import type { Status } from "./unit"
 
 export type ClassId = "vanguard" | "ranger" | "warden" | "cleric"
 
-export type AlienId = "grunt" | "brute" | "bomber" | "commander"
+export type AlienId = "grunt" | "brute" | "bomber" | "commander" | FoeId
+
+/** The aliens a mission names as its special foe. */
+export type FoeId = "guard" | "sniper" | "pod"
 
 export type Kind = ClassId | AlienId
 
 export type SkillId = "runGun" | "headshot" | "grenade" | "medkit" | "covering" | "charge" | "blast" | "warcry"
 
-export type Passive = "pointBlank" | "steady" | "shred" | "aid"
+export type Passive = "pointBlank" | "steady" | "shred" | "aid" | "shell" | "keen" | "nest"
 
 export interface Profile {
   hp: number
@@ -21,7 +24,7 @@ export interface Profile {
   melee?: boolean
   /** Walks through rough ground. */
   rough?: boolean
-  skill: SkillId
+  skill?: SkillId
   /** Turns to wait after the skill. */
   cooldown: number
   /** Skill uses a mission; null means no limit. */
@@ -102,5 +105,8 @@ export const PROFILES: Record<Kind, Profile> = {
     uses: null,
   },
   bomber: { hp: 2, aim: 0, move: 2, damage: 2, range: 0, skill: "blast", cooldown: 1, uses: null },
+  guard: { hp: 5, aim: 70, move: 1, damage: 2, range: 3, skill: "covering", cooldown: 3, uses: null, passive: "shell" },
+  sniper: { hp: 3, aim: 80, move: 1, damage: 3, range: ALL, cooldown: 0, uses: null, passive: "keen" },
+  pod: { hp: 5, aim: 0, move: 0, damage: 0, range: 0, cooldown: 0, uses: null, passive: "nest" },
   commander: { hp: 6, aim: 70, move: 1, damage: 3, range: 5, skill: "warcry", cooldown: 3, uses: null },
 }

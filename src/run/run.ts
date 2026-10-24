@@ -99,10 +99,10 @@ export class Run {
     return { ...brief, aliens: aliens(brief) }
   }
 
-  private brief({ kind, biome }: Node, threat: number): Omit<Conditions, "squad"> {
+  private brief({ kind, biome, foe }: Node, threat: number): Omit<Conditions, "squad"> {
     if (kind === "fortress") return { goal: "kill", threat: 2, boss: true, biome }
-    if (kind === "elite") return { goal: "kill", threat: threat + 2, biome }
-    return { goal: kind, threat, biome }
+    if (kind === "elite") return { goal: "kill", threat: threat + 2, biome, foe }
+    return { goal: kind, threat, biome, foe }
   }
 
   /** Gives a soldier +1 HP and +5 aim for good. */

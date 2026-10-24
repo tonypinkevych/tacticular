@@ -32,9 +32,13 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
           {(i) => <i classList={{ off: i >= u().hp }} />}
         </For>
       </div>
-      <div class="meta">
-        {t(`skill.${u().profile.skill}`)} · {skill()}
-      </div>
+      <Show when={u().profile.skill}>
+        {(s) => (
+          <div class="meta">
+            {t(`skill.${s()}`)} · {skill()}
+          </div>
+        )}
+      </Show>
       <Show when={u().status}>{(s) => <div class={`status ${s()}`}>{t(`status.${s()}`)}</div>}</Show>
       <Show when={u().hunkered}>
         <div class="status hunkered">{t("ui.hunker")}</div>

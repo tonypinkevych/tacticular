@@ -67,6 +67,9 @@ const HOLD: Record<Kind, { gun: Pt; ga: number; aim: Pt }> = {
   commander: { gun: [9, -13], ga: 6, aim: [11, -15] },
   brute: { gun: [0, 0], ga: 0, aim: [0, 0] },
   bomber: { gun: [0, 0], ga: 0, aim: [0, 0] },
+  guard: { gun: [7, -12], ga: -20, aim: [9, -14] },
+  sniper: { gun: [5, -12], ga: -38, aim: [7, -15] },
+  pod: { gun: [0, 0], ga: 0, aim: [0, 0] },
 }
 
 /** The pose of a kind in frame `i` of a state. */
@@ -142,6 +145,11 @@ export function pose(kind: Kind, state: State, i: number): Pose {
     sa: [10, 25, 40, 50][f],
     ca: 30 + [20, 50, 70, 80][f],
   })
+  if (kind === "pod") {
+    if (state === "death") return { ...death(Math.min(i, 3)), swell: [1, 0.9, 0.8, 0.7][Math.min(i, 3)] }
+    if (state === "hit") return { ...hit(f4), swell: 0.94 }
+    return { ...stand, swell: [1, 1.04, 1.07, 1.04][f4], blink: f4 === 2 }
+  }
   if (kind === "bomber") {
     if (state === "idle") return { ...stand, swell: [1, 1.03, 1.05, 1.03][f4] }
     if (state === "walk") return walk(i % 6)

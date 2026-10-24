@@ -459,8 +459,99 @@ export class Figure {
   }
 
   private grunt(p: Pose): void {
+    const { M, G } = this.frames(p)
+    this.drone(p, M)
+    const g = this.gun(G, p, "plasma", GLOW)
+    this.hand(G([0, 0]), 75, MID)
+    if (g.fore) this.hand(G(g.fore), 76, MID)
+    this.effect(p, M, G)
+  }
+
+  /** A grunt behind a big carapace plate held before it. */
+  private guard(p: Pose): void {
     const { M, G } = this.frames(p),
       ink = this.ink
+    this.drone(p, M)
+    const g = this.gun(G, p, "plasma", GLOW)
+    this.hand(G([0, 0]), 75, MID)
+    if (g.fore) this.hand(G(g.fore), 76, MID)
+    const plate = this.P(M, [
+      [8, -44],
+      [20, -38],
+      [22, -14],
+      [14, -2],
+      [8, -6],
+    ])
+    ink.shape(plate, { fill: "#d8d5cc", key: 120, w: 1.8, hatch: 3, hatchPts: plate })
+    ink.line(
+      this.P(M, [
+        [12, -36],
+        [16, -12],
+      ]),
+      121,
+      1.2,
+    )
+    this.effect(p, M, G)
+  }
+
+  /** A hooded grunt with a long rifle. */
+  private sniper(p: Pose): void {
+    const { M, G } = this.frames(p),
+      ink = this.ink
+    this.drone(p, M)
+    ink.shape(
+      this.P(M, [
+        [-9, -30],
+        [-4, -44],
+        [8, -45],
+        [14, -38],
+        [4, -36],
+        [-2, -26],
+      ]),
+      { fill: HOOD, key: 122, w: 1.5, hatch: 2.6 },
+    )
+    const g = this.gun(G, p, "rifle", GLOW)
+    this.hand(G([0, 0]), 75, MID)
+    if (g.fore) this.hand(G(g.fore), 76, MID)
+    this.effect(p, M, G)
+  }
+
+  /** A pulsing egg that calls the drops. */
+  private pod(p: Pose): void {
+    const { M } = this.frames(p),
+      ink = this.ink,
+      s = p.swell
+    this.base(p, M, 18)
+    const shell = circle(0, -20 * s, 15 * s, 21 * s, 22).map(M)
+    ink.shape(shell, { fill: ALIEN, key: 123, hatch: 2.4, hatchPts: circle(-6, -18 * s, 8, 18 * s, 10).map(M) })
+    for (const [x, y, d, k] of [
+      [4, -28, 3.2, 124],
+      [-4, -16, 2.6, 125],
+      [6, -12, 2.2, 126],
+    ])
+      ink.shape(circle(x * s, y * s, d * s, d * s, 10).map(M), { fill: p.blink ? YELLOW : GLOW, key: k, w: 1.1 })
+    ink.line(
+      this.P(M, [
+        [-12, -4],
+        [-18, 0],
+      ]),
+      127,
+      1.4,
+    )
+    ink.line(
+      this.P(M, [
+        [12, -4],
+        [18, 0],
+      ]),
+      128,
+      1.4,
+    )
+    this.effect(p, M)
+  }
+
+  /** The body, head, antennae and eye every grunt-like alien shares. */
+  private drone(p: Pose, M: Warp): void {
+    const ink = this.ink
     this.base(p, M)
     this.bean(M, ALIEN, 10, 9.5)
     ink.shape(circle(3, -31, 10, 12, 18).map(M), {
@@ -478,10 +569,6 @@ export class Figure {
     }
     ink.shape(circle(6, -31, 5.5, 5.5, 12).map(M), { fill: PAPER, key: 73, w: 1.4 })
     ink.shape(circle(7.5 + p.look, -31, 2.6, 2.6, 8).map(M), { fill: TEAL, key: 74, w: 0.9 })
-    const g = this.gun(G, p, "plasma", GLOW)
-    this.hand(G([0, 0]), 75, MID)
-    if (g.fore) this.hand(G(g.fore), 76, MID)
-    this.effect(p, M, G)
   }
 
   private brute(p: Pose): void {

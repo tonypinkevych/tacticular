@@ -2,7 +2,7 @@ import { Dice } from "../combat/dice"
 import type { Point } from "../map/point"
 import { BIOMES, type Biome, terrain } from "../map/terrain"
 import { blocksMove } from "../map/tile"
-import type { AlienId, ClassId } from "../units/profiles"
+import type { AlienId, ClassId, FoeId } from "../units/profiles"
 import { type Training, Unit } from "../units/unit"
 import { Game, type Goal } from "./game"
 
@@ -26,6 +26,8 @@ export interface Conditions {
   boss?: boolean
   /** The land of the map; the seed picks one when unset. */
   biome?: Biome
+  /** The special alien the mission holds one of. */
+  foe?: FoeId
 }
 
 const ALIENS: AlienId[] = ["grunt", "grunt", "brute", "bomber"]
@@ -49,6 +51,7 @@ export function mission(seed: number, c: Conditions): Game {
     ...ALIENS.slice(0, 3),
     ...Array.from({ length: aliens({ threat: c.threat }) - 3 }, () => dice.pick(ALIENS)),
   ]
+  if (c.foe) kinds[kinds.length - 1] = c.foe
   if (c.boss) kinds.push("commander")
   const top = free([0, 1])
   const foes = kinds.map((k, i) => Unit.of(`a${i}`, k, "enemy", top[i]))

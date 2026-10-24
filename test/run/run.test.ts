@@ -24,6 +24,7 @@ describe("run", () => {
       threat: c.threat,
       boss: c.boss,
       biome: c.biome,
+      foe: c.foe,
       aliens: aliens(c),
     })
   })

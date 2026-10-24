@@ -75,7 +75,7 @@ export class Orders {
       if (watcher) {
         watcher.overwatch = false
         this.game.log.push({ key: "log.overwatch", params: { unit: watcher.id, target: u.id } })
-        this.game.combat.fire(watcher, u, { penalty: 20 })
+        this.game.combat.fire(watcher, u, { penalty: watcher.profile.passive === "keen" ? 0 : 20 })
       }
       if (!u.alive()) return
     }

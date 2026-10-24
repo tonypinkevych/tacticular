@@ -70,6 +70,13 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
                 <b>{t(`ui.goal.${b().goal}`, { left: 5 })}</b>
               </p>
               <p>{t("ui.brief.aliens", { count: b().aliens })}</p>
+              <Show when={b().foe}>
+                {(f) => (
+                  <p>
+                    <b>{t(`kind.${f()}`)}</b>: {t(`foe.about.${f()}`)}
+                  </p>
+                )}
+              </Show>
               <Show when={b().prize}>
                 {(p) => (
                   <p>

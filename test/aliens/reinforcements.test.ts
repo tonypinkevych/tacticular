@@ -21,4 +21,10 @@ describe("reinforcements", () => {
     for (let i = 0; i < 12; i++) g = round(g)
     expect(g.units.filter((u) => u.side === "enemy")).toHaveLength(5)
   })
+  test("while a Pod stands, aliens land every 2 rounds and never run out", () => {
+    let g = setup(open(), [squad("r", "ranger", { x: 3, y: 7 }), enemy("p", "pod", { x: 0, y: 0 })])
+    g.drops = 1
+    for (let i = 0; i < 6; i++) g = round(g)
+    expect(g.log.filter((e) => e.key === "log.drop")).toHaveLength(3)
+  })
 })
