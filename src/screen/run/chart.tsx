@@ -1,5 +1,6 @@
 import { createSignal, For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
+import type { Prize as PrizeKind } from "../../run/chart"
 import type { Run } from "../../run/run"
 import { Unit } from "../../units/unit"
 import { Card } from "../hud/card"
@@ -20,7 +21,9 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
   }
   const brief = () => {
     const id = node()
-    return id === null ? null : { ...run.preview(id), kind: run.chart.node(id).kind }
+    if (id === null) return null
+    const n = run.chart.node(id)
+    return { ...run.preview(id), kind: n.kind, prize: n.prize }
   }
   const open = (id: number) => run.options().some((n) => n.id === id)
   const toggle = (id: string) =>
@@ -49,6 +52,7 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
               disabled={!open(n.id)}
               onClick={() => setNode(n.id)}
             >
+              <Show when={n.prize}>{(p) => <Prize kind={p()} />}</Show>
               {t(`ui.task.${n.kind}`)}
             </button>
           )}
@@ -64,6 +68,13 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
                 <b>{t(`ui.goal.${b().goal}`, { left: 5 })}</b>
               </p>
               <p>{t("ui.brief.aliens", { count: b().aliens })}</p>
+              <Show when={b().prize}>
+                {(p) => (
+                  <p>
+                    <Prize kind={p()} /> {t("ui.brief.prize", { prize: t(`ui.prize.${p()}`) })}
+                  </p>
+                )}
+              </Show>
             </>
           )}
         </Show>
@@ -83,6 +94,22 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
         {t("ui.run.go")}
       </button>
     </section>
+  )
+}
+
+const ICONS: Record<PrizeKind, string> = {
+  heal: "M6 2h4v4h4v4h-4v4H6v-4H2V6h4z",
+  recruit: "M8 1a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM2 15c0-4 3-6 6-6s6 2 6 6z",
+  train: "M8 1l6 7h-4v7H6V8H2z",
+  upgrade: "M8 1l2 5h5l-4 3 2 6-5-4-5 4 2-6-4-3h5z",
+}
+
+/** The icon of a prize. */
+function Prize(props: { kind: PrizeKind }) {
+  return (
+    <svg class="prize" viewBox="0 0 16 16" aria-hidden="true">
+      <path d={ICONS[props.kind]} />
+    </svg>
   )
 }
 

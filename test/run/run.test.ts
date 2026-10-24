@@ -41,11 +41,13 @@ describe("run", () => {
     r.play({ type: "finish", result: { won: false, hp: { [a.id]: 2, [b.id]: 0, [c.id]: 0 } } })
     expect(r.roster.map((s) => s.id)).toEqual([a.id])
   })
-  test("a win offers 3 rewards; a loss raises the threat", () => {
+  test("a win offers only the prize of its node; a loss raises the threat", () => {
     const r = drafted()
     go(r)
+    const prize = r.chart.node(r.at ?? 0).prize
     r.play({ type: "finish", result: { won: true, hp: Object.fromEntries(r.roster.map((s) => [s.id, s.max])) } })
-    expect([r.stage, r.offers.length]).toEqual(["reward", 3])
+    expect(r.stage).toBe("reward")
+    expect(r.offers.every((o) => o.kind === prize)).toBe(true)
     const l = drafted()
     go(l)
     l.play({ type: "finish", result: { won: false, hp: Object.fromEntries(l.roster.map((s) => [s.id, 1])) } })

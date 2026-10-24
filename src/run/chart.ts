@@ -3,19 +3,25 @@ import { Dice } from "../combat/dice"
 /** What a mission on the chart is: a goal, an elite fight, or the fortress at the end. */
 export type Task = "kill" | "evac" | "defend" | "elite" | "fortress"
 
-/** One mission on the chart and the missions it leads to. */
+/** What a won mission gives: a heal, a recruit, training or a skill upgrade. */
+export type Prize = "heal" | "recruit" | "train" | "upgrade"
+
+/** One mission on the chart, its prize, and the missions it leads to. */
 export interface Node {
   id: number
   layer: number
   kind: Task
   next: number[]
+  prize?: Prize
 }
+
+const PRIZES: Prize[] = ["heal", "recruit", "train", "upgrade"]
 
 const KINDS: Task[] = ["kill", "evac", "defend", "elite"]
 
 const LAYERS = 4
 
-/** The map of one act: 4 layers of 2-3 missions, each leading to 1-2 of the next, then the fortress. */
+/** The map of one act: 4 layers of 2-3 missions, each leading to 1-2 of the next and holding a prize, then the fortress. */
 export class Chart {
   constructor(
     readonly seed: number,
@@ -50,6 +56,7 @@ export class Chart {
         here[Math.round((k * (here.length - 1)) / Math.max(1, there.length - 1))].next.push(m.id)
       }
     }
+    for (const n of nodes) if (n.kind !== "fortress") n.prize = n.kind === "elite" ? "upgrade" : r.pick(PRIZES)
     return new Chart(seed, nodes)
   }
 

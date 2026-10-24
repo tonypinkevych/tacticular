@@ -3,7 +3,7 @@ import type { Game } from "../mission/game"
 import { aliens, type Conditions } from "../mission/mission"
 import { type ClassId, PROFILES } from "../units/profiles"
 import type { Training } from "../units/unit"
-import { Chart, type Node, type Task } from "./chart"
+import { Chart, type Node, type Prize, type Task } from "./chart"
 
 /** Where a run stands: picking the squad, on the chart, in a mission, picking a reward, or over. */
 export type Stage = "draft" | "chart" | "mission" | "reward" | "won" | "lost"
@@ -154,7 +154,7 @@ export class Run {
     if (this.roster.length === 0) this.stage = "lost"
     else if (node.kind === "fortress") this.stage = result.won ? "won" : "lost"
     else if (result.won) {
-      this.offers = this.offer(node.kind === "elite")
+      this.offers = this.offer(node.prize ?? "heal")
       this.stage = "reward"
     } else {
       this.threat += 1
@@ -177,24 +177,24 @@ export class Run {
     for (const s of this.roster) s.hp = Math.min(s.max, s.hp + n)
   }
 
-  /** Heal, a recruit while the roster has room, then training and upgrades for random soldiers; an elite win always offers an upgrade. */
-  private offer(elite: boolean): Reward[] {
-    const out: Reward[] = [{ kind: "heal" }]
-    if (this.roster.length < ROSTER) {
+  /** The choices of a prize: heal all; a recruit of up to 3 classes while the roster has room, else a heal; training or an upgrade for up to 3 soldiers. */
+  private offer(prize: Prize): Reward[] {
+    if (prize === "recruit" && this.roster.length < ROSTER) {
       const lacking = CLASSES.filter((c) => !this.roster.some((s) => s.kind === c))
-      this.recruits += 1
-      out.push({
-        kind: "recruit",
-        soldier: soldier(`r${this.recruits}`, this.dice.pick(lacking.length ? lacking : CLASSES)),
-      })
+      return this.dice
+        .shuffle(lacking.length ? lacking : CLASSES)
+        .slice(0, 3)
+        .map((kind) => {
+          this.recruits += 1
+          return { kind: "recruit", soldier: soldier(`r${this.recruits}`, kind) }
+        })
     }
-    const pool: Reward[] = this.dice.shuffle(this.roster).flatMap((s): Reward[] => [
-      { kind: "upgrade", id: s.id },
-      { kind: "train", id: s.id },
-    ])
-    if (elite) out.splice(1, 0, pool.shift() as Reward)
-    while (out.length < 3 && pool.length) out.push(pool.shift() as Reward)
-    return out.slice(0, 3)
+    if (prize === "train" || prize === "upgrade")
+      return this.dice
+        .shuffle(this.roster)
+        .slice(0, 3)
+        .map((s) => ({ kind: prize, id: s.id }))
+    return [{ kind: "heal" }]
   }
 
   private soldier(id: string): Soldier {

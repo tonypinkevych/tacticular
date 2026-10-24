@@ -13,4 +13,11 @@ describe("chart", () => {
       for (const n of c.nodes.filter((x) => x.layer > 0)) expect(c.nodes.some((m) => m.next.includes(n.id))).toBe(true)
     }
   })
+  test("every mission but the fortress holds one prize, and an elite holds a skill upgrade", () => {
+    for (let s = 1; s <= 30; s++) {
+      const c = Chart.of(s)
+      for (const n of c.nodes) expect(n.prize === undefined).toBe(n.kind === "fortress")
+      for (const n of c.nodes.filter((x) => x.kind === "elite")) expect(n.prize).toBe("upgrade")
+    }
+  })
 })

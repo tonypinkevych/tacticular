@@ -25,8 +25,8 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
 
 Pick 3 of the 4 classes. Cross a chart of 4 layers of missions to the Commander's fortress. Each mission raises the
 threat, and each 3 threat adds an alien. Soldiers keep their HP between missions and heal 2. After a win the fallen
-come back with 1 HP; after a loss they are dead. A won mission offers a reward: heal all, a recruit, training
-(+1 HP, +5 aim) or a skill upgrade.
+come back with 1 HP; after a loss they are dead. Each mission on the chart shows its reward: heal all, a recruit, training (+1 HP, +5 aim) or a
+skill upgrade; an Elite always gives an upgrade. A win gives that reward.
 
 ## Run the game
 
