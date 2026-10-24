@@ -232,8 +232,8 @@ export class Overlay {
     )
   }
 
-  /** An attack an alien aimed at a soldier: a line to it and the hit chance, or a grey line when it is out of reach. */
-  aim(from: Point, to: Point, text: string, live: boolean): void {
+  /** An attack an alien aimed at a soldier: a line to it, grey when the soldier is out of its reach. */
+  aim(from: Point, to: Point, live: boolean): void {
     const [ax, ay] = this.projection.center(from),
       [bx, by] = this.projection.center(to)
     const color = live ? RED : "#8f8b80"
@@ -245,7 +245,13 @@ export class Overlay {
       { closed: false, key: 1090, w: 2, amp: 0, stroke: color, dash: [6, 5] },
     )
     if (live) this.ink.shape(this.projection.diamond(to, 3), { w: 2, sharp: true, stroke: RED, dash: [6, 4], amp: 0 })
-    this.float([bx, by - 44], text, color)
+  }
+
+  /** The hit chance of an aimed attack, two thirds along its line. */
+  odds(from: Point, to: Point, text: string, live: boolean): void {
+    const [ax, ay] = this.projection.center(from),
+      [bx, by] = this.projection.center(to)
+    this.float([ax + (bx - ax) * 0.66, ay + (by - ay) * 0.66 - 30], text, live ? RED : "#8f8b80")
   }
 
   /** The tag of a unit's status over its head. */

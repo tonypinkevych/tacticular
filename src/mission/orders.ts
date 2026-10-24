@@ -81,10 +81,10 @@ export class Orders {
     }
   }
 
-  /** An alien's attack on a soldier, shown now and carried out at the start of its next turn. */
+  /** An alien's attack on a soldier, shown now and carried out at the start of its next turn; a volley logs as its skill. */
   aim(u: Unit, t: Unit, kind: "shot" | "volley" | "claw"): void {
     this.game.marks.push({ kind, unit: u.id, target: t.id, tiles: [{ ...t.at }] })
-    this.game.log.push({ key: "log.aim", params: { unit: u.id, target: t.id } })
+    if (kind !== "volley") this.game.log.push({ key: "log.aim", params: { unit: u.id, target: t.id } })
   }
 
   private shoot(u: Unit, action: { target?: string; at?: Point }): void {

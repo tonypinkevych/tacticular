@@ -64,13 +64,7 @@ export function Board(props: { battle: Battle }) {
         const shooter = g.unit(m.unit),
           target = g.units.find((x) => x.id === m.target)
         if (target) {
-          const odds = battle.aimed(m)
-          overlay.aim(
-            shooter.at,
-            target.at,
-            odds === null ? "—" : `${m.kind === "volley" ? "2×" : ""}${odds}%`,
-            odds !== null,
-          )
+          overlay.aim(shooter.at, target.at, battle.aimed(m) !== null)
           continue
         }
         for (const [i, p] of m.tiles.entries())
@@ -124,6 +118,13 @@ export function Board(props: { battle: Battle }) {
         })
       things.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y)
       for (const t of things) t.draw()
+      for (const m of g.marks) {
+        const target = g.units.find((x) => x.id === m.target)
+        if (!target) continue
+        const odds = battle.aimed(m)
+        const text = odds === null ? "—" : `${m.kind === "volley" ? "2×" : ""}${odds}%`
+        overlay.odds(g.unit(m.unit).at, target.at, text, odds !== null)
+      }
       for (const x of g.units) {
         if (x.alive() && x.status) overlay.status(x.at, x.status)
         if (x.alive() && x.hunkered) overlay.hunkered(x.at)
