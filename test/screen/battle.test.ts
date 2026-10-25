@@ -222,6 +222,11 @@ describe("battle", () => {
     b.choose("skill")
     expect([b.mode(), b.notice()]).toEqual(["move", "cooldown"])
   })
+  test("with no ability chosen, no help shows for the selected soldier", () => {
+    const b = start()
+    b.pick("w")
+    expect(b.help("move")).toBeNull()
+  })
   test("Shoot shows the tiles the soldier can fire at", () => {
     const b = start()
     b.pick("w")

@@ -5,6 +5,7 @@ import type { Unit } from "../../units/unit"
 import type { Battle, Mode } from "../battle"
 import { Board } from "../board/board"
 import { Combos } from "../combos"
+import { help } from "../help"
 import { Restart } from "../run/restart"
 import { charge } from "./card"
 import { Portrait } from "./portrait"
@@ -19,6 +20,7 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
   const [muted, setMuted] = createSignal(b.sound.muted)
   const [log, setLog] = createSignal(false)
   const [tipped, setTipped] = createSignal<Mode | null>(null)
+  const [peeked, setPeeked] = createSignal<Unit | null>(null)
   const g = () => b.game()
   const goal = () => {
     const x = g().goal
@@ -117,6 +119,8 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
                 class="sheet"
                 classList={{ on: b.selected() === u.id, spent: u.ap === 0 }}
                 onClick={() => b.pick(u.id)}
+                onMouseEnter={() => setPeeked(u)}
+                onMouseLeave={() => setPeeked(null)}
               >
                 <Portrait kind={u.kind} />
                 <div class="title">
@@ -183,7 +187,7 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
       </section>
 
       <section class="abilities">
-        <Show when={b.help(tipped() ?? b.mode())}>
+        <Show when={b.help(tipped() ?? b.mode()) ?? (peeked() ? help(peeked() as Unit, "move") : null)}>
           {(h) => (
             <div class="float tip">
               <b>{h().name}</b>

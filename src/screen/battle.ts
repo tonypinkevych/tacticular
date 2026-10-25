@@ -382,10 +382,10 @@ export class Battle {
     }
   }
 
-  /** The help of an ability of the selected soldier, or of its combo while moving; null with none selected. */
+  /** The help of an ability of the selected soldier; null while moving or with none selected. */
   help(mode: Mode): Help | null {
     const u = this.unit()
-    return u ? help(u, mode) : null
+    return u && mode !== "move" ? help(u, mode) : null
   }
 
   /** What an alien plans for its next turn and at whom, as the player reads it; null when it plans nothing. */
