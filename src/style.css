@@ -803,6 +803,7 @@ button.link {
 }
 .tip p {
   margin: 0;
+  white-space: pre-line;
 }
 .tip p::first-letter {
   text-transform: uppercase;

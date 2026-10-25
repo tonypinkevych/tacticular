@@ -187,7 +187,11 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
       </section>
 
       <section class="abilities">
-        <Show when={b.help(tipped() ?? b.mode()) ?? (peeked() ? help(peeked() as Unit, "move") : null)}>
+        <Show
+          when={
+            tipped() ? b.help(tipped() as Mode) : peeked() ? help(peeked() as Unit, "move", squad()) : b.help(b.mode())
+          }
+        >
           {(h) => (
             <div class="float tip">
               <b>{h().name}</b>

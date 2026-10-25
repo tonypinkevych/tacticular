@@ -9,22 +9,33 @@ export interface Help {
   how: string
 }
 
-/** The help of an ability of a soldier, or of its combo while it moves; null for an ability it does not have. */
-export function help(u: Unit, mode: Mode): Help | null {
+/** The help of an ability of a soldier, or of its combo with its squad while it moves; null for an ability it lacks. */
+export function help(u: Unit, mode: Mode, team: Unit[] = []): Help | null {
   const p = u.profile
-  if (mode === "move")
-    return p.tactic && p.combo
-      ? {
-          name: t("ui.combo"),
-          about: t("help.combo.about", {
-            tactic: t(`tactic.${p.tactic}`),
-            put: t(`status.${p.tactic}`),
-            status: t(`status.${p.combo}`),
-            effect: t(`combo.${u.kind}`),
-          }),
-          how: t("help.combo.how"),
-        }
-      : null
+  if (mode === "move") {
+    if (!p.tactic || !p.combo) return null
+    const who = (match: (q: Unit["profile"]) => boolean) =>
+      team
+        .filter((x) => x.id !== u.id && match(x.profile))
+        .map((x) => t(`kind.${x.kind}`))
+        .join(t("help.combo.or")) || t("help.combo.nobody")
+    return {
+      name: t("ui.combo"),
+      about: [
+        t("help.combo.setup", {
+          tactic: t(`tactic.${p.tactic}`),
+          put: t(`status.${p.tactic}`),
+          who: who((q) => q.combo === p.tactic),
+        }),
+        t("help.combo.cash", {
+          status: t(`status.${p.combo}`),
+          who: who((q) => q.tactic === p.combo),
+          effect: t(`combo.${u.kind}`),
+        }),
+      ].join("\n"),
+      how: t("help.combo.how"),
+    }
+  }
   if (mode === "skill")
     return { name: t(`skill.${p.skill}`), about: t(`skill.about.${p.skill}`), how: t(`skill.how.${p.skill}`) }
   if (mode === "ultimate") {

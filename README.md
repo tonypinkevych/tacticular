@@ -53,7 +53,8 @@ The chain is Suppress → Vanguard → Warden → Ranger → Cleric, and each ta
 shares Exposed with the Ranger and sends the chain back to the Warden. Any other soldier deals 1 more to an alien
 with a status a teammate put on, so every squad can combo. With a soldier selected, the board names the teammate its
 tactic sets up on each alien, and over each status the soldier who turns it into a combo; the squad list marks a
-soldier with a combo ready.
+soldier with a combo ready. Pointing at a soldier in the squad list shows its combo card: what it sets up and for whom,
+and which teammate sets up its own combo.
 
 ## Ultimates
 

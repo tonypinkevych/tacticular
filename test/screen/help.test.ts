@@ -17,16 +17,22 @@ describe("help", () => {
       { name: t("tactic.suppressed"), about: t("tactic.about.suppressed"), how: t("tactic.how.suppressed") },
     ])
   })
-  test("while moving, the help names the status the soldier puts on and the combo it lands", () => {
-    expect(help(game().unit("w"), "move")).toEqual({
+  test("the combo card names the squad mate who cashes in the soldier's set-up and who sets up its own combo", () => {
+    const g = setup(open(), [
+      squad("w", "warden", { x: 5, y: 6 }),
+      squad("v", "vanguard", { x: 3, y: 6 }),
+      squad("c", "cleric", { x: 1, y: 6 }),
+      enemy("g", "grunt", { x: 3, y: 1 }),
+    ])
+    const team = g.units.filter((u) => u.side === "squad")
+    expect(help(g.unit("w"), "move", team)).toEqual({
       name: t("ui.combo"),
-      about: t("help.combo.about", {
-        tactic: t("tactic.suppressed"),
-        put: t("status.suppressed"),
-        status: t("status.staggered"),
-        effect: t("combo.warden"),
-      }),
+      about: [
+        t("help.combo.setup", { tactic: t("tactic.suppressed"), put: t("status.suppressed"), who: t("kind.vanguard") }),
+        t("help.combo.cash", { status: t("status.staggered"), who: t("kind.vanguard"), effect: t("combo.warden") }),
+      ].join("\n"),
       how: t("help.combo.how"),
     })
+    expect(help(g.unit("c"), "move", team)?.about).toContain(t("help.combo.nobody"))
   })
 })
