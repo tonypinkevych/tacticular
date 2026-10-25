@@ -33,6 +33,11 @@ describe("help", () => {
       ].join("\n"),
       how: t("help.combo.how"),
     })
-    expect(help(g.unit("c"), "move", team)?.about).toContain(t("help.combo.nobody"))
+    expect(help(g.unit("c"), "move", team)?.about).toBe(
+      [
+        t("help.combo.setup.none", { tactic: t("tactic.exposed"), put: t("status.exposed") }),
+        t("help.combo.cash.none", { status: t("status.marked"), effect: t("combo.cleric") }),
+      ].join("\n"),
+    )
   })
 })

@@ -18,18 +18,20 @@ export function help(u: Unit, mode: Mode, team: Unit[] = []): Help | null {
       team
         .filter((x) => x.id !== u.id && match(x.profile))
         .map((x) => t(`kind.${x.kind}`))
-        .join(t("help.combo.or")) || t("help.combo.nobody")
+        .join(t("help.combo.or"))
+    const setter = who((q) => q.tactic === p.combo),
+      taker = who((q) => q.combo === p.tactic)
     return {
       name: t("ui.combo"),
       about: [
-        t("help.combo.setup", {
+        t(taker ? "help.combo.setup" : "help.combo.setup.none", {
           tactic: t(`tactic.${p.tactic}`),
           put: t(`status.${p.tactic}`),
-          who: who((q) => q.combo === p.tactic),
+          who: taker,
         }),
-        t("help.combo.cash", {
+        t(setter ? "help.combo.cash" : "help.combo.cash.none", {
           status: t(`status.${p.combo}`),
-          who: who((q) => q.tactic === p.combo),
+          who: setter,
           effect: t(`combo.${u.kind}`),
         }),
       ].join("\n"),

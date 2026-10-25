@@ -249,7 +249,8 @@ const en = {
   "help.ultimate": "Ready after 2 combos or +1 hits this mission, landed or set up.",
   "help.combo.setup": "Set up: {tactic} (key 3) makes an alien {put}; a combo for {who}.",
   "help.combo.cash": "Cash in: hit an alien that is {status}, set up by {who}: {effect}.",
-  "help.combo.nobody": "no one in your squad",
+  "help.combo.setup.none": "Set up: {tactic} (key 3) makes an alien {put}; no one in your squad turns it into a combo.",
+  "help.combo.cash.none": "Cash in: hit an alien that is {status}: {effect}. No one in your squad sets it up.",
   "help.combo.or": " or ",
   "help.combo.how":
     "A hit on any other status a teammate put on deals 1 more. Each combo or +1 hit charges both soldiers; 2 charges make the ultimate (key 6) ready.",
@@ -512,12 +513,14 @@ const ru: Record<Key, string> = {
   "ult.how.killshot": "Нажмите пришельца в поле зрения или снова 6. Ход кончается.",
   "ult.how.self": "Нажмите 6 ещё раз или Enter. Ход кончается.",
   "help.ultimate": "Готова после 2 комбо или ударов с +1 в этой миссии — своих или подготовленных.",
-  "help.combo.setup": "Подготовка: {tactic} (клавиша 3) — пришелец «{put}»; комбо для: {who}.",
-  "help.combo.cash": "Комбо: ударьте пришельца со статусом «{status}» (готовит: {who}) — {effect}.",
-  "help.combo.nobody": "никто в отряде",
+  "help.combo.setup": "Подготовка: {tactic} (клавиша 3) вешает на пришельца «{put}». Комбо по нему проводит {who}.",
+  "help.combo.cash": "Комбо: ваш удар по пришельцу с «{status}» — {effect}. Этот статус вешает {who}.",
+  "help.combo.setup.none":
+    "Подготовка: {tactic} (клавиша 3) вешает на пришельца «{put}». В отряде нет бойца, который превратит это в комбо.",
+  "help.combo.cash.none": "Комбо: ваш удар по пришельцу с «{status}» — {effect}. В отряде никто не вешает этот статус.",
   "help.combo.or": " или ",
   "help.combo.how":
-    "Удар по любому другому статусу товарища наносит на 1 больше. Каждое комбо или удар с +1 заряжает обоих бойцов; 2 заряда готовят ульту (клавиша 6).",
+    "Удар по любому другому статусу от товарища наносит +1 урона. Каждое комбо и каждый удар с +1 заряжают обоих бойцов; 2 заряда — и ульта (клавиша 6) готова.",
   "combo.vanguard": "+2 урона, затем он оглушён",
   "combo.ranger": "+2 урона, затем он помечен",
   "combo.warden": "+2 урона, его укрытие рушится, затем он открыт",
