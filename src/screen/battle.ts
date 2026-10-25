@@ -418,12 +418,14 @@ export class Battle {
     return `${n > 1 ? "2×" : ""}−${d}`
   }
 
-  /** The hit of the selected soldier on the aimed alien in Shoot, else on the hovered one. */
+  /** The hit of the selected soldier on the hovered alien, else on the aimed one in Shoot. */
   hit(): { target: Unit; hit: Hit } | null {
     const g = this.game(),
       u = this.unit(),
-      p = (this.mode() === "shoot" && this.planned()) || this.hovered()
-    const target = p ? g.unitAt(p) : undefined
+      hovered = this.hovered(),
+      planned = this.mode() === "shoot" ? this.planned() : null
+    const over = hovered ? g.unitAt(hovered) : undefined,
+      target = over && over.side !== u?.side ? over : planned ? g.unitAt(planned) : undefined
     if (!u || !target || target.side === u.side) return null
     const from = this.mode() === "skill" && this.runTo ? this.runTo : u.at
     if (!g.combat.canShoot(u, target, from) && !(u.profile.melee && adjacent(from, target.at))) return null

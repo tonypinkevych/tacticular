@@ -120,6 +120,20 @@ describe("battle", () => {
     b.confirm()
     expect(b.game().unit("r").ap).toBe(0)
   })
+  test("in Shoot the target card follows the hovered alien, and goes back to the aimed one when the cursor leaves", () => {
+    const g = setup(open(), [
+      squad("r", "ranger", { x: 3, y: 6 }),
+      enemy("g", "grunt", { x: 3, y: 1 }),
+      enemy("h", "grunt", { x: 6, y: 1 }),
+    ])
+    const b = new Battle(g)
+    b.begin(0)
+    b.choose("shoot")
+    b.point({ x: 6, y: 1 })
+    const hovered = b.hit()?.target.id
+    b.point(null)
+    expect([hovered, b.hit()?.target.id]).toEqual(["h", "g"])
+  })
   test("Tab in Shoot moves the aim to the next target", () => {
     const g = setup(open(), [
       squad("r", "ranger", { x: 3, y: 6 }),

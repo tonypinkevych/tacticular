@@ -58,8 +58,8 @@ and which teammate sets up its own combo.
 
 ## Ultimates
 
-Each combo, landed or set up, charges both soldiers. After 2 combos in a mission, a soldier's ultimate is ready (key
-`6`); it ends the turn and empties the charge.
+Each combo or +1 hit, landed or set up, charges both soldiers. After 2 charges in a mission, a soldier's ultimate
+is ready (key `6`); it ends the turn and empties the charge.
 
 | Class | Ultimate |
 |---|---|
