@@ -1,12 +1,14 @@
 import { createSignal, For, type JSX, Show } from "solid-js"
 import { READY } from "../../combat/ultimates"
 import { t } from "../../i18n/strings"
-import type { Unit } from "../../units/unit"
+import type { Status, Unit } from "../../units/unit"
 import type { Battle, Mode } from "../battle"
 import { Board } from "../board/board"
 import { Combos } from "../combos"
-import { help } from "../help"
+import { GLYPH } from "../glyph"
+import { help, statusHelp } from "../help"
 import { Restart } from "../run/restart"
+import { Badge, Links } from "./badge"
 import { charge } from "./card"
 import { Portrait } from "./portrait"
 
@@ -44,6 +46,11 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
   const odds = (id: string) => {
     const m = g().marks.find((x) => x.unit === id && x.target)
     return m ? b.toll(m) : null
+  }
+  const foe = () => {
+    const p = b.hovered(),
+      u = p ? g().unitAt(p) : undefined
+    return u ? statusHelp(u, squad()) : null
   }
   const aimedAt = (u: Unit) => g().marks.filter((m) => m.target === u.id).length
   const hint = () => {
@@ -144,9 +151,7 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
                   <Show when={u.charge >= READY}>
                     <span class="status ult">{t("ui.ultimate")}</span>
                   </Show>
-                  <Show when={b.selected() === u.id && u.profile.combo}>
-                    {(c) => <span class="muted">{t("ui.gains", { status: t(`status.${c()}`) })}</span>}
-                  </Show>
+                  <Links put={u.profile.tactic} combo={u.profile.combo} />
                 </div>
               </button>
             )}
@@ -178,7 +183,9 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
               <span class="who">
                 <b>{t(`kind.${u.kind}`)}</b>
                 <Pips unit={u} />
-                <small>{b.intent(u.id) ?? (u.status ? t(`status.${u.status}`) : "—")}</small>
+                <small>
+                  {u.status && <Badge status={u.status} />} {b.intent(u.id) ?? (u.status ? "" : "—")}
+                </small>
               </span>
               <b class="odds">{odds(u.id) ?? ""}</b>
             </button>
@@ -189,7 +196,11 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
       <section class="abilities">
         <Show
           when={
-            tipped() ? b.help(tipped() as Mode) : peeked() ? help(peeked() as Unit, "move", squad()) : b.help(b.mode())
+            tipped()
+              ? b.help(tipped() as Mode)
+              : peeked()
+                ? help(peeked() as Unit, "move", squad())
+                : (foe() ?? b.help(b.mode()))
           }
         >
           {(h) => (
@@ -218,7 +229,9 @@ export function Hud(props: { battle: Battle; onNext: () => void; onRestart: () =
           {action(
             "tactic",
             "3",
-            b.unit()?.profile.tactic ? t(`tactic.${b.unit()?.profile.tactic}`) : "—",
+            b.unit()?.profile.tactic
+              ? `${GLYPH[b.unit()?.profile.tactic as Status].icon} ${t(`tactic.${b.unit()?.profile.tactic}`)}`
+              : "—",
             <Icon d="M5 12h9M10 7l5 5-5 5M18 5v14" />,
             t("ui.oneAp"),
             !b.unit()?.profile.tactic,

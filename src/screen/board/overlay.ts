@@ -5,16 +5,9 @@ import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
 
 const BLUE = "#3d6fb0"
 
+import { GLYPH, label } from "../glyph"
 import { circle, type Pt, star } from "./outline"
 import type { Projection } from "./projection"
-
-const STATUS: Record<Status, string> = {
-  suppressed: ORANGE,
-  staggered: "#8a6d10",
-  exposed: RED,
-  marked: TEAL,
-  taunted: "#7a3fa0",
-}
 
 /** The marks the board draws over its tiles: zones, targets, alien intents, drops, the evac and the beacon. */
 export class Overlay {
@@ -309,7 +302,7 @@ export class Overlay {
 
   /** The tag of a status. */
   status(status: Status): { text: string; color: string } {
-    return { text: t(`status.${status}`).toUpperCase(), color: STATUS[status] }
+    return { text: label(status).toUpperCase(), color: GLYPH[status].color }
   }
 
   /** A short text over a point, in the paper look: damage, MISS, a skill name. */

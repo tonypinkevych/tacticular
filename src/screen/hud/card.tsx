@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Unit } from "../../units/unit"
+import { Badge } from "./badge"
 import { Portrait } from "./portrait"
 
 /** How a unit's skill stands: the uses left, the turns to wait, or ready. */
@@ -41,7 +42,7 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
           </div>
         )}
       </Show>
-      <Show when={u().status}>{(s) => <div class={`status ${s()}`}>{t(`status.${s()}`)}</div>}</Show>
+      <Show when={u().status}>{(s) => <Badge status={s()} />}</Show>
       <Show when={u().extra.branch}>
         <div class="meta">{t(`branch.${u().extra.branch}`)}</div>
       </Show>

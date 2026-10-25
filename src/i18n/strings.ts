@@ -4,10 +4,9 @@ const en = {
   "ui.uses": "{left} left",
   "ui.cooldown": "in {left}",
   "ui.ready": "ready",
-  "ui.run.links": "{tactic} · combo on {status}",
+  "ui.links": "→ combo on",
   "ui.incoming": "INCOMING",
   "ui.hintAim": "{target} · {damage} · same key or Enter fires",
-  "ui.gains": "gains from {status}",
   "ui.aimedAt": "{count} aimed at you",
   "ui.oneAp": "1 AP",
   "ui.comboOn": "COMBO · {status}",
@@ -252,6 +251,9 @@ const en = {
   "help.combo.setup.none": "Set up: {tactic} (key 3) makes an alien {put}; no one in your squad turns it into a combo.",
   "help.combo.cash.none": "Cash in: hit an alien that is {status}: {effect}. No one in your squad sets it up.",
   "help.combo.or": " or ",
+  "help.status.how": "{who} hits it for a combo. A hit by a soldier who did not put it on deals 1 more.",
+  "help.status.how.none":
+    "No one in your squad turns it into a combo. A hit by a soldier who did not put it on deals 1 more.",
   "help.combo.how":
     "A hit on any other status a teammate put on deals 1 more. Each combo or +1 hit charges both soldiers; 2 charges make the ultimate (key 6) ready.",
   "combo.vanguard": "2 more damage, then it is Staggered",
@@ -267,10 +269,9 @@ const ru: Record<Key, string> = {
   "ui.uses": "осталось {left}",
   "ui.cooldown": "через {left}",
   "ui.ready": "готово",
-  "ui.run.links": "{tactic} · комбо по: {status}",
+  "ui.links": "→ комбо по",
   "ui.incoming": "УГРОЗЫ",
   "ui.hintAim": "{target} · {damage} · клавиша или Enter — огонь",
-  "ui.gains": "комбо по: {status}",
   "ui.aimedAt": "целятся в вас: {count}",
   "ui.comboOn": "КОМБО · {status}",
   "ui.oneAp": "1 AP",
@@ -519,6 +520,9 @@ const ru: Record<Key, string> = {
     "Подготовка: {tactic} (клавиша 3) вешает на пришельца «{put}». В отряде нет бойца, который превратит это в комбо.",
   "help.combo.cash.none": "Комбо: ваш удар по пришельцу с «{status}» — {effect}. В отряде никто не вешает этот статус.",
   "help.combo.or": " или ",
+  "help.status.how": "{who} проводит по нему комбо. Удар бойца, который его не вешал, наносит +1 урона.",
+  "help.status.how.none":
+    "В отряде никто не проведёт по нему комбо. Удар бойца, который его не вешал, наносит +1 урона.",
   "help.combo.how":
     "Удар по любому другому статусу от товарища наносит +1 урона. Каждое комбо и каждый удар с +1 заряжают обоих бойцов; 2 заряда — и ульта (клавиша 6) готова.",
   "combo.vanguard": "+2 урона, затем он оглушён",

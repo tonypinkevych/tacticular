@@ -1,6 +1,7 @@
 import { t } from "../i18n/strings"
 import type { Unit } from "../units/unit"
 import type { Mode } from "./battle"
+import { label } from "./glyph"
 
 /** What an ability is, what it does and how to use it, as the player reads it. */
 export interface Help {
@@ -26,11 +27,11 @@ export function help(u: Unit, mode: Mode, team: Unit[] = []): Help | null {
       about: [
         t(taker ? "help.combo.setup" : "help.combo.setup.none", {
           tactic: t(`tactic.${p.tactic}`),
-          put: t(`status.${p.tactic}`),
+          put: label(p.tactic),
           who: taker,
         }),
         t(setter ? "help.combo.cash" : "help.combo.cash.none", {
-          status: t(`status.${p.combo}`),
+          status: label(p.combo),
           who: setter,
           effect: t(`combo.${u.kind}`),
         }),
@@ -52,4 +53,19 @@ export function help(u: Unit, mode: Mode, team: Unit[] = []): Help | null {
       : null
   const key = mode === "shoot" && p.melee ? "strike" : mode
   return { name: t(`ui.${mode}`), about: t(`help.${key}.about`), how: t(`help.${key}.how`) }
+}
+
+/** What an alien's status does and which squad mate turns it into a combo; null without a status. */
+export function statusHelp(alien: Unit, team: Unit[]): Help | null {
+  const s = alien.status
+  if (alien.side !== "enemy" || !s) return null
+  const who = team
+    .filter((x) => x.profile.combo === s)
+    .map((x) => t(`kind.${x.kind}`))
+    .join(t("help.combo.or"))
+  return {
+    name: label(s),
+    about: t(`tactic.about.${s}`),
+    how: who ? t("help.status.how", { who }) : t("help.status.how.none"),
+  }
 }

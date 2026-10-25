@@ -2,6 +2,7 @@ import { createSignal, For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Soldier } from "../../run/run"
 import { PROFILES } from "../../units/profiles"
+import { Links } from "../hud/badge"
 import { Portrait } from "../hud/portrait"
 
 /** The squad pick at the start of a run: 3 of the 5 classes. */
@@ -37,10 +38,8 @@ export function Draft(props: { candidates: Soldier[]; onPick: (ids: string[]) =>
                 )}
               </Show>
               <span class="combo">
-                {t("ui.run.links", {
-                  tactic: t(`tactic.${PROFILES[c.kind].tactic}`),
-                  status: t(`status.${PROFILES[c.kind].combo}`),
-                })}
+                {t(`tactic.${PROFILES[c.kind].tactic}`)}:{" "}
+                <Links put={PROFILES[c.kind].tactic} combo={PROFILES[c.kind].combo} />
               </span>
             </button>
           )}

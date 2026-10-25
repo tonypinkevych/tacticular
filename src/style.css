@@ -71,20 +71,23 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.status.suppressed {
-  background: #d67c2e;
+.stamp {
+  display: inline-block;
+  padding: 0 5px;
+  border: 1px solid var(--ink);
+  color: var(--paper);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 15px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
-.status.staggered {
-  background: #8a6d10;
-}
-.status.exposed {
-  background: var(--red);
-}
-.status.marked {
-  background: var(--teal);
-}
-.status.taunted {
-  background: #7a3fa0;
+.links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  font-size: 10px;
 }
 .status.hunkered {
   background: var(--ink);
