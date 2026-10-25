@@ -34,10 +34,10 @@ describe("mission", () => {
     const defend = mission(4, { goal: "defend", squad: [{ id: "a", kind: "vanguard" }] })
     expect(defend.goal.kind === "defend" && defend.goal.at.y === 5).toBe(true)
   })
-  test("Kill all brings 3 drops, the other goals 1", () => {
+  test("Kill all brings 2 drops, the other goals 1", () => {
     const kill = mission(1, { squad: [], goal: "kill" }),
       evac = mission(1, { squad: [], goal: "evac" })
-    expect([kill.drops, evac.drops]).toEqual([3, 1])
+    expect([kill.drops, evac.drops]).toEqual([2, 1])
   })
   test("a mission with a foe holds one alien of that kind", () => {
     const g = mission(3, { goal: "kill", squad: [{ id: "a", kind: "ranger" }], foe: "sniper" })

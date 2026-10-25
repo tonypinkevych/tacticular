@@ -81,7 +81,7 @@ function goal(kind: GoalKind, open: Point[]): Goal {
   return { kind: "kill" }
 }
 
-/** How many alien drops a mission holds: 3 for Kill all, 1 for the other goals. */
+/** How many alien drops a mission holds: 2 for Kill all, 1 for the other goals. */
 export function drops(goal: GoalKind): number {
-  return goal === "kill" ? 3 : 1
+  return goal === "kill" ? 2 : 1
 }
