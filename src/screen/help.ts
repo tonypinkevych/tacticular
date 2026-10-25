@@ -65,7 +65,7 @@ export function statusHelp(alien: Unit, team: Unit[]): Help | null {
     .join(t("help.combo.or"))
   return {
     name: label(s),
-    about: t(`tactic.about.${s}`),
+    about: t(`status.about.${s}`),
     how: who ? t("help.status.how", { who }) : t("help.status.how.none"),
   }
 }

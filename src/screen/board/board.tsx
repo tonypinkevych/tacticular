@@ -4,6 +4,7 @@ import { adjacent, ORTHOGONAL, type Point, plus, same } from "../../map/point"
 import { coverOf } from "../../map/tile"
 import type { Battle } from "../battle"
 import { Combos } from "../combos"
+import { label } from "../glyph"
 import { INK, Ink, RED, YELLOW } from "./ink"
 import { Overlay } from "./overlay"
 import { Projection } from "./projection"
@@ -220,7 +221,7 @@ export function Board(props: { battle: Battle }) {
                 {t("ui.cover")} −{a().hit.cover}
               </span>
               <Show when={a().hit.combo && a().target.status}>
-                {(s) => <span class="combo">{t("ui.comboOn", { status: t(`status.${s()}`) })}</span>}
+                {(s) => <span class="combo">{t("ui.comboOn", { status: label(s()) })}</span>}
               </Show>
               <Show when={battle.intent(a().target.id)}>{(i) => <span class="plan">{i()}</span>}</Show>
             </div>

@@ -1,13 +1,12 @@
 import { t } from "../../i18n/strings"
 import type { Point } from "../../map/point"
 import type { Status } from "../../units/unit"
-import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
-
-const BLUE = "#3d6fb0"
-
 import { GLYPH, label } from "../glyph"
+import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
 import { circle, type Pt, star } from "./outline"
 import type { Projection } from "./projection"
+
+const BLUE = "#3d6fb0"
 
 /** The marks the board draws over its tiles: zones, targets, alien intents, drops, the evac and the beacon. */
 export class Overlay {

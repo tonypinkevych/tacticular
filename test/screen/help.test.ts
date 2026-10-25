@@ -51,7 +51,7 @@ describe("help", () => {
     expect([statusHelp(g.unit("g"), team), statusHelp(g.unit("w"), team)]).toEqual([
       {
         name: label("suppressed"),
-        about: t("tactic.about.suppressed"),
+        about: t("status.about.suppressed"),
         how: t("help.status.how", { who: t("kind.vanguard") }),
       },
       null,
