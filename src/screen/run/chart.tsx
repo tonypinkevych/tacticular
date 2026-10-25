@@ -92,7 +92,7 @@ export function ChartView(props: { run: Run; onGo: (node: number, deploy: string
       <h2>{t("ui.run.deploy")}</h2>
       <div class="roster">
         <For each={run.roster}>
-          {(s) => <Card unit={unitOf(s)} selected={deploy().includes(s.id)} onPick={() => toggle(s.id)} />}
+          {(s) => <Card unit={unitOf(s)} selected={deploy().includes(s.id)} onPick={() => toggle(s.id)} kit />}
         </For>
       </div>
       <button

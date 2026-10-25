@@ -1,7 +1,9 @@
 import { For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
+import type { ClassId } from "../../units/profiles"
 import type { Unit } from "../../units/unit"
 import { Badge } from "./badge"
+import { Kit } from "./kit"
 import { Portrait } from "./portrait"
 
 /** How a unit's skill stands: the uses left, the turns to wait, or ready. */
@@ -10,8 +12,14 @@ export function charge(u: Unit): string {
   return u.cooldown > 0 ? t("ui.cooldown", { left: u.cooldown }) : t("ui.ready")
 }
 
-/** A unit's card: its portrait, name, HP, AP and skill. */
-export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => void; intent?: string | null }) {
+/** A unit's card: its portrait, name, HP, AP and skill, and with `kit` what its class brings. */
+export function Card(props: {
+  unit: Unit
+  selected?: boolean
+  onPick?: () => void
+  intent?: string | null
+  kit?: boolean
+}) {
   const u = () => props.unit
   const skill = () => charge(u())
   return (
@@ -52,6 +60,9 @@ export function Card(props: { unit: Unit; selected?: boolean; onPick?: () => voi
       </Show>
       <Show when={u().overwatch}>
         <div class="status watching">{t("ui.overwatch")}</div>
+      </Show>
+      <Show when={props.kit && u().side === "squad"}>
+        <Kit kind={u().kind as ClassId} />
       </Show>
     </button>
   )

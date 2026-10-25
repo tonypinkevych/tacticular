@@ -1,8 +1,8 @@
-import { createSignal, For, Show } from "solid-js"
+import { createSignal, For } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Soldier } from "../../run/run"
 import { PROFILES } from "../../units/profiles"
-import { Links } from "../hud/badge"
+import { Kit } from "../hud/kit"
 import { Portrait } from "../hud/portrait"
 
 /** The squad pick at the start of a run: 3 of the 5 classes. */
@@ -27,20 +27,7 @@ export function Draft(props: { candidates: Soldier[]; onPick: (ids: string[]) =>
               <span>
                 {t("ui.hp")} {c.max} · {t("ui.run.move", { tiles: PROFILES[c.kind].move })}
               </span>
-              <span class="muted">
-                {t(`skill.${PROFILES[c.kind].skill}`)}: {t(`skill.about.${PROFILES[c.kind].skill}`)}
-              </span>
-              <Show when={PROFILES[c.kind].ultimate}>
-                {(u) => (
-                  <span class="ult">
-                    <b>{t(`ult.${u()}`)}</b>: {t(`ult.about.${u()}`)}
-                  </span>
-                )}
-              </Show>
-              <span class="combo">
-                {t(`tactic.${PROFILES[c.kind].tactic}`)}:{" "}
-                <Links put={PROFILES[c.kind].tactic} combo={PROFILES[c.kind].combo} />
-              </span>
+              <Kit kind={c.kind} />
             </button>
           )}
         </For>

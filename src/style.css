@@ -218,7 +218,20 @@ kbd {
   justify-content: center;
 }
 .roster .card {
-  width: 220px;
+  width: 240px;
+  align-content: start;
+}
+.kit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  text-align: center;
+}
+.card .kit {
+  grid-column: 1 / -1;
+  margin-top: 4px;
 }
 .offer {
   display: flex;
@@ -744,13 +757,13 @@ button.link {
   background: var(--paper);
   box-shadow: 4px 4px 0 rgba(36, 34, 31, 0.18);
 }
-.offer .combo {
+.kit .combo {
   padding: 2px 6px;
   background: var(--ink);
   color: var(--paper);
   font-size: 11px;
 }
-.offer .ult {
+.kit .ult {
   padding: 2px 6px;
   border: 1px solid var(--ink);
   background: var(--yellow);
