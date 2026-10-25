@@ -245,6 +245,14 @@ const en = {
   "ult.how.killshot": "Click an alien in sight, or press 6 again. Ends the turn.",
   "ult.how.self": "Press 6 again or Enter. Ends the turn.",
   "help.ultimate": "Ready after 2 combos this mission, landed or set up.",
+  "help.combo.about": "{tactic} makes an alien {put}. Your hit on a {status} alien: {effect}.",
+  "help.combo.how":
+    "Any hit deals 1 more on a status a teammate put on. Combos you land or set up charge the ultimate.",
+  "combo.vanguard": "2 more damage, then it is Staggered",
+  "combo.ranger": "2 more damage, then it is Marked",
+  "combo.warden": "2 more damage, its cover breaks, then it is Exposed",
+  "combo.cleric": "soldiers next to you heal 1",
+  "combo.blade": "3 more damage, then it is Staggered",
 }
 
 export type Key = keyof typeof en
@@ -497,6 +505,14 @@ const ru: Record<Key, string> = {
   "ult.how.killshot": "Нажмите пришельца в поле зрения или снова 6. Ход кончается.",
   "ult.how.self": "Нажмите 6 ещё раз или Enter. Ход кончается.",
   "help.ultimate": "Готова после 2 комбо в этой миссии — своих или подготовленных.",
+  "help.combo.about": "{tactic} накладывает «{put}». Ваш удар по цели «{status}»: {effect}.",
+  "help.combo.how":
+    "Любой удар по статусу, который наложил товарищ, наносит на 1 больше. Комбо — свои и подготовленные — заряжают ульту.",
+  "combo.vanguard": "+2 урона, затем он оглушён",
+  "combo.ranger": "+2 урона, затем он помечен",
+  "combo.warden": "+2 урона, его укрытие рушится, затем он открыт",
+  "combo.cleric": "бойцы рядом с вами лечатся на 1",
+  "combo.blade": "+3 урона, затем он оглушён",
 }
 
 export const DICTIONARIES: Record<Lang, Record<Key, string>> = { en, ru }

@@ -1,4 +1,3 @@
-import { t } from "../../src/i18n/strings"
 import { Battle } from "../../src/screen/battle"
 import { enemy, open, setup, squad } from "../fixture"
 
@@ -222,20 +221,6 @@ describe("battle", () => {
     b.game().unit("r").cooldown = 2
     b.choose("skill")
     expect([b.mode(), b.notice()]).toEqual(["move", "cooldown"])
-  })
-  test("the help of an ability names it, says what it does and how to use it", () => {
-    const b = start()
-    expect(b.help("skill")).toEqual({
-      name: t("skill.headshot"),
-      about: t("skill.about.headshot"),
-      how: t("skill.how.headshot"),
-    })
-    b.pick("w")
-    expect(b.help("tactic")).toEqual({
-      name: t("tactic.suppressed"),
-      about: t("tactic.about.suppressed"),
-      how: t("tactic.how.suppressed"),
-    })
   })
   test("Shoot shows the tiles the soldier can fire at", () => {
     const b = start()

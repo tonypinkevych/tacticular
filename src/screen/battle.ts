@@ -9,6 +9,7 @@ import { clear } from "../map/sight"
 import type { Game, Mark } from "../mission/game"
 import { type Action, Illegal } from "../mission/orders"
 import type { Unit } from "../units/unit"
+import { type Help, help } from "./help"
 import { Playback } from "./playback/playback"
 import { Sound } from "./playback/sound"
 import { Sweep } from "./sweep"
@@ -32,13 +33,6 @@ export interface Peril {
   kind: "fire" | "watch"
   /** The alien on overwatch that fires there. */
   by?: string
-}
-
-/** What an ability is, what it does and how to use it, as the player reads it. */
-export interface Help {
-  name: string
-  about: string
-  how: string
 }
 
 /** What a click does now: move, shoot, use the skill, the tactic or the ultimate, set Overwatch, or Hunker down. */
@@ -388,24 +382,10 @@ export class Battle {
     }
   }
 
-  /** The help of an ability of the selected soldier; null for moving or an ability it does not have. */
+  /** The help of an ability of the selected soldier, or of its combo while moving; null with none selected. */
   help(mode: Mode): Help | null {
-    const p = this.unit()?.profile
-    if (!p || mode === "move") return null
-    if (mode === "skill")
-      return { name: t(`skill.${p.skill}`), about: t(`skill.about.${p.skill}`), how: t(`skill.how.${p.skill}`) }
-    if (mode === "ultimate") {
-      const k = p.ultimate
-      if (!k) return null
-      const how = k === "breach" || k === "killshot" ? t(`ult.how.${k}`) : t("ult.how.self")
-      return { name: t(`ult.${k}`), about: t(`ult.about.${k}`), how: `${how} ${t("help.ultimate")}` }
-    }
-    if (mode === "tactic")
-      return p.tactic
-        ? { name: t(`tactic.${p.tactic}`), about: t(`tactic.about.${p.tactic}`), how: t(`tactic.how.${p.tactic}`) }
-        : null
-    const key = mode === "shoot" && p.melee ? "strike" : mode
-    return { name: t(`ui.${mode}`), about: t(`help.${key}.about`), how: t(`help.${key}.how`) }
+    const u = this.unit()
+    return u ? help(u, mode) : null
   }
 
   /** What an alien plans for its next turn and at whom, as the player reads it; null when it plans nothing. */
