@@ -2,6 +2,9 @@ import { t } from "../../i18n/strings"
 import type { Point } from "../../map/point"
 import type { Status } from "../../units/unit"
 import { GREEN, INK, type Ink, ORANGE, PAPER, RED, TEAL, YELLOW } from "./ink"
+
+const BLUE = "#3d6fb0"
+
 import { circle, type Pt, star } from "./outline"
 import type { Projection } from "./projection"
 
@@ -218,6 +221,18 @@ export class Overlay {
       ],
       { fill: GREEN, key: 1050, w: 1.2 },
     )
+  }
+
+  /** A tile around the beacon that the squad must hold. */
+  hold(p: Point): void {
+    this.ink.shape(this.projection.diamond(p, 3), {
+      fill: "rgba(61,111,176,.16)",
+      sharp: true,
+      w: 2,
+      stroke: BLUE,
+      dash: [8, 4],
+      amp: 0,
+    })
   }
 
   beacon(p: Point, frame: number): void {

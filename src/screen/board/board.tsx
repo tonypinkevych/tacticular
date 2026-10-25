@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, onMount, Show } from "solid-js"
 import { t } from "../../i18n/strings"
-import { ORTHOGONAL, type Point, plus } from "../../map/point"
+import { adjacent, ORTHOGONAL, type Point, plus, same } from "../../map/point"
 import { coverOf } from "../../map/tile"
 import type { Battle } from "../battle"
 import { Combos } from "../combos"
@@ -67,7 +67,6 @@ export function Board(props: { battle: Battle }) {
       ink.boil = 0
       const goal = g.goal
       if (goal.kind === "evac") for (const [i, p] of goal.tiles.entries()) overlay.evac(p, frame, i % 2 === 0)
-      if (goal.kind === "defend") overlay.beacon(goal.at, frame)
       for (const m of g.marks) {
         const shooter = g.unit(m.unit),
           target = g.units.find((x) => x.id === m.target)
@@ -108,6 +107,11 @@ export function Board(props: { battle: Battle }) {
         const planned = battle.planned()
         if (planned) overlay.planned(planned)
       }
+      if (goal.kind === "defend") {
+        for (const p of g.board.tiles.map((_, i) => ({ x: i % g.board.width, y: Math.floor(i / g.board.width) })))
+          if (adjacent(p, goal.at, true) || same(p, goal.at)) overlay.hold(p)
+        overlay.beacon(goal.at, frame)
+      }
       const things: { x: number; y: number; draw: () => void }[] = []
       g.board.tiles.forEach((t, i) => {
         const p = { x: i % g.board.width, y: Math.floor(i / g.board.width) }
@@ -131,6 +135,10 @@ export function Board(props: { battle: Battle }) {
         })
       things.sort((a, b) => a.x + a.y - (b.x + b.y) || a.y - b.y)
       for (const t of things) t.draw()
+      if (goal.kind === "defend") {
+        const [x, y] = projection.center(goal.at)
+        overlay.float([x, y - 46], goal.strikes ? t("ui.float.falling") : t("ui.float.hold"), goal.strikes ? RED : INK)
+      }
       for (const m of g.marks) {
         const target = g.units.find((x) => x.id === m.target)
         if (!target) continue

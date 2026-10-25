@@ -23,12 +23,14 @@ A chess-like, turn-based tactics game in the browser, played as a short roguelik
 - Hunker down: cover cuts twice the damage and the open counts as low cover, until the soldier's next turn.
 - Blasts tear sandbags and crack rocks, then leave rubble. Barrels blow up and set their tile on fire. Fire burns
   and spreads to the next forest. A push into water drowns.
-- A mission starts with 5 aliens. 2 more drop every 3 rounds, on tiles marked a round before: 3 times in Kill all,
+- A mission starts with 5 aliens. 2 more drop every 3 rounds, on tiles marked a round before: twice in Kill all,
   once in the other missions.
 - Each mission past the first layer of the chart holds a special alien. A Guard takes no damage from a shot its cover
   faces. A Sniper shoots across the board, but only in a turn it has not moved, and its overwatch deals full damage. A
   Pod does not fight, but while it stands a drop comes every 2 rounds and drops never run out.
-- Missions: kill all aliens, take every soldier out by the top row, or hold the beacon for 5 rounds.
+- Missions: kill all aliens, take every soldier out by the top row, or hold the beacon for 5 rounds. The
+  beacon falls when aliens outnumber soldiers on the 9 tiles around it at 2 round ends in a row; the board marks
+  these tiles in blue.
 - Maps come in 4 biomes: a village with crossing roads and houses, a forest cut by a river with 2 fords, ruins of
   rock and rubble, and a field with 2 lines of sandbag trenches.
 - Full cover blocks a shot unless the unit beside it can step out to an open side.
