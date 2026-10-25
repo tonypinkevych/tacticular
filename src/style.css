@@ -747,6 +747,12 @@ button.link {
   color: var(--paper);
   font-size: 11px;
 }
+.offer .ult {
+  padding: 2px 6px;
+  border: 1px solid var(--ink);
+  background: var(--yellow);
+  font-size: 11px;
+}
 .offer.on {
   background: var(--panel);
   color: var(--ink);

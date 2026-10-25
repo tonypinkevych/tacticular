@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js"
+import { createSignal, For, Show } from "solid-js"
 import { t } from "../../i18n/strings"
 import type { Soldier } from "../../run/run"
 import { PROFILES } from "../../units/profiles"
@@ -29,6 +29,13 @@ export function Draft(props: { candidates: Soldier[]; onPick: (ids: string[]) =>
               <span class="muted">
                 {t(`skill.${PROFILES[c.kind].skill}`)}: {t(`skill.about.${PROFILES[c.kind].skill}`)}
               </span>
+              <Show when={PROFILES[c.kind].ultimate}>
+                {(u) => (
+                  <span class="ult">
+                    <b>{t(`ult.${u()}`)}</b>: {t(`ult.about.${u()}`)}
+                  </span>
+                )}
+              </Show>
               <span class="combo">
                 {t("ui.run.links", {
                   tactic: t(`tactic.${PROFILES[c.kind].tactic}`),
